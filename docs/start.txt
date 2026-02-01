@@ -41,6 +41,7 @@
      Math, English, Science, History, and question-type specialists (MCQ, reasoning, etc.)
 
   V2->
+  - Different input cost and latency optimisations
   - Actual hosting 
   - Actual backend setup
   - proper devops
