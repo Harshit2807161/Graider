@@ -10,7 +10,12 @@
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:outshift.cisco.com)",
       "WebFetch(domain:www.eyepop.ai)",
-      "WebFetch(domain:www.handwritingocr.com)"
+      "WebFetch(domain:www.handwritingocr.com)",
+      "mcp__github__get_file_contents",
+      "Bash(git checkout:*)",
+      "Bash(conda env create:*)",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\personal projects\\\\shack2026project\"\" && conda env create -f environment.yml\")",
+      "Bash(C:/ProgramData/anaconda3/Scripts/conda.exe env create -f \"C:/personal projects/shack2026project/environment.yml\")"
     ]
   }
 }

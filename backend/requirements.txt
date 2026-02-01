@@ -1,0 +1,33 @@
+# Gr8r Backend Requirements
+
+# ===== BACKEND FRAMEWORK =====
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-multipart  # File uploads
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+
+# ===== AI/LLM =====
+anthropic>=0.45.0
+
+# ===== ASYNC & HTTP =====
+httpx>=0.28.0
+aiofiles
+
+# ===== UTILITIES =====
+python-dotenv>=1.0.0
+tenacity  # Retry logic
+structlog  # Structured logging
+
+# ===== TESTING =====
+pytest
+pytest-asyncio
+
+# ===== FUTURE: LangGraph & AGNTCY (uncomment when needed) =====
+# langchain>=0.3.0
+# langchain-anthropic>=0.3.0
+# langchain-core>=0.3.0
+# langgraph>=0.4.0
+# agntcy-app-sdk
+# agntcy-acp
+# ioa_observe_sdk

@@ -1188,5 +1188,628 @@ v        v         v         v         v
 
 ---
 
+## 10. CoffeeAgntcy Reference Implementation Analysis
+
+This section provides a detailed analysis of the **CoffeeAgntcy** repository, AGNTCY's official reference implementation that demonstrates how to integrate AGNTCY SDK with LangGraph agents for multi-agent systems.
+
+### 10.1 Repository Overview
+
+**CoffeeAgntcy** (`https://github.com/agntcy/coffeeAgntcy`) is a reference implementation based on a fictitious coffee company that demonstrates how AGNTCY components work together in a Multi-Agent System (MAS).
+
+#### Key Demonstrations
+
+| Feature | Description |
+|---------|-------------|
+| **SLIM Messaging** | Request-reply, unicast, and group communication patterns |
+| **Transport Interoperability** | Tools and transports reused across agents (SLIM, NATS, HTTP) |
+| **LangGraph Orchestration** | Structured, stateful workflows with streaming support |
+| **A2A Communication** | Client and server agent implementations |
+| **MCP Integration** | External data sources (e.g., weather services) |
+| **Observability** | AGNTCY Observe SDK integration |
+| **Identity Verification** | AGNTCY Identity Service SDK |
+
+#### Repository Structure
+
+```
+coffeeAGNTCY/
+├── coffee_agents/
+│   ├── corto/                      # Simple 2-agent setup
+│   │   ├── exchange/               # Supervisor/A2A client agent
+│   │   │   ├── agent.py           # Exchange agent implementation
+│   │   │   ├── main.py            # FastAPI entry point
+│   │   │   └── frontend/          # React UI
+│   │   ├── farm/                   # Worker/A2A server agent
+│   │   │   ├── agent.py           # LangGraph-based farm agent
+│   │   │   ├── agent_executor.py  # A2A AgentExecutor wrapper
+│   │   │   ├── farm_server.py     # A2A server setup
+│   │   │   └── card.py            # Agent Card definition
+│   │   ├── common/                 # Shared utilities
+│   │   │   └── llm.py             # LLM configuration
+│   │   └── config/                 # Configuration files
+│   │
+│   └── lungo/                      # Complex multi-agent setup
+│       ├── agents/
+│       │   ├── supervisors/        # Supervisor agents
+│       │   │   ├── auction/        # Supervisor-worker pattern
+│       │   │   │   └── graph/      # LangGraph implementation
+│       │   │   │       ├── graph.py
+│       │   │   │       ├── tools.py
+│       │   │   │       └── models.py
+│       │   │   └── logistics/      # Group chat pattern
+│       │   ├── farms/              # Worker agents (Brazil, Colombia, Vietnam)
+│       │   └── mcp_servers/        # External data sources
+│       └── docker-compose.yml
+```
+
+### 10.2 Corto Setup: Basic A2A Pattern (Recommended Starting Point for Gr8r)
+
+The **Corto** setup demonstrates a simple two-agent architecture that's directly applicable to Gr8r's orchestrator-grader pattern.
+
+#### Architecture
+
+```
+┌────────────────────┐     A2A over SLIM     ┌────────────────────┐
+│   Exchange Agent   │ ──────────────────────▶│    Farm Agent      │
+│   (A2A Client)     │◀────────────────────── │   (A2A Server)     │
+│                    │                        │                    │
+│ • Receives prompts │                        │ • LangGraph-based  │
+│ • Routes to Farm   │                        │ • Generates flavor │
+│ • Returns results  │                        │   profiles         │
+└────────────────────┘                        └────────────────────┘
+```
+
+#### Exchange Agent (A2A Client) - `corto/exchange/agent.py`
+
+This is the **orchestrator pattern** for Gr8r:
+
+```python
+from agntcy_app_sdk.factory import AgntcyFactory
+from agntcy_app_sdk.semantic.a2a.protocol import A2AProtocol
+from ioa_observe.sdk.decorators import agent
+from a2a.types import SendMessageRequest, MessageSendParams, Message, Part, TextPart, Role
+
+@agent(name="exchange_agent")
+class ExchangeAgent:
+    def __init__(self, factory: AgntcyFactory):
+        self.factory = factory
+
+    async def a2a_client_send_message(self, prompt: str):
+        """Send message to remote agent via A2A protocol"""
+        factory = self.factory
+
+        # Create topic from agent card
+        a2a_topic = A2AProtocol.create_agent_topic(farm_agent_card)
+
+        # Create transport (SLIM or NATS)
+        transport = factory.create_transport(
+            DEFAULT_MESSAGE_TRANSPORT,
+            endpoint=TRANSPORT_SERVER_ENDPOINT,
+            name="default/default/exchange"  # Routable name for SLIM
+        )
+
+        # Create A2A client
+        client = await factory.create_client(
+            "A2A",
+            agent_topic=a2a_topic,
+            transport=transport
+        )
+
+        # Build and send request
+        request = SendMessageRequest(
+            id=str(uuid4()),
+            params=MessageSendParams(
+                message=Message(
+                    message_id=str(uuid4()),
+                    role=Role.user,
+                    parts=[Part(TextPart(text=prompt))],
+                )
+            )
+        )
+
+        response = await client.send_message(request)
+
+        # Extract text from response
+        if response.root.result and response.root.result.parts:
+            part = response.root.result.parts[0].root
+            if hasattr(part, "text"):
+                return part.text
+```
+
+**Key Takeaways for Gr8r**:
+- Use `AgntcyFactory` to create transports and clients
+- `A2AProtocol.create_agent_topic()` generates the topic from an Agent Card
+- SLIM transport requires a routable name in `org/namespace/agent` format
+- Use `SendMessageRequest` with `MessageSendParams` for A2A communication
+
+#### Farm Agent (LangGraph A2A Server) - `corto/farm/agent.py`
+
+This is the **grader agent pattern** for Gr8r:
+
+```python
+from typing import TypedDict
+from langgraph.graph import END, START, StateGraph
+from ioa_observe.sdk.decorators import agent, graph
+
+class State(TypedDict):
+    prompt: str
+    error_type: str
+    error_message: str
+    flavor_notes: str  # Output field
+
+@agent(name="farm_agent")
+class FarmAgent:
+    def __init__(self):
+        self.FLAVOR_NODE = "FlavorNode"
+        self._agent = self.build_graph()
+
+    @graph(name="farm_graph")
+    def build_graph(self) -> StateGraph:
+        """Build LangGraph workflow"""
+        graph_builder = StateGraph(State)
+        graph_builder.add_node(self.FLAVOR_NODE, self.flavor_node)
+        graph_builder.add_edge(START, self.FLAVOR_NODE)
+        graph_builder.add_edge(self.FLAVOR_NODE, END)
+        return graph_builder.compile()
+
+    async def flavor_node(self, state: State):
+        """Main processing node - equivalent to grader logic"""
+        user_prompt = state.get("prompt")
+
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_prompt)
+        ]
+        response = get_llm().invoke(messages)
+
+        if not response.content.strip():
+            return {
+                "error_type": "invalid_input",
+                "error_message": "Could not process input."
+            }
+        return {"flavor_notes": response.content}
+
+    async def ainvoke(self, input: str) -> dict:
+        """Entry point for A2A requests"""
+        return await self._agent.ainvoke({"prompt": input})
+```
+
+**Key Takeaways for Gr8r**:
+- Use `@agent` decorator for observability
+- Use `@graph` decorator on the graph builder
+- Define state as `TypedDict` with input/output fields
+- Implement `ainvoke()` as the entry point for A2A requests
+
+#### Agent Executor (A2A Wrapper) - `corto/farm/agent_executor.py`
+
+Wraps the LangGraph agent to handle A2A protocol:
+
+```python
+from a2a.server.agent_execution import AgentExecutor, RequestContext
+from a2a.server.events import EventQueue
+from a2a.utils import new_agent_text_message, new_task
+
+class FarmAgentExecutor(AgentExecutor):
+    def __init__(self):
+        self.agent = FarmAgent()
+
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        """Process A2A request and return response via event queue"""
+
+        # Extract user input from A2A request
+        prompt = context.get_user_input()
+        if not prompt:
+            await event_queue.enqueue_event(
+                new_agent_text_message("No valid input provided.")
+            )
+            return
+
+        # Create task if needed
+        task = context.current_task
+        if not task:
+            task = new_task(context.message)
+            await event_queue.enqueue_event(task)
+
+        # Invoke the LangGraph agent
+        output = await self.agent.ainvoke(prompt)
+
+        # Return result via event queue
+        if output.get("error_message"):
+            await event_queue.enqueue_event(
+                new_agent_text_message(output.get("error_message"))
+            )
+        else:
+            result = output.get("flavor_notes", "No result")
+            await event_queue.enqueue_event(new_agent_text_message(result))
+```
+
+**Key Takeaways for Gr8r**:
+- Extend `AgentExecutor` for A2A server compatibility
+- Use `context.get_user_input()` to extract the prompt
+- Use `new_agent_text_message()` to return text responses
+- Use `event_queue.enqueue_event()` to send responses
+
+#### A2A Server Setup - `corto/farm/farm_server.py`
+
+```python
+from a2a.server.apps import A2AStarletteApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from agntcy_app_sdk.factory import AgntcyFactory
+from agntcy_app_sdk.app_sessions import AppContainer
+from agntcy_app_sdk.semantic.a2a.protocol import A2AProtocol
+
+# Initialize factory with tracing
+factory = AgntcyFactory("corto.farm_agent", enable_tracing=True)
+
+async def main():
+    # Create request handler with agent executor
+    request_handler = DefaultRequestHandler(
+        agent_executor=FarmAgentExecutor(),
+        task_store=InMemoryTaskStore(),
+    )
+
+    # Create A2A application
+    server = A2AStarletteApplication(
+        agent_card=AGENT_CARD,
+        http_handler=request_handler
+    )
+
+    if DEFAULT_MESSAGE_TRANSPORT == "A2A":
+        # Native HTTP mode
+        config = Config(app=server.build(), host=HOST, port=PORT)
+        await Server(config).serve()
+    else:
+        # SLIM/NATS transport mode
+        transport = factory.create_transport(
+            DEFAULT_MESSAGE_TRANSPORT,
+            endpoint=TRANSPORT_SERVER_ENDPOINT,
+            name="default/default/" + A2AProtocol.create_agent_topic(AGENT_CARD)
+        )
+
+        # Create app session
+        app_session = factory.create_app_session()
+        app_session.add_app_container("farm", AppContainer(
+            server,
+            transport=transport,
+            topic=A2AProtocol.create_agent_topic(AGENT_CARD),
+        ))
+
+        await app_session.start_session("farm", keep_alive=True)
+```
+
+**Key Takeaways for Gr8r**:
+- Use `A2AStarletteApplication` for A2A server creation
+- `DefaultRequestHandler` wraps the `AgentExecutor`
+- `AppContainer` connects the server to a transport
+- `app_session.start_session()` with `keep_alive=True` for persistent connections
+
+#### Agent Card Definition - `corto/farm/card.py`
+
+```python
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+
+AGENT_SKILL = AgentSkill(
+    id="grade_answer",
+    name="Grade Student Answer",
+    description="Grades a student's answer based on rubric criteria",
+    tags=["education", "grading", "assessment"],
+    examples=[
+        "Grade this math answer: x = 5",
+        "Evaluate the student's explanation of photosynthesis"
+    ]
+)
+
+AGENT_CARD = AgentCard(
+    name='Math Grader Agent',
+    id='math-grader-agent',
+    description='Specialized agent for grading mathematics answers',
+    url=f'http://{HOST}:{PORT}/',
+    version='1.0.0',
+    defaultInputModes=["text"],
+    defaultOutputModes=["text"],
+    capabilities=AgentCapabilities(streaming=True),
+    skills=[AGENT_SKILL],
+    supportsAuthenticatedExtendedCard=False,
+)
+```
+
+### 10.3 Lungo Setup: Complex Supervisor-Worker Pattern
+
+The **Lungo** setup demonstrates advanced patterns including supervisor-worker orchestration and group chat communication.
+
+#### Auction Supervisor: Multi-Node LangGraph with Conditional Routing
+
+```python
+from langgraph.graph import StateGraph, END
+from langgraph.graph import MessagesState
+from langgraph.prebuilt import ToolNode
+from ioa_observe.sdk.decorators import agent, graph
+
+class NodeStates:
+    SUPERVISOR = "exchange_supervisor"
+    INVENTORY_SINGLE_FARM = "inventory_single_farm"
+    INVENTORY_ALL_FARMS = "inventory_all_farms"
+    ORDERS = "orders_broker"
+    REFLECTION = "reflection"
+
+class GraphState(MessagesState):
+    next_node: str
+    full_response: str = ""
+
+@agent(name="exchange_agent")
+class ExchangeGraph:
+    def __init__(self):
+        self.graph = self.build_graph()
+
+    @graph(name="exchange_graph")
+    def build_graph(self) -> CompiledStateGraph:
+        workflow = StateGraph(GraphState)
+
+        # Add nodes
+        workflow.add_node(NodeStates.SUPERVISOR, self._supervisor_node)
+        workflow.add_node(NodeStates.INVENTORY_SINGLE_FARM, self._inventory_single_farm_node)
+        workflow.add_node(NodeStates.INVENTORY_ALL_FARMS, self._inventory_all_farms_node)
+        workflow.add_node(NodeStates.ORDERS, self._orders_node)
+        workflow.add_node(NodeStates.ORDERS_TOOLS, ToolNode([create_order, get_order_details]))
+        workflow.add_node(NodeStates.REFLECTION, self._reflection_node)
+
+        # Entry point
+        workflow.set_entry_point(NodeStates.SUPERVISOR)
+
+        # Conditional routing from supervisor
+        workflow.add_conditional_edges(
+            NodeStates.SUPERVISOR,
+            lambda state: state["next_node"],
+            {
+                NodeStates.INVENTORY_SINGLE_FARM: NodeStates.INVENTORY_SINGLE_FARM,
+                NodeStates.INVENTORY_ALL_FARMS: NodeStates.INVENTORY_ALL_FARMS,
+                NodeStates.ORDERS: NodeStates.ORDERS,
+            },
+        )
+
+        # Worker nodes route to reflection
+        workflow.add_edge(NodeStates.INVENTORY_SINGLE_FARM, NodeStates.REFLECTION)
+        workflow.add_edge(NodeStates.INVENTORY_ALL_FARMS, NodeStates.REFLECTION)
+
+        # Tool handling for orders
+        workflow.add_conditional_edges(
+            NodeStates.ORDERS,
+            tools_or_next(NodeStates.ORDERS_TOOLS, NodeStates.REFLECTION)
+        )
+        workflow.add_edge(NodeStates.ORDERS_TOOLS, NodeStates.ORDERS)
+
+        return workflow.compile()
+```
+
+**Key Takeaways for Gr8r**:
+- Use `MessagesState` for conversation-style workflows
+- Define node states as class constants for clarity
+- Use conditional edges with `lambda state: state["next_node"]`
+- Implement a reflection node to decide if processing is complete
+- Use `ToolNode` for tool-calling nodes
+
+#### Broadcasting to Multiple Workers
+
+The Lungo setup demonstrates broadcasting to multiple farm agents simultaneously:
+
+```python
+async def get_all_farms_yield_inventory_streaming(prompt: str):
+    """Broadcast to all farms and stream responses"""
+
+    client = await factory.create_client(
+        "A2A",
+        agent_topic=client_handshake_topic,
+        transport=transport,
+    )
+
+    # List of recipients for broadcast
+    recipients = [
+        A2AProtocol.create_agent_topic(get_farm_card(farm))
+        for farm in ['brazil', 'colombia', 'vietnam']
+    ]
+
+    # Streaming broadcast
+    async for response in client.broadcast_message_streaming(
+        request,
+        broadcast_topic=FARM_BROADCAST_TOPIC,
+        recipients=recipients
+    ):
+        if response.root.result and response.root.result.parts:
+            part = response.root.result.parts[0].root
+            farm_name = response.root.result.metadata.get("name", "Unknown")
+            yield f"{farm_name}: {part.text.strip()}\n"
+```
+
+**Key Takeaways for Gr8r**:
+- Use `broadcast_message_streaming()` for parallel fan-out
+- Specify `recipients` list for targeted broadcast
+- Stream responses as they arrive from each agent
+
+### 10.4 Applying CoffeeAgntcy Patterns to Gr8r
+
+Based on the coffeeAgntcy analysis, here's how to structure Gr8r:
+
+#### Gr8r Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        GR8R ORCHESTRATOR                                 │
+│                    (Exchange Agent Pattern)                              │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                  LangGraph Supervisor Graph                       │   │
+│  │                                                                   │   │
+│  │   [Entry] ──▶ [Analyze Question] ──▶ [Route to Graders]          │   │
+│  │                                              │                    │   │
+│  │                    ┌─────────────────────────┼─────────────┐      │   │
+│  │                    ▼                         ▼             ▼      │   │
+│  │              [Math Grader]           [English Grader] [Science]   │   │
+│  │                    │                         │             │      │   │
+│  │                    └─────────────────────────┴─────────────┘      │   │
+│  │                                              │                    │   │
+│  │                                              ▼                    │   │
+│  │                                        [Evaluator]                │   │
+│  │                                              │                    │   │
+│  │                                    ┌─────────┴─────────┐          │   │
+│  │                                    ▼                   ▼          │   │
+│  │                            [Re-grade Loop]         [Finalize]     │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                      A2A over SLIM │ (Optional for distributed setup)
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        ▼                           ▼                           ▼
+┌───────────────┐          ┌───────────────┐          ┌───────────────┐
+│  Math Grader  │          │English Grader │          │Science Grader │
+│  A2A Server   │          │  A2A Server   │          │  A2A Server   │
+│               │          │               │          │               │
+│ (Farm Pattern)│          │ (Farm Pattern)│          │ (Farm Pattern)│
+└───────────────┘          └───────────────┘          └───────────────┘
+```
+
+#### Recommended Gr8r Implementation Structure
+
+```python
+# backend/app/agents/orchestrator.py
+from agntcy_app_sdk.factory import AgntcyFactory
+from ioa_observe.sdk.decorators import agent, graph
+from langgraph.graph import StateGraph, MessagesState, END
+
+class GradingState(MessagesState):
+    triplet: dict  # Question + Answer + Rubric
+    subject_tags: list[str]
+    assigned_graders: list[str]
+    grading_results: list[dict]
+    final_score: float
+    feedback: str
+    next_node: str
+
+@agent(name="gr8r_orchestrator")
+class Gr8rOrchestrator:
+    def __init__(self):
+        self.factory = AgntcyFactory("gr8r.orchestrator", enable_tracing=True)
+        self.graph = self.build_graph()
+
+    @graph(name="gr8r_grading_graph")
+    def build_graph(self):
+        workflow = StateGraph(GradingState)
+
+        # Nodes
+        workflow.add_node("analyze", self._analyze_node)
+        workflow.add_node("route", self._route_node)
+        workflow.add_node("grade_math", self._grade_math_node)
+        workflow.add_node("grade_english", self._grade_english_node)
+        workflow.add_node("grade_science", self._grade_science_node)
+        workflow.add_node("evaluate", self._evaluate_node)
+        workflow.add_node("finalize", self._finalize_node)
+
+        # Flow
+        workflow.set_entry_point("analyze")
+        workflow.add_edge("analyze", "route")
+
+        workflow.add_conditional_edges(
+            "route",
+            self._get_grader_route,
+            {
+                "math": "grade_math",
+                "english": "grade_english",
+                "science": "grade_science",
+            }
+        )
+
+        workflow.add_edge("grade_math", "evaluate")
+        workflow.add_edge("grade_english", "evaluate")
+        workflow.add_edge("grade_science", "evaluate")
+
+        workflow.add_conditional_edges(
+            "evaluate",
+            self._check_confidence,
+            {"regrade": "route", "finalize": "finalize"}
+        )
+
+        workflow.add_edge("finalize", END)
+
+        return workflow.compile()
+
+# backend/app/agents/graders/math_grader.py
+@agent(name="math_grader")
+class MathGrader:
+    """Follows the Farm Agent pattern from coffeeAgntcy"""
+
+    def __init__(self):
+        self._agent = self.build_graph()
+
+    @graph(name="math_grading_graph")
+    def build_graph(self):
+        graph_builder = StateGraph(GradingState)
+        graph_builder.add_node("grade", self._grade_node)
+        graph_builder.add_edge(START, "grade")
+        graph_builder.add_edge("grade", END)
+        return graph_builder.compile()
+
+    async def _grade_node(self, state):
+        """Apply math grading rubric"""
+        # Use Claude Sonnet 4 for grading
+        response = await self.llm.ainvoke([
+            SystemMessage(content=MATH_GRADER_PROMPT),
+            HumanMessage(content=f"""
+                Question: {state['triplet']['question']}
+                Answer: {state['triplet']['answer']}
+                Rubric: {state['triplet']['rubric']}
+            """)
+        ])
+
+        return {
+            "grading_results": [{
+                "grader": "math",
+                "score": self._parse_score(response.content),
+                "confidence": self._parse_confidence(response.content),
+                "feedback": response.content
+            }]
+        }
+```
+
+### 10.5 Configuration and Dependencies
+
+Based on coffeeAgntcy's `pyproject.toml`:
+
+```toml
+[project]
+dependencies = [
+    "agntcy-app-sdk>=0.4.1",
+    "a2a-python>=0.3.0",
+    "ioa-observe-sdk>=1.0.24",
+    "langgraph>=0.4.1",
+    "langchain>=0.3.0",
+    "langchain-anthropic>=0.3.0",
+    "litellm>=1.0.0",  # For LLM provider flexibility
+    "pydantic>=2.0",
+]
+```
+
+Environment variables (from `config/config.py`):
+
+```python
+DEFAULT_MESSAGE_TRANSPORT = os.getenv("DEFAULT_MESSAGE_TRANSPORT", "SLIM")
+TRANSPORT_SERVER_ENDPOINT = os.getenv("TRANSPORT_SERVER_ENDPOINT", "http://localhost:46357")
+LLM_MODEL = os.getenv("LLM_MODEL", "anthropic/claude-sonnet-4")
+```
+
+### 10.6 Summary: Key Patterns for Gr8r
+
+| Pattern | CoffeeAgntcy Source | Gr8r Application |
+|---------|---------------------|------------------|
+| **A2A Client** | `corto/exchange/agent.py` | Orchestrator calling graders |
+| **A2A Server** | `corto/farm/farm_server.py` | Each grader as standalone service |
+| **LangGraph Agent** | `corto/farm/agent.py` | Grader logic with state machine |
+| **Agent Executor** | `corto/farm/agent_executor.py` | Wrapper for A2A protocol handling |
+| **Agent Card** | `corto/farm/card.py` | Grader capability definition |
+| **Supervisor Graph** | `lungo/supervisors/auction/graph.py` | Orchestrator with routing logic |
+| **Broadcast** | `lungo/supervisors/auction/graph/tools.py` | Fan-out to multiple graders |
+| **Streaming** | `lungo/agents/supervisors/auction/graph/graph.py` | Real-time grading results |
+
+---
+
 *Report generated: January 31, 2026*
 *Research conducted for Gr8r Multi-Agent Grading System*
