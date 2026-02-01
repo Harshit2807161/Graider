@@ -1,0 +1,5 @@
+To this end I would want you to deep research their sdk docs and offerings and form a consolidated report called eyepop_docs_overview.md which
+  contains an in-depth analysis presented as different sections on how to add LLM agents to it for ocr/ use their own custom agents and prompts with few shot examples/ how can i make an handwritten doc image OCR agent / any other functionality they provide that might be useful to us etc.
+  This doc will help us finalise ADRs for this part of the pipeline. 
+
+To this end, do deep research on their sdk and dev docs, examples and offerings and form a consolidated report called agntcy_docs_overview.md to figure out how to leverage their product in best ways, also how to do orchestration and any other functionality they provide that might be useful for our case etc.

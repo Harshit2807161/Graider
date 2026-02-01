@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:eyepop.ai)",
+      "WebFetch(domain:agntcy.org)",
+      "WebSearch",
+      "WebFetch(domain:docs.eyepop.ai)",
+      "WebFetch(domain:docs.agntcy.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:outshift.cisco.com)",
+      "WebFetch(domain:www.eyepop.ai)",
+      "WebFetch(domain:www.handwritingocr.com)"
+    ]
+  }
+}

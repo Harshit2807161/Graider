@@ -1,0 +1,48 @@
+❯ I am building a product "Gr8r" that grades subjective answers given a    
+  student's answer copy (a bunch of images of pages with handwritten        
+  answers), the question paper and a rubric for checking the answers (this  
+  can have either guidelines on how to score, sample answers, etc).         
+  Ideally the end product would be a website with a landing page,           
+  different portals for instructor and the student (we can worry about in   
+  later versions). The development process is MVP->V1->V2. 
+
+
+  The data entry layer would include either image input (of the answer copy or solved      
+  answers as the rubric), pdf or txt (for rubric). Then i want to route it through an OCR layer using eyepop.ai (a starting blog could be https://eyepop.ai/blog/build-an-ai-text-detection-app). 
+  
+
+  After this the answer copy and the rubric doc is converted into structured jsons with Question tagged to its candidate answer (or expected answer and checking guidelines from rubric).
+  Next part of the pipeline would be to join the two jsons using question key and form {QUESTION, CANDIDATE ANSWER, EXPECTED ANSWER} triplets for each question using a function. All this will be stored locally for MVP. 
+  Then we would have an orchestration layer using Claude-based langgraph agents ideally connected using Agntcy https://agntcy.org/. 
+  There would be an orchestration agent which would assign certain special question and subject tags to the triplets (MCQ/assertion-reasoning/differentiate/elucidate type and history/math/etc), 
+  then delegate the task for checking these triplets one by one to corresponding specialised graider agents (each with their own subject specific system prompts and common guidelines on how to grade), then the agent(s) return back their score for the associated answer, 
+  and their reasoning behind the solution grounded in the rubric that they should have used, the orchestration agent then acts as an evaluator and either passes the returned assessment or gives feedback to the agent which improves upon its grading. when all the questions are checked (and verified by the orchestrator),
+  we store the outputs as {Question, score, reasoning behind the score, feedback for the student}. 
+  This output would finally be sent to the website to be shown as a dashboard. 
+
+
+  MVP->
+  - OCR ingestion using eyepop
+  - basic pipeline setup 
+  - API endpoints for testing
+  - agntcy based orchestration 
+  - local data
+  - local frontend without users, stateless
+
+  V1->
+  - portals for instructor and students, with UI sorted
+  - landing page for website 
+  - website hosted locally end-to-end with API endpoints working
+  - eyepop custom data
+  - Agent observability setup  
+  - cost and latency optimisation 
+  - user login
+  - 5+ agents      
+     Math, English, Science, History, and question-type specialists (MCQ, reasoning, etc.)
+
+  V2->
+  - Actual hosting 
+  - Actual backend setup
+  - proper devops
+  - Agent mapping chain-of-thought and hooked to frontend for the user transparency 
+
