@@ -10,9 +10,18 @@ pydantic-settings>=2.7.0
 # ===== AI/LLM =====
 anthropic>=0.45.0
 
+# ===== LANGGRAPH ORCHESTRATION =====
+langgraph>=0.4.0
+langchain-core>=0.3.0
+
 # ===== ASYNC & HTTP =====
 httpx>=0.28.0
 aiofiles
+
+# ===== PDF PROCESSING =====
+pypdf>=5.0.0  # PDF text extraction
+pdf2image  # PDF to image conversion (requires poppler)
+Pillow  # Image processing
 
 # ===== UTILITIES =====
 python-dotenv>=1.0.0

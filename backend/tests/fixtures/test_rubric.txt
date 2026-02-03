@@ -1,0 +1,10 @@
+
+Q1: What is 2 + 2?
+Expected Answer: 4
+Max Score: 5
+Scoring: Full marks for correct answer, partial for showing work
+
+Q2: Explain photosynthesis.
+Expected Answer: Photosynthesis is the process by which plants convert sunlight, water, and CO2 into glucose and oxygen.
+Max Score: 10
+Key Points: sunlight, chlorophyll, glucose, oxygen, carbon dioxide

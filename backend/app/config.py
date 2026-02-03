@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # API Keys
-    anthropic_api_key: str
+    anthropic_api_key: str = "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"
 
     # Claude Models
-    claude_orchestrator_model: str = "claude-opus-4-5-20250929"
+    claude_orchestrator_model: str = "claude-sonnet-4-20250514"
     claude_grader_model: str = "claude-sonnet-4-20250514"
     claude_vision_model: str = "claude-sonnet-4-20250514"
 

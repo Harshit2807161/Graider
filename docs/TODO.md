@@ -31,10 +31,12 @@ This is the implementation task list for Gr8r MVP. Tasks are organized by phase 
 
 ### File Upload
 - [x] **2.1** Create `backend/app/api/routes/upload.py` - Upload endpoints
-- [x] **2.2** Implement question paper upload (images)
-- [x] **2.3** Implement answer sheet upload (images)
-- [x] **2.4** Implement rubric upload (text + images)
+- [x] **2.2** Implement question paper upload (images + PDFs)
+- [x] **2.3** Implement answer sheet upload (images + PDFs)
+- [x] **2.4** Implement rubric upload (text + images + PDFs)
 - [x] **2.5** Add file validation and storage
+- [x] **2.5a** Add combined document upload endpoint
+- [x] **2.5b** Add PDF processing service (pdf2image + pypdf)
 
 ### Claude Vision OCR
 - [x] **2.6** Create `backend/app/services/ocr_service.py`
@@ -42,6 +44,8 @@ This is the implementation task list for Gr8r MVP. Tasks are organized by phase 
 - [x] **2.8** Implement answer sheet OCR → `answers.json`
 - [x] **2.9** Implement rubric processing → `rubric.json`
 - [x] **2.10** Add OCR prompts for structured JSON output
+- [x] **2.10a** Add combined document extraction (questions + answers together)
+- [x] **2.10b** Add support for mixed handwritten/printed text
 
 ### Triplet Formation
 - [x] **2.11** Create `backend/app/services/triplet_service.py`
@@ -53,27 +57,27 @@ This is the implementation task list for Gr8r MVP. Tasks are organized by phase 
 
 ## Phase 3: Agent Orchestration
 
-### LangGraph Setup (Deferred to V1 - using direct orchestration for MVP)
-- [ ] **3.1** Create `backend/app/core/langgraph_setup.py`
-- [ ] **3.2** Define `GradingState` TypedDict
-- [ ] **3.3** Set up LangGraph graph structure
-- [ ] **3.4** Configure checkpointing with MemorySaver
+### LangGraph Setup
+- [x] **3.1** Create `backend/app/core/langgraph_setup.py` with StateGraph
+- [x] **3.2** Define `GradingState` TypedDict with triplets, results, feedback
+- [x] **3.3** Set up LangGraph graph structure with supervisor pattern
+- [x] **3.4** Configure checkpointing with MemorySaver
 
-### Orchestrator Agent
-- [x] **3.5** Create `backend/app/agents/orchestrator.py`
-- [x] **3.6** Write `prompts/orchestrator.txt` system prompt (embedded in code)
-- [x] **3.7** Implement subject tagging logic
-- [x] **3.8** Implement question type classification
-- [x] **3.9** Implement grader routing logic
-- [x] **3.10** Implement evaluation/feedback loop (placeholder for V1)
+### Orchestrator Agent (LangGraph Supervisor)
+- [x] **3.5** Refactor orchestrator to use LangGraph Command pattern
+- [x] **3.6** Implement tag_triplet node (assigns subject + question type tags)
+- [x] **3.7** Implement route_to_grader node (conditional routing)
+- [x] **3.8** Implement evaluate_result node (passes/rejects grading)
+- [x] **3.9** Implement feedback loop for rejected grades
+- [x] **3.10** Wire up full graph: tag → route → grade → evaluate → (feedback loop or next)
 
-### Specialized Graders
+### Specialized Graders (LangGraph Worker Nodes)
 - [x] **3.11** Create `backend/app/agents/graders/base_grader.py`
 - [x] **3.12** Create `backend/app/agents/graders/math_grader.py`
 - [x] **3.13** Create `backend/app/agents/graders/english_grader.py`
 - [x] **3.14** Create `backend/app/agents/graders/science_grader.py`
-- [x] **3.15** Write subject-specific system prompts (embedded in graders)
-- [x] **3.16** Implement grading logic with confidence scores
+- [x] **3.15** Add grade_with_feedback method for retry loops
+- [x] **3.16** Add history_grader.py for history subject
 
 ### AGNTCY Integration (Deferred to V1)
 - [ ] **3.17** Set up AGNTCY App SDK factory
@@ -131,16 +135,16 @@ This is the implementation task list for Gr8r MVP. Tasks are organized by phase 
 ## Phase 6: Testing & Polish
 
 ### Testing
-- [ ] **6.1** Create `backend/tests/test_ocr.py`
-- [ ] **6.2** Create `backend/tests/test_grading.py`
-- [ ] **6.3** Add sample fixtures (question papers, answer sheets)
+- [x] **6.1** Create `backend/tests/test_ocr.py`
+- [x] **6.2** Create `backend/tests/test_grading.py`
+- [x] **6.3** Add sample fixtures (question papers, answer sheets)
 - [ ] **6.4** Write integration tests for full pipeline
 - [ ] **6.5** Add frontend tests (optional)
 
 ### Documentation
-- [ ] **6.6** Update README.md with setup instructions
-- [ ] **6.7** Document API endpoints
-- [ ] **6.8** Add usage examples
+- [x] **6.6** Update README.md with setup instructions
+- [x] **6.7** Document API endpoints
+- [x] **6.8** Add usage examples
 
 ### Polish
 - [ ] **6.9** Error handling improvements
@@ -181,12 +185,12 @@ CLAUDE_GRADER_MODEL=claude-sonnet-4-20250514
 | Phase | Tasks | Completed | Progress |
 |-------|-------|-----------|----------|
 | 1. Setup | 12 | 9 | 75% |
-| 2. OCR | 14 | 14 | 100% |
-| 3. Agents | 20 | 10 | 50% |
+| 2. OCR | 18 | 18 | 100% |
+| 3. Agents | 20 | 16 | 80% |
 | 4. API | 12 | 12 | 100% |
 | 5. Frontend | 13 | 0 | 0% |
-| 6. Testing | 12 | 0 | 0% |
-| **MVP Total** | **83** | **45** | **54%** |
+| 6. Testing | 12 | 6 | 50% |
+| **MVP Total** | **87** | **61** | **70%** |
 
 ---
 

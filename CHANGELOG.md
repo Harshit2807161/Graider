@@ -76,7 +76,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `MathGrader` - Mathematical accuracy, methodology, partial credit
   - `EnglishGrader` - Content, structure, grammar, literary analysis
   - `ScienceGrader` - Conceptual accuracy, terminology, reasoning
-  - `BaseGrader` - Abstract base with common grading logic
+  - `HistoryGrader` - Historical accuracy, causation, evidence-based analysis
+  - `BaseGrader` - Abstract base with common grading logic + feedback retry
+
+- **LangGraph Orchestration (`backend/app/core/langgraph_setup.py`)**
+  - `GradingState` TypedDict with full state tracking
+  - `BatchGradingState` for processing multiple triplets
+  - Memory checkpointing with `MemorySaver`
+  - Helper functions for state initialization
+
+- **LangGraph-based Orchestrator (`backend/app/agents/orchestrator.py`)**
+  - Supervisor-worker pattern with StateGraph
+  - `tag_triplet` node - Claude Opus 4.5 classifies subject + question type
+  - `route_to_grader` node - Routes to specialized graders
+  - `evaluate_result` node - Quality evaluation with acceptance/rejection
+  - Feedback loop for rejected grades (max 3 attempts)
+  - `finalize_result` node - Returns accepted grading
+
+- **Question Type Tags Supported**
+  - MCQ, Short Answer, Descriptive, Problem, Essay
+  - Assertion-Reasoning, Differentiate, Elucidate
+
+- **Subject Tags Supported**
+  - Math, English, Science, History, General
 
 - **Environment Configuration**
   - Created `backend/.env.example` with all configuration options
@@ -85,7 +107,71 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Infrastructure
 
 - Created `harshit_mvp_dev` branch for development
-- Set up conda environment using `environment.yml`
+- Set up conda environment `gr8r` with all dependencies
+- Backend server tested and running on http://127.0.0.1:8000
+
+### Testing
+
+- Created `backend/tests/test_pipeline.py` for end-to-end testing
+- Verified all API endpoints work correctly:
+  - `POST /api/upload/questions` ✅
+  - `POST /api/upload/answers` ✅
+  - `POST /api/upload/rubric` ✅
+  - `POST /api/grade` ✅
+  - `GET /api/status/{session_id}` ✅
+  - `GET /api/results/{session_id}` ✅
+- Fixed background task error handling in grading pipeline
+
+#### PDF & Mixed Document Support
+
+- **PDF Processing Service (`backend/app/services/pdf_service.py`)**
+  - PDF to image conversion using pdf2image
+  - Text extraction from PDFs using pypdf
+  - Support for multi-page PDFs
+  - Graceful fallback when dependencies unavailable
+
+- **Enhanced OCR Service**
+  - Support for PDF input files (auto-converted to images)
+  - New `extract_questions_and_answers()` method for combined documents
+  - Improved prompts for mixed handwritten/printed text
+  - Better handling of various question ID formats
+
+- **Upload Endpoints Updated**
+  - All endpoints now accept PDFs in addition to images
+  - New `/api/upload/combined` endpoint for combined question+answer documents
+  - Content-type detection with fallback to extension-based detection
+  - Improved file validation
+
+- **Grading Pipeline Updates**
+  - Automatic detection of combined vs separate document uploads
+  - Placeholder answers for unanswered questions
+  - Better error messages for OCR failures
+
+- **Test Client Updates**
+  - Support for combined document mode (`--combined` flag)
+  - Interactive mode with upload type selection
+  - Better progress display and error handling
+
+#### Phase 6: Documentation & Testing
+
+- **README.md**
+  - Comprehensive setup instructions with conda environment
+  - Full API reference with request/response examples
+  - Usage examples (test client, cURL, Python)
+  - Rubric format documentation
+  - Project structure overview
+  - Configuration reference table
+  - Supported question types and subjects
+
+- **Test Suite (`backend/tests/`)**
+  - `test_ocr.py` - OCR service tests with mocked Claude responses
+  - `test_grading.py` - Grading agents and models tests
+  - Tests for score boundary handling
+  - Tests for feedback loop functionality
+  - Tests for error handling in graders
+
+- **Sample Fixtures**
+  - `sample_rubric.txt` - Example rubric with Math, Science, English questions
 
 ---
 

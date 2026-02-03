@@ -122,9 +122,12 @@ class TripletService:
             rubric = rubric_map.get(question.id)
             if not rubric and rubric_map:
                 # Try fuzzy matching for rubric too
+                # Handle cases like question.id="1" vs rubric_id="Q1"
                 for rid, rcriteria in rubric_map.items():
                     if (
-                        question.id.replace("Q", "") == rid or
+                        rid.replace("Q", "").replace("q", "") == question.id or
+                        question.id.replace("Q", "").replace("q", "") == rid or
+                        f"Q{question.id}" == rid or
                         question.id == f"Q{rid}" or
                         question.id.lower() == rid.lower()
                     ):

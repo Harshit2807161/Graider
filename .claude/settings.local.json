@@ -15,7 +15,30 @@
       "Bash(git checkout:*)",
       "Bash(conda env create:*)",
       "Bash(cmd /c \"cd /d \"\"C:\\\\personal projects\\\\shack2026project\"\" && conda env create -f environment.yml\")",
-      "Bash(C:/ProgramData/anaconda3/Scripts/conda.exe env create -f \"C:/personal projects/shack2026project/environment.yml\")"
+      "Bash(C:/ProgramData/anaconda3/Scripts/conda.exe env create -f \"C:/personal projects/shack2026project/environment.yml\")",
+      "Bash(C:/ProgramData/anaconda3/envs/gr8r/python.exe -c \"import fastapi, anthropic, pydantic_settings, structlog; print\\(''All imports successful!''\\)\")",
+      "Bash(C:/ProgramData/anaconda3/envs/gr8r/python.exe -m uvicorn:*)",
+      "Bash(curl:*)",
+      "Bash(C:/ProgramData/anaconda3/envs/gr8r/python.exe:*)",
+      "mcp__plugin_compound-engineering_context7__resolve-library-id",
+      "mcp__plugin_compound-engineering_context7__query-docs",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(dir /s \"C:\\\\personal projects\\\\shack2026project\\\\backend\\\\data\\\\outputs\")",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(conda run:*)",
+      "Bash(tree:*)",
+      "Bash(Get-ChildItem -Path \"C:\\\\personal projects\\\\shack2026project\\\\backend\\\\data\\\\uploads\" -Recurse)",
+      "Bash(Select-Object FullName, Length, Extension)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(find:*)",
+      "Bash(dir:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(pip show:*)",
+      "Bash(powershell:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git add:*)"
     ]
   }
 }

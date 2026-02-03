@@ -19,7 +19,7 @@ Gr8r is an AI-powered system that grades handwritten subjective answers using mu
 - **HTTP Client**: Axios
 
 ### AI/ML
-- **Orchestrator Model**: Claude Opus 4.5 (`claude-opus-4-5-20250929`)
+- **Orchestrator Model**: Claude Opus 4.5 (`claude-opus-4-5-20251101`)
 - **Grader Models**: Claude Sonnet 4 (`claude-sonnet-4-20250514`)
 - **OCR**: Claude Vision (via Messages API with images)
 
@@ -90,7 +90,7 @@ black backend/ && ruff check backend/
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Optional (defaults shown)
-CLAUDE_ORCHESTRATOR_MODEL=claude-opus-4-5-20250929
+CLAUDE_ORCHESTRATOR_MODEL=claude-opus-4-5-20251101
 CLAUDE_GRADER_MODEL=claude-sonnet-4-20250514
 DATABASE_URL=sqlite:///./data/gr8r.db
 UPLOAD_DIR=./data/uploads

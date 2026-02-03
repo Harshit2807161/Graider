@@ -1,14 +1,53 @@
 """FastAPI entry point for Gr8r backend."""
 
-import structlog
+import logging
+import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .api.routes import upload, grade, status, results
 
-# Configure structured logging
+# Set up file and console logging
+def setup_logging():
+    """Configure logging to both file and console."""
+    settings = get_settings()
+
+    # Create logs directory
+    log_dir = Path(settings.upload_dir).parent / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "gr8r.log"
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+
+    # Clear existing handlers
+    root_logger.handlers.clear()
+
+    # Console handler (human-readable)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_formatter = logging.Formatter(
+        '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
+        datefmt='%H:%M:%S'
+    )
+    console_handler.setFormatter(console_formatter)
+    root_logger.addHandler(console_handler)
+
+    # File handler (JSON for parsing)
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setLevel(logging.DEBUG)  # Capture all levels to file
+    root_logger.addHandler(file_handler)
+
+    return log_file
+
+log_file_path = setup_logging()
+
+# Configure structlog to use stdlib logging (which now writes to file + console)
 structlog.configure(
     processors=[
         structlog.stdlib.filter_by_level,
@@ -22,6 +61,8 @@ structlog.configure(
     logger_factory=structlog.stdlib.LoggerFactory(),
 )
 
+from .api.routes import upload, grade, status, results
+
 logger = structlog.get_logger(__name__)
 
 
@@ -30,7 +71,8 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     settings = get_settings()
     settings.ensure_directories()
-    logger.info("gr8r_startup", message="Gr8r backend starting up")
+    logger.info("gr8r_startup", message="Gr8r backend starting up", log_file=str(log_file_path))
+    print(f"\n📋 Logs are being saved to: {log_file_path}\n")
     yield
     logger.info("gr8r_shutdown", message="Gr8r backend shutting down")
 

@@ -10,17 +10,23 @@ import structlog
 
 from ..config import get_settings
 from ..models.schemas import Answer, Question, QuestionType, RubricCriteria
+from .pdf_service import process_directory_files_async, get_pdf_service
 
 logger = structlog.get_logger(__name__)
 
+# Maximum number of images to send in a single API request
+MAX_IMAGES_PER_REQUEST = 10
+
 
 class OCRService:
-    """Service for extracting text from images using Claude Vision."""
+    """Service for extracting text from images and PDFs using Claude Vision."""
 
     def __init__(self):
         settings = get_settings()
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        # Use async client for non-blocking API calls
+        self.client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
         self.vision_model = settings.claude_vision_model
+        self.pdf_service = get_pdf_service()
 
     def _encode_image(self, image_path: Path) -> tuple[str, str]:
         """Encode image to base64 and determine media type."""
@@ -43,44 +49,180 @@ class OCRService:
         """Build content array with all images."""
         content = []
         for path in image_paths:
-            image_data, media_type = self._encode_image(path)
-            content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": media_type,
-                    "data": image_data,
-                }
-            })
+            if not path.exists():
+                logger.warning("image_not_found", path=str(path))
+                continue
+            try:
+                image_data, media_type = self._encode_image(path)
+                content.append({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_data,
+                    }
+                })
+            except Exception as e:
+                logger.error("image_encode_error", path=str(path), error=str(e))
         return content
+
+    def _parse_json_response(self, response_text: str) -> dict:
+        """Parse JSON from Claude response, handling markdown code blocks."""
+        text = response_text.strip()
+
+        # Handle markdown code blocks
+        if text.startswith("```"):
+            parts = text.split("```")
+            if len(parts) >= 2:
+                text = parts[1]
+                if text.startswith("json"):
+                    text = text[4:]
+                text = text.strip()
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError as e:
+            logger.error("json_parse_error", error=str(e), response=text[:500])
+            return {}
+
+    async def _call_vision_api(self, content: list[dict], max_tokens: int = 8192) -> str:
+        """
+        Call Claude Vision API with error handling for large requests.
+
+        Handles 413 (request too large) errors by retrying with fewer images.
+        """
+        try:
+            logger.info(
+                "vision_api_call_start",
+                content_items=len(content),
+                image_count=sum(1 for c in content if c.get("type") == "image"),
+                max_tokens=max_tokens
+            )
+
+            response = await self.client.messages.create(
+                model=self.vision_model,
+                max_tokens=max_tokens,
+                messages=[{"role": "user", "content": content}]
+            )
+
+            logger.info("vision_api_call_success")
+            return response.content[0].text
+
+        except anthropic.BadRequestError as e:
+            error_str = str(e)
+            if "413" in error_str or "request_too_large" in error_str.lower():
+                logger.warning(
+                    "vision_api_request_too_large",
+                    error=error_str,
+                    content_items=len(content),
+                    image_count=sum(1 for c in content if c.get("type") == "image")
+                )
+
+                # Try to reduce images and retry
+                image_items = [c for c in content if c.get("type") == "image"]
+                text_items = [c for c in content if c.get("type") == "text"]
+
+                if len(image_items) > 1:
+                    # Reduce to half the images and retry
+                    reduced_images = image_items[:len(image_items) // 2]
+                    logger.info(
+                        "retrying_with_fewer_images",
+                        original_count=len(image_items),
+                        reduced_count=len(reduced_images)
+                    )
+
+                    # Rebuild content with reduced images
+                    reduced_content = text_items[:-1] + reduced_images + [text_items[-1]] if text_items else reduced_images
+
+                    return await self._call_vision_api(reduced_content, max_tokens)
+
+                # If we can't reduce further, re-raise
+                raise ValueError(
+                    f"Request too large for Claude Vision API even with minimal images. "
+                    f"Try using smaller image files or PDFs with fewer pages. Error: {error_str}"
+                )
+            raise
+
+        except Exception as e:
+            logger.error("vision_api_call_failed", error=str(e), error_type=type(e).__name__)
+            raise
+
+    async def _prepare_directory_content(self, directory: Path) -> tuple[list[dict], list[str]]:
+        """
+        Prepare content from a directory, handling both images and PDFs.
+
+        Returns:
+            Tuple of (image content for Claude, list of extracted texts)
+        """
+        logger.info("prepare_directory_start", directory=str(directory))
+
+        # Process all files, converting PDFs to images (async to avoid blocking)
+        image_paths, text_contents = await process_directory_files_async(directory)
+
+        logger.info(
+            "prepare_directory_files_processed",
+            directory=str(directory),
+            image_count=len(image_paths),
+            text_count=len(text_contents),
+            image_paths=[str(p) for p in image_paths[:5]]  # Log first 5 for debugging
+        )
+
+        # Build image content
+        image_content = self._build_image_content(image_paths)
+
+        logger.info(
+            "prepare_directory_complete",
+            directory=str(directory),
+            image_content_count=len(image_content),
+            text_content_count=len(text_contents)
+        )
+
+        return image_content, text_contents
 
     async def extract_questions(self, images_dir: Path) -> list[Question]:
         """
-        Extract questions from question paper images.
+        Extract questions from question paper files (images or PDFs).
 
         Args:
-            images_dir: Directory containing question paper images
+            images_dir: Directory containing question paper files
 
         Returns:
             List of extracted Question objects
         """
-        image_paths = sorted(images_dir.glob("*"))
-        image_paths = [p for p in image_paths if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".webp"}]
+        image_content, text_contents = await self._prepare_directory_content(images_dir)
 
-        if not image_paths:
-            logger.error("no_question_images", dir=str(images_dir))
+        if not image_content and not text_contents:
+            logger.error("no_question_files", dir=str(images_dir))
             return []
 
-        content = self._build_image_content(image_paths)
+        content = []
+
+        # Add any extracted text from PDFs
+        if text_contents:
+            combined_text = "\n\n---\n\n".join(text_contents)
+            content.append({
+                "type": "text",
+                "text": f"Extracted text from documents:\n\n{combined_text}\n\n---"
+            })
+
+        # Add images
+        content.extend(image_content)
+
+        # Add extraction prompt
         content.append({
             "type": "text",
-            "text": """Analyze these question paper images and extract ALL questions.
+            "text": """Analyze these question paper documents and extract ALL questions.
+
+The documents may contain:
+- Printed text (typed questions)
+- Handwritten text (if any)
+- A mix of both printed and handwritten content
 
 For each question, provide:
-1. id: The question number/identifier (e.g., "Q1", "Q2a", "Q2b")
+1. id: The question number/identifier (e.g., "Q1", "Q2a", "Q2b", "1", "1a")
 2. text: The complete question text
-3. max_score: The maximum marks/points for this question (look for marks in brackets or after the question)
-4. question_type: One of "descriptive", "problem", "mcq", "short_answer", "essay"
+3. max_score: The maximum marks/points for this question (look for marks in brackets like [5], (5 marks), etc.)
+4. question_type: One of "descriptive", "problem", "mcq", "short_answer", "essay", "assertion_reasoning", "differentiate", "elucidate"
 
 Return your response as a JSON object with this exact structure:
 {
@@ -95,80 +237,97 @@ Return your response as a JSON object with this exact structure:
 }
 
 Important:
-- Extract ALL questions visible in the images
-- Preserve the exact question text including any sub-parts
-- If marks are not visible, estimate based on question complexity (short answer: 2-5, descriptive: 5-10, essay: 10-20)
-- For MCQs, include all options in the text
+- Extract ALL questions visible in the documents
+- Preserve the exact question text including any sub-parts (a, b, c, etc.)
+- Look carefully for marks - they may be in brackets [5], parentheses (5 marks), or written as "5M"
+- If marks are not visible, estimate based on question complexity:
+  * MCQ: 1-2 marks
+  * Short answer: 2-5 marks
+  * Descriptive: 5-10 marks
+  * Essay: 10-20 marks
+- For MCQs, include all options (A, B, C, D) in the text
+- Handle both printed and handwritten questions
 
 Return ONLY the JSON object, no other text."""
         })
 
-        logger.info("ocr_questions_start", image_count=len(image_paths))
+        logger.info("ocr_questions_start", image_count=len(image_content), text_count=len(text_contents))
 
-        response = self.client.messages.create(
-            model=self.vision_model,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": content}]
-        )
+        response_text = await self._call_vision_api(content, max_tokens=8192)
 
-        # Parse response
-        response_text = response.content[0].text.strip()
+        data = self._parse_json_response(response_text)
 
-        # Handle potential markdown code blocks
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+        questions = []
+        for q in data.get("questions", []):
+            try:
+                # Normalize question type
+                q_type = q.get("question_type", "descriptive").lower().replace("-", "_").replace(" ", "_")
+                try:
+                    question_type = QuestionType(q_type)
+                except ValueError:
+                    question_type = QuestionType.DESCRIPTIVE
 
-        try:
-            data = json.loads(response_text)
-            questions = []
-            for q in data.get("questions", []):
                 questions.append(Question(
-                    id=q["id"],
+                    id=str(q["id"]),
                     text=q["text"],
                     max_score=float(q.get("max_score", 5)),
-                    question_type=QuestionType(q.get("question_type", "descriptive"))
+                    question_type=question_type
                 ))
-            logger.info("ocr_questions_complete", question_count=len(questions))
-            return questions
-        except json.JSONDecodeError as e:
-            logger.error("ocr_questions_parse_error", error=str(e), response=response_text[:500])
-            return []
+            except Exception as e:
+                logger.error("question_parse_error", question=q, error=str(e))
+
+        logger.info("ocr_questions_complete", question_count=len(questions))
+        return questions
 
     async def extract_answers(self, images_dir: Path, questions: list[Question]) -> list[Answer]:
         """
-        Extract answers from student answer sheet images.
+        Extract answers from student answer sheet files (images or PDFs).
 
         Args:
-            images_dir: Directory containing answer sheet images
+            images_dir: Directory containing answer sheet files
             questions: List of questions to match answers to
 
         Returns:
             List of extracted Answer objects
         """
-        image_paths = sorted(images_dir.glob("*"))
-        image_paths = [p for p in image_paths if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".webp"}]
+        image_content, text_contents = await self._prepare_directory_content(images_dir)
 
-        if not image_paths:
-            logger.error("no_answer_images", dir=str(images_dir))
+        if not image_content and not text_contents:
+            logger.error("no_answer_files", dir=str(images_dir))
             return []
 
         # Build question context for better extraction
-        question_context = "\n".join([f"- {q.id}: {q.text[:100]}..." for q in questions])
+        question_context = "\n".join([f"- {q.id}: {q.text[:150]}..." if len(q.text) > 150 else f"- {q.id}: {q.text}" for q in questions])
 
-        content = self._build_image_content(image_paths)
+        content = []
+
+        # Add any extracted text from PDFs
+        if text_contents:
+            combined_text = "\n\n---\n\n".join(text_contents)
+            content.append({
+                "type": "text",
+                "text": f"Extracted text from documents:\n\n{combined_text}\n\n---"
+            })
+
+        # Add images
+        content.extend(image_content)
+
         content.append({
             "type": "text",
-            "text": f"""Analyze these student answer sheet images and extract ALL answers.
+            "text": f"""Analyze these student answer sheet documents and extract ALL answers.
+
+The documents may contain:
+- Handwritten answers (most common)
+- Printed/typed answers
+- A mix of both
+- Mathematical equations, diagrams, or formulas
 
 The questions being answered are:
 {question_context}
 
 For each answer found, provide:
-1. question_id: Match to the corresponding question ID from above
-2. text: The complete answer text (transcribe handwriting carefully)
+1. question_id: Match to the corresponding question ID from above (e.g., "Q1", "1", "1a")
+2. text: The complete answer text (transcribe handwriting carefully, include all work shown)
 3. confidence: Your confidence in the transcription accuracy (0.0 to 1.0)
 
 Return your response as a JSON object with this exact structure:
@@ -184,75 +343,211 @@ Return your response as a JSON object with this exact structure:
 
 Important:
 - Transcribe handwritten text as accurately as possible
+- For mathematical work, include all steps and calculations
 - If handwriting is unclear, make your best interpretation and lower confidence
-- Match answers to the correct question IDs
+- Match answers to the correct question IDs (students may not write "Q1" - match by position/context)
 - Include partial or incomplete answers
-- If an answer is blank or missing, you can omit it or note "No answer provided"
+- If an answer is blank or missing, include it with text "No answer provided" and confidence 0
+- Look for answer numbers that may be written as "1.", "1)", "Ans 1:", etc.
+- For multi-part questions (a, b, c), try to separate each part
 
 Return ONLY the JSON object, no other text."""
         })
 
-        logger.info("ocr_answers_start", image_count=len(image_paths))
+        logger.info("ocr_answers_start", image_count=len(image_content), text_count=len(text_contents))
 
-        response = self.client.messages.create(
-            model=self.vision_model,
-            max_tokens=8192,
-            messages=[{"role": "user", "content": content}]
-        )
+        response_text = await self._call_vision_api(content, max_tokens=16384)
 
-        # Parse response
-        response_text = response.content[0].text.strip()
+        data = self._parse_json_response(response_text)
 
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-
-        try:
-            data = json.loads(response_text)
-            answers = []
-            for a in data.get("answers", []):
+        answers = []
+        for a in data.get("answers", []):
+            try:
                 answers.append(Answer(
-                    question_id=a["question_id"],
+                    question_id=str(a["question_id"]),
                     text=a["text"],
                     confidence=float(a.get("confidence", 1.0))
                 ))
-            logger.info("ocr_answers_complete", answer_count=len(answers))
-            return answers
-        except json.JSONDecodeError as e:
-            logger.error("ocr_answers_parse_error", error=str(e), response=response_text[:500])
-            return []
+            except Exception as e:
+                logger.error("answer_parse_error", answer=a, error=str(e))
+
+        logger.info("ocr_answers_complete", answer_count=len(answers))
+        return answers
+
+    async def extract_questions_and_answers(self, images_dir: Path) -> tuple[list[Question], list[Answer]]:
+        """
+        Extract both questions AND answers from a combined document.
+
+        Use this when a single PDF/image contains both the question paper
+        and student answers together.
+
+        Args:
+            images_dir: Directory containing combined document files
+
+        Returns:
+            Tuple of (questions, answers)
+        """
+        image_content, text_contents = await self._prepare_directory_content(images_dir)
+
+        if not image_content and not text_contents:
+            logger.error("no_combined_files", dir=str(images_dir))
+            return [], []
+
+        content = []
+
+        # Add any extracted text from PDFs
+        if text_contents:
+            combined_text = "\n\n---\n\n".join(text_contents)
+            content.append({
+                "type": "text",
+                "text": f"Extracted text from documents:\n\n{combined_text}\n\n---"
+            })
+
+        # Add images
+        content.extend(image_content)
+
+        content.append({
+            "type": "text",
+            "text": """Analyze these documents which contain BOTH questions AND student answers together.
+
+The documents may have:
+- Questions printed/typed with answers written below them
+- A question paper section followed by an answer section
+- Questions and answers interleaved
+- Mixed handwritten and printed text
+
+Extract BOTH the questions AND the corresponding student answers.
+
+Return your response as a JSON object with this exact structure:
+{
+  "questions": [
+    {
+      "id": "Q1",
+      "text": "What is photosynthesis?",
+      "max_score": 10,
+      "question_type": "descriptive"
+    }
+  ],
+  "answers": [
+    {
+      "question_id": "Q1",
+      "text": "Photosynthesis is the process by which plants...",
+      "confidence": 0.9
+    }
+  ]
+}
+
+For questions:
+- id: Question identifier (Q1, 1, 1a, etc.)
+- text: The complete question text
+- max_score: Marks for the question (look for [5], (5 marks), 5M, etc.)
+- question_type: One of "descriptive", "problem", "mcq", "short_answer", "essay"
+
+For answers:
+- question_id: Must match a question id
+- text: The complete student answer (transcribe carefully)
+- confidence: Transcription confidence (0.0 to 1.0)
+
+Important:
+- Distinguish between printed question text and handwritten answer text
+- Questions are usually printed/typed; answers are usually handwritten
+- Match each answer to its corresponding question
+- Include all work shown in mathematical answers
+- If an answer is blank, include with "No answer provided"
+
+Return ONLY the JSON object, no other text."""
+        })
+
+        logger.info("ocr_combined_start", image_count=len(image_content), text_count=len(text_contents))
+
+        response_text = await self._call_vision_api(content, max_tokens=16384)
+
+        data = self._parse_json_response(response_text)
+
+        # Parse questions
+        questions = []
+        for q in data.get("questions", []):
+            try:
+                q_type = q.get("question_type", "descriptive").lower().replace("-", "_").replace(" ", "_")
+                try:
+                    question_type = QuestionType(q_type)
+                except ValueError:
+                    question_type = QuestionType.DESCRIPTIVE
+
+                questions.append(Question(
+                    id=str(q["id"]),
+                    text=q["text"],
+                    max_score=float(q.get("max_score", 5)),
+                    question_type=question_type
+                ))
+            except Exception as e:
+                logger.error("question_parse_error", question=q, error=str(e))
+
+        # Parse answers
+        answers = []
+        for a in data.get("answers", []):
+            try:
+                answers.append(Answer(
+                    question_id=str(a["question_id"]),
+                    text=a["text"],
+                    confidence=float(a.get("confidence", 1.0))
+                ))
+            except Exception as e:
+                logger.error("answer_parse_error", answer=a, error=str(e))
+
+        logger.info(
+            "ocr_combined_complete",
+            question_count=len(questions),
+            answer_count=len(answers)
+        )
+        return questions, answers
 
     async def extract_rubric(self, rubric_dir: Path) -> list[RubricCriteria]:
         """
-        Extract grading criteria from rubric files.
+        Extract grading criteria from rubric files (text, images, or PDFs).
 
         Args:
-            rubric_dir: Directory containing rubric files (text or images)
+            rubric_dir: Directory containing rubric files
 
         Returns:
             List of RubricCriteria objects
         """
-        rubric_paths = sorted(rubric_dir.glob("*"))
+        logger.info("extract_rubric_start", rubric_dir=str(rubric_dir), exists=rubric_dir.exists())
 
-        # Separate text and image files
-        text_files = [p for p in rubric_paths if p.suffix.lower() in {".txt", ".json", ".md"}]
-        image_files = [p for p in rubric_paths if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".webp"}]
+        if not rubric_dir.exists():
+            logger.error("rubric_dir_not_found", rubric_dir=str(rubric_dir))
+            return []
+
+        # List files in rubric directory before processing
+        files_before = list(rubric_dir.glob("*"))
+        logger.info(
+            "rubric_dir_contents_before",
+            rubric_dir=str(rubric_dir),
+            files=[f.name for f in files_before]
+        )
+
+        image_content, text_contents = await self._prepare_directory_content(rubric_dir)
+
+        # List files in rubric directory after processing (to see if images were created)
+        files_after = list(rubric_dir.glob("*"))
+        logger.info(
+            "rubric_dir_contents_after",
+            rubric_dir=str(rubric_dir),
+            files=[f.name for f in files_after],
+            new_files=[f.name for f in files_after if f not in files_before]
+        )
 
         content = []
 
         # Add text file contents
-        for text_file in text_files:
-            text_content = text_file.read_text(encoding="utf-8")
+        for text_content in text_contents:
             content.append({
                 "type": "text",
-                "text": f"Rubric file ({text_file.name}):\n{text_content}\n---"
+                "text": f"Rubric content:\n{text_content}\n---"
             })
 
         # Add images
-        if image_files:
-            content.extend(self._build_image_content(image_files))
+        content.extend(image_content)
 
         if not content:
             logger.warning("no_rubric_files", dir=str(rubric_dir))
@@ -263,10 +558,10 @@ Return ONLY the JSON object, no other text."""
             "text": """Analyze the rubric content above and extract grading criteria for each question.
 
 For each question, provide:
-1. question_id: The question identifier
+1. question_id: The question identifier (Q1, 1, etc.)
 2. expected_points: Key points/concepts that should be in the answer
 3. sample_answer: A model answer if provided
-4. scoring_guide: How to allocate marks (full, partial, minimal)
+4. scoring_guide: How to allocate marks (as percentages: full=1.0, partial=0.5, minimal=0.2)
 
 Return as JSON:
 {
@@ -280,40 +575,35 @@ Return as JSON:
   ]
 }
 
+Important:
+- Extract criteria for ALL questions mentioned in the rubric
+- Include all expected points/concepts
+- Scoring guide values should be decimals (0.0 to 1.0) representing percentage of max score
+- If sample answer is not provided, use null
+
 Return ONLY the JSON object."""
         })
 
-        logger.info("ocr_rubric_start", text_count=len(text_files), image_count=len(image_files))
+        logger.info("ocr_rubric_start", image_count=len(image_content), text_count=len(text_contents))
 
-        response = self.client.messages.create(
-            model=self.vision_model,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": content}]
-        )
+        response_text = await self._call_vision_api(content, max_tokens=8192)
 
-        response_text = response.content[0].text.strip()
+        data = self._parse_json_response(response_text)
 
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-
-        try:
-            data = json.loads(response_text)
-            criteria = []
-            for c in data.get("criteria", []):
+        criteria = []
+        for c in data.get("criteria", []):
+            try:
                 criteria.append(RubricCriteria(
-                    question_id=c["question_id"],
+                    question_id=str(c["question_id"]),
                     expected_points=c.get("expected_points", []),
                     sample_answer=c.get("sample_answer"),
                     scoring_guide=c.get("scoring_guide", {"full": 1.0, "partial": 0.5, "minimal": 0.2})
                 ))
-            logger.info("ocr_rubric_complete", criteria_count=len(criteria))
-            return criteria
-        except json.JSONDecodeError as e:
-            logger.error("ocr_rubric_parse_error", error=str(e), response=response_text[:500])
-            return []
+            except Exception as e:
+                logger.error("rubric_parse_error", criteria=c, error=str(e))
+
+        logger.info("ocr_rubric_complete", criteria_count=len(criteria))
+        return criteria
 
 
 # Global instance

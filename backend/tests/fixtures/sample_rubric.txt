@@ -1,0 +1,54 @@
+# Sample Rubric for Testing
+
+## Question 1: Mathematics (5 marks)
+**Question**: Solve for x: 2x + 5 = 15
+
+**Expected Answer**: x = 5
+
+**Scoring**:
+- Full marks (5): Correct answer with work shown
+- Partial (3): Correct method but calculation error
+- Minimal (1): Some attempt at solving
+
+**Key Steps**:
+- Subtract 5 from both sides: 2x = 10
+- Divide by 2: x = 5
+
+---
+
+## Question 2: Science (10 marks)
+**Question**: Explain the process of photosynthesis.
+
+**Expected Points**:
+- Light absorption by chlorophyll
+- Water and CO2 as inputs
+- Glucose and O2 as outputs
+- Location in chloroplasts
+- Energy conversion (light to chemical)
+
+**Sample Answer**:
+Photosynthesis is the process by which plants convert light energy into chemical energy. It occurs in the chloroplasts where chlorophyll absorbs sunlight. The plant takes in water through its roots and carbon dioxide through its leaves. Using the light energy, it converts these into glucose (for food) and releases oxygen as a byproduct. The overall equation is: 6CO2 + 6H2O + light → C6H12O6 + 6O2
+
+**Scoring**:
+- Full marks (10): All key points covered with clear explanation
+- Partial (6-7): Most points covered, some gaps
+- Minimal (2-3): Basic understanding shown
+
+---
+
+## Question 3: English Essay (15 marks)
+**Question**: Write a short essay on the importance of education.
+
+**Evaluation Criteria**:
+- Thesis statement (2 marks)
+- Supporting arguments (5 marks)
+- Examples and evidence (4 marks)
+- Structure and organization (2 marks)
+- Grammar and language (2 marks)
+
+**Key Points to Cover**:
+- Personal development
+- Economic opportunities
+- Social progress
+- Critical thinking skills
+- Lifelong benefits
