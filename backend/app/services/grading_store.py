@@ -7,7 +7,8 @@ from typing import Optional
 from uuid import UUID, uuid4
 import sqlite3
 
-from .schemas import ProcessingStatus, GradingResult
+# Import from new location
+from app.schemas.grading import ProcessingStatus, GradingResult
 
 
 class Database:
@@ -202,7 +203,7 @@ class Database:
 _db: Optional[Database] = None
 
 
-def get_database() -> Database:
+def get_grading_store() -> Database:
     """Get the database instance."""
     global _db
     if _db is None:
