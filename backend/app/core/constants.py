@@ -1,0 +1,24 @@
+from enum import Enum
+
+class Role(str, Enum):
+    OWNER = "owner"     # Organization Owner (Can delete org, manage user roles)
+    ADMIN = "admin"     # Organization Admin (Can manage users, exams)
+    TEACHER = "teacher" # Can create exams, grade
+    STUDENT = "student" # Can take exams, view results
+
+class ExamStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+class SubmissionStatus(str, Enum):
+    PENDING = "pending"   # Uploaded, waiting for processing
+    PROCESSING = "processing" # OCR/AI in progress
+    GRADED = "graded"     # AI completed, waiting review
+    APPROVED = "approved" # Teacher reviewed
+    PUBLISHED = "published" # Visible to student
+
+class QuestionType(str, Enum):
+    DESCRIPTIVE = "descriptive"
+    MCQ = "mcq"
+    PROBLEM = "problem"
