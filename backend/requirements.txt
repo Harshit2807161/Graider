@@ -27,6 +27,8 @@ Pillow  # Image processing
 python-dotenv>=1.0.0
 tenacity  # Retry logic
 structlog  # Structured logging
+pandas  # Data processing for Excel/CSV
+openpyxl  # Excel file engine
 
 # ===== TESTING =====
 pytest

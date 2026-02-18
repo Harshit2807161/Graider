@@ -1,8 +1,8 @@
 from uuid import UUID
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app import crud
-from app.models.org import Organization
+from app.models.org import Organization, Batch, Enrollment
 from app.models.user import Membership
 from app.schemas.org import OrganizationCreate
 from app.core.constants import Role
@@ -28,5 +28,12 @@ class OrgService:
         db.commit()
         
         return org
+    
+    def delete_organization(self, db: Session, *, org_id: UUID) -> None:
+        """
+        Soft delete an organization.
+        Related records (memberships, batches, etc.) remain but organization is marked as deleted.
+        """
+        crud.org.remove(db, id=org_id)
 
 org_service = OrgService()

@@ -17,6 +17,7 @@ class Organization(Base, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str
     slug: str = Field(unique=True, index=True)
+    description: Optional[str] = None
     config: Dict[str, Any] = Field(default={}, sa_column=Column(JSON)) # Generic: {"grading_scale": "GPA"}
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -1,0 +1,43 @@
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.selector label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.select {
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: white;
+    font-size: 0.875rem;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+}
+
+.select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}

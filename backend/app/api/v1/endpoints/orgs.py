@@ -34,10 +34,33 @@ def create_organization(
     """
     Create new organization.
     """
-    # Check if slug exists
-    # ... (Add get_by_slug method to CRUDOrg later)
+    # Check if slug already exists
+    existing_org = crud.org.get_by_slug(db, slug=org_in.slug)
+    if existing_org:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Organization with slug '{org_in.slug}' already exists"
+        )
     
     org = org_service.create_organization_with_owner(
         db, obj_in=org_in, owner_id=current_user.id
     )
     return org
+
+@router.delete("/{org_id}")
+def delete_organization(
+    *,
+    db: Session = Depends(deps.get_session),
+    org_id: str,
+    current_user: User = Depends(deps.get_current_active_superuser),
+) -> Any:
+    """
+    Delete an organization and all related data (cascade).
+    """
+    org = crud.org.get(db, id=org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    
+    # Use service to handle cascade deletion
+    org_service.delete_organization(db, org_id=org_id)
+    return {"status": "deleted"}

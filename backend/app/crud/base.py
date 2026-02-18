@@ -1,5 +1,6 @@
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from uuid import UUID
+from datetime import datetime
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
@@ -19,12 +20,20 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.model = model
 
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
-        return db.get(self.model, id)
+        obj = db.get(self.model, id)
+        # Filter out soft-deleted records
+        if obj and hasattr(obj, 'deleted_at') and obj.deleted_at is not None:
+            return None
+        return obj
 
     def get_multi(
         self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[ModelType]:
-        statement = select(self.model).offset(skip).limit(limit)
+        statement = select(self.model)
+        # Filter out soft-deleted records
+        if hasattr(self.model, 'deleted_at'):
+            statement = statement.where(self.model.deleted_at == None)
+        statement = statement.offset(skip).limit(limit)
         return db.exec(statement).all()
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
@@ -58,8 +67,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def remove(self, db: Session, *, id: UUID) -> ModelType:
+        """Soft delete: set deleted_at timestamp instead of removing record"""
         obj = db.get(self.model, id)
-        if obj:
-            db.delete(obj)
+        if obj and hasattr(obj, 'deleted_at'):
+            obj.deleted_at = datetime.utcnow()
+            db.add(obj)
             db.commit()
+            db.refresh(obj)
         return obj

@@ -1,0 +1,80 @@
+.container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Left Side */
+.brandSection {
+    display: none;
+    flex: 1;
+    background-color: var(--color-primary);
+    color: white;
+    padding: 4rem;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+@media (min-width: 1024px) {
+    .brandSection {
+        display: flex;
+    }
+}
+
+.brandContent {
+    max-width: 32rem;
+}
+
+.logo {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+}
+
+.tagline {
+    font-size: 1.5rem;
+    font-weight: 500;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+.testimonial {
+    margin-top: auto;
+    font-style: italic;
+    opacity: 0.8;
+}
+
+/* Right Side */
+.formSection {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    padding: 2rem;
+}
+
+.formContainer {
+    width: 100%;
+    max-width: 28rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.header {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.subtitle {
+    color: var(--color-text-muted);
+}
