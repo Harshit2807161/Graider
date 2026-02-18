@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>App Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#aec6ff",
+                        "on-primary": "#002e6c",
+                        "primary-container": "#11448f",
+                        "on-primary-container": "#d8e2ff",
+                        "secondary": "#bac8e9",
+                        "on-secondary": "#24314d",
+                        "secondary-container": "#3b4865",
+                        "on-secondary-container": "#dbe4ff",
+                        "tertiary": "#d8bddf",
+                        "on-tertiary": "#3e284a",
+                        "tertiary-container": "#563e62",
+                        "on-tertiary-container": "#f6d8ff",
+                        "background": "#1a1c1e",
+                        "on-background": "#e3e2e6",
+                        "surface": "#1a1c1e",
+                        "on-surface": "#e3e2e6",
+                        "surface-variant": "#44474f",
+                        "on-surface-variant": "#c4c6d0",
+                        "outline": "#8e9099",
+                        "outline-variant": "#44474f",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "inverse-surface": "#e3e2e6",
+                        "inverse-on-surface": "#2f3033",
+                        "inverse-primary": "#2e5da8",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply min-h-[800px] h-screen w-full overflow-hidden flex flex-col bg-background font-display text-on-surface selection:bg-primary/30;
+            }
+        }.list-item {
+            @apply flex items-center px-4 py-4 cursor-pointer hover:bg-surface-variant/30 active:bg-surface-variant/50 transition-colors;
+        }
+        .list-icon {
+            @apply text-on-surface-variant mr-4 text-2xl;
+        }
+        .list-content {
+            @apply flex-1 flex flex-col;
+        }
+        .list-headline {
+            @apply text-base font-normal text-on-surface;
+        }
+        .list-supporting-text {
+            @apply text-sm text-on-surface-variant;
+        }
+        .list-trailing {
+            @apply text-on-surface-variant text-2xl;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(800px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<div class="flex-1 overflow-y-auto pb-24 relative w-full max-w-[360px] mx-auto bg-surface">
+<header class="sticky top-0 z-20 bg-surface/95 backdrop-blur-sm px-4 py-4 flex items-center">
+<h1 class="text-2xl font-normal tracking-tight text-on-surface">Settings</h1>
+</header>
+<div class="px-4 py-6 flex flex-col items-center">
+<div class="relative mb-4 group cursor-pointer">
+<div class="w-24 h-24 rounded-full bg-primary-container flex items-center justify-center text-3xl font-medium text-on-primary-container overflow-hidden ring-4 ring-background">
+<img alt="Profile" class="w-full h-full object-cover opacity-90" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAFUqPlNajwioDwUDxJ_oj3qT4v36KnOxoQ-F7g-PbnxR4JOrQXKDtZRTAMq0GVv8711PKZc8jtXTPZvvXip7Sa9JZvF5e6e9MO8-Ht_j_XdwFFMrD4P6JOk3_t1_6ECIZ6tGZDvfYs0b1hTDIR5gqhvdD_irTv0qVUjcrbBLzqVscNyFXtaPtsWgGkvm_t_3yGvtKSSQ5sVSAP7tetz6EdbuNcjG1LAl5-Aijn97Psx7SzJesPj6_Z7ysG97EPPis9pVVUs8W1_OA"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-background p-1 rounded-full">
+<div class="bg-primary w-8 h-8 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-sm text-on-primary">edit</span>
+</div>
+</div>
+</div>
+<h2 class="text-xl font-medium text-on-surface">Dr. Sarah Jensen</h2>
+<p class="text-sm text-on-surface-variant mt-1">Stanford University</p>
+</div>
+<div class="h-px bg-outline-variant/50 mx-4 mb-2"></div>
+<div class="py-2">
+<h3 class="px-4 py-2 text-sm font-medium text-primary uppercase tracking-wide">General</h3>
+<div class="list-item">
+<span class="material-symbols-outlined list-icon">tune</span>
+<div class="list-content">
+<span class="list-headline">Grading Preferences</span>
+<span class="list-supporting-text">Rubrics, auto-grade sensitivity</span>
+</div>
+<span class="material-symbols-outlined list-trailing">chevron_right</span>
+</div>
+<div class="list-item">
+<span class="material-symbols-outlined list-icon">notifications</span>
+<div class="list-content">
+<span class="list-headline">Notifications</span>
+<span class="list-supporting-text">Email, push alerts</span>
+</div>
+<span class="material-symbols-outlined list-trailing">chevron_right</span>
+</div>
+<div class="list-item">
+<span class="material-symbols-outlined list-icon">cloud_sync</span>
+<div class="list-content">
+<span class="list-headline">Cloud Sync</span>
+<span class="list-supporting-text">Last synced: Just now</span>
+</div>
+<div class="mr-2">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="relative w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<div class="h-px bg-outline-variant/50 mx-4 my-2"></div>
+<h3 class="px-4 py-2 text-sm font-medium text-primary uppercase tracking-wide">Support</h3>
+<div class="list-item">
+<span class="material-symbols-outlined list-icon">help</span>
+<div class="list-content">
+<span class="list-headline">Help &amp; Support</span>
+<span class="list-supporting-text">FAQ, contact us</span>
+</div>
+<span class="material-symbols-outlined list-trailing">open_in_new</span>
+</div>
+<div class="mt-4 px-4">
+<button class="w-full h-12 flex items-center justify-center rounded-full text-error hover:bg-error-container/20 transition-colors border border-outline-variant/50">
+<span class="material-symbols-outlined mr-2">logout</span>
+<span class="font-medium">Log out</span>
+</button>
+<p class="text-xs text-center text-on-surface-variant/50 mt-4 pb-4">
+                Version 2.4.1 (Build 890)
+            </p>
+</div>
+</div>
+</div>
+<nav class="fixed bottom-0 w-full max-w-[360px] left-1/2 -translate-x-1/2 bg-surface-variant/20 backdrop-blur-md border-t border-white/5 pb-safe z-30">
+<div class="flex justify-around items-center h-[80px] pb-4 px-6">
+<button class="flex flex-col items-center justify-center flex-1 group">
+<div class="w-16 h-8 flex items-center justify-center rounded-full group-hover:bg-on-surface/10 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant text-2xl" style="font-variation-settings: 'FILL' 0">home</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center flex-1 group">
+<div class="w-16 h-8 flex items-center justify-center rounded-full group-hover:bg-on-surface/10 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant text-2xl" style="font-variation-settings: 'FILL' 0">history</span>
+</div>
+<span class="text-xs font-medium text-on-surface-variant mt-1">History</span>
+</button>
+<button class="flex flex-col items-center justify-center flex-1 group">
+<div class="w-16 h-8 flex items-center justify-center rounded-full bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-on-primary-container text-2xl" style="font-variation-settings: 'FILL' 1">settings</span>
+</div>
+<span class="text-xs font-bold text-on-surface mt-1">Settings</span>
+</button>
+</div>
+</nav>
+</body></html>

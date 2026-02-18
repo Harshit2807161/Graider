@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Universal Document Scanner - Graider</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1152d4",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#dce1ff",
+                        "on-primary-container": "#00164d",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>.camera-view {
+            position: relative;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden
+        }.camera-feed {
+            background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuAqOp82RP_IJLs2dPx5dikno9gGLWrtIv4E6FlVm0SHKHHPldC0-kjIz0D_DDJimZiMUD9Df5V9UH0ruf-GHaXHa3qTo-3C_WX541L5wRx48XxWBN35Yv0-GiVi5hw4MkdB4P2eetBQCQLtJf6C2bLrntmjnYIwFQ_bAAVRa4y1mHKBD0YoX16KYVwytihKqF32KC-TXs6XdQTdfgiAgIngXSOYbCDjh5lCaAni3e3KeGf4eZARrBd1z-RNsflzDSrjKJi20gjOkIwt);
+            background-size: cover;
+            background-position: center;
+            height: 100%;
+            width: 100%;
+            filter: brightness(0.9)
+        }@keyframes pulse-border {
+            0% {
+                box-shadow: 0 0 0 0 rgba(17, 82, 212, 0.4);
+            } 70% {
+                box-shadow: 0 0 0 10px rgba(17, 82, 212, 0);
+            } 100% {
+                box-shadow: 0 0 0 0 rgba(17, 82, 212, 0);
+            }
+        }
+        .scan-overlay {
+            animation: pulse-border 2s infinite
+        }.corner {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-color: #1152d4;
+            border-style: solid
+        }
+        .corner-tl {
+            top: -2px;
+            left: -2px;
+            border-width: 4px 0 0 4px;
+            border-radius: 8px 0 0 0
+        }
+        .corner-tr {
+            top: -2px;
+            right: -2px;
+            border-width: 4px 4px 0 0;
+            border-radius: 0 8px 0 0
+        }
+        .corner-bl {
+            bottom: -2px;
+            left: -2px;
+            border-width: 0 0 4px 4px;
+            border-radius: 0 0 0 8px
+        }
+        .corner-br {
+            bottom: -2px;
+            right: -2px;
+            border-width: 0 4px 4px 0;
+            border-radius: 0 0 8px 0
+        }
+    </style>
+<style>
+        body {
+            min-height: max(800px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-white overflow-hidden antialiased">
+<div class="camera-view relative flex flex-col justify-between">
+<div class="camera-feed absolute inset-0 z-0" data-alt="Overhead view of an exam paper on a wooden desk"></div>
+<div class="absolute top-0 w-full h-40 bg-gradient-to-b from-black/80 to-transparent z-10 pointer-events-none"></div>
+<div class="relative z-20 px-4 pt-14 pb-4 flex items-start justify-between">
+<button class="p-3 rounded-full bg-black/30 backdrop-blur-md hover:bg-black/50 transition text-white">
+<span class="material-icons-round text-2xl">close</span>
+</button>
+<div class="flex flex-col items-center flex-1 mx-4 pt-2">
+<div class="bg-black/50 backdrop-blur-xl px-5 py-3 rounded-full border border-white/10 shadow-lg flex items-center gap-2 max-w-xs text-center justify-center">
+<span class="text-sm font-semibold tracking-wide text-white">Step 2: Scan Remaining Pages</span>
+</div>
+</div>
+<button class="p-3 rounded-full bg-black/30 backdrop-blur-md hover:bg-black/50 transition text-white relative">
+<span class="material-icons-round text-2xl">flash_off</span>
+</button>
+</div>
+<div class="absolute right-4 top-32 z-20">
+<div class="bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-lg border border-white/10 shadow-sm flex items-center gap-2">
+<span class="material-icons-round text-base text-white/80">file_copy</span>
+<span class="text-sm font-medium text-white">Page 2</span>
+</div>
+</div>
+<div class="relative z-10 flex-1 flex items-center justify-center p-8">
+<div class="relative w-full aspect-[3/4] max-w-[320px] transform rotate-0 transition-all duration-300 ease-out">
+<div class="absolute inset-0 bg-primary/10 border-2 border-primary scan-overlay rounded-xl shadow-[0_0_150px_rgba(17,82,212,0.3)]"></div>
+<div class="absolute top-0 left-0 w-full h-0.5 bg-primary shadow-[0_0_15px_#1152d4] opacity-80" style="animation: scan 2.5s ease-in-out infinite;">
+<style>
+                        @keyframes scan {
+                            0%, 100% { top: 5%; opacity: 0; }
+                            10% { opacity: 1; }
+                            50% { top: 95%; }
+                            90% { opacity: 1; }
+                        }
+                    </style>
+</div>
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
+<div class="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-20">
+<div class="border-r border-b border-white"></div>
+<div class="border-r border-b border-white"></div>
+<div class="border-b border-white"></div>
+<div class="border-r border-b border-white"></div>
+<div class="border-r border-b border-white"></div>
+<div class="border-b border-white"></div>
+<div class="border-r border-white"></div>
+<div class="border-r border-white"></div>
+<div></div>
+</div>
+</div>
+<div class="absolute top-1/3 left-12 w-2 h-2 bg-primary rounded-full animate-ping"></div>
+<div class="absolute bottom-1/4 right-14 w-2 h-2 bg-primary rounded-full animate-ping" style="animation-delay: 0.5s"></div>
+</div>
+<div class="relative z-20 pb-10 pt-8 px-6 bg-gradient-to-t from-black/95 via-black/70 to-transparent">
+<div class="flex items-center justify-between max-w-md mx-auto w-full px-2">
+<div class="flex-1 flex justify-start items-center">
+<div class="flex flex-col items-center gap-1">
+<button class="relative group">
+<div class="w-14 h-14 bg-white/10 rounded-xl overflow-hidden border-2 border-white/20 group-active:scale-95 transition">
+<div class="w-full h-full bg-cover bg-center opacity-80" data-alt="Thumbnail of previously scanned document" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAwCT4uxNOhSJ1ze2Cqjp86ojwSGlxe86Ifso4VE-07JmbO7-vgZtjK9fJQhl1HKqC7FToFB4sgXy3_hHr-Dtj422AE29lqj7kOwIxMY6T00vJEaIr-w8RmqXJWZ7glqYDmfNoBDuC4kjhPR4z_1lDyQqR71nKl92A84mT2tPJdzPeUBGMHqdtMkUF4RpuZ1yxm4vohDgWohoHvtsRH5VMtODlLl1QXGMrf_Lf5wahC1GjW3FyHQE_57C2KTcvneTPirh48lH0Guhcn')"></div>
+</div>
+<div class="absolute -top-1.5 -right-1.5 bg-primary text-white text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full border border-background-dark shadow-sm">
+                                    1
+                                </div>
+</button>
+<span class="text-[10px] text-white/60 font-medium">Cover</span>
+</div>
+</div>
+<div class="flex-1 flex justify-center">
+<button class="relative w-[80px] h-[80px] rounded-full border-[5px] border-white flex items-center justify-center group active:scale-95 transition-transform duration-150 shadow-2xl bg-transparent hover:bg-white/10">
+<div class="w-[62px] h-[62px] bg-white rounded-full group-active:scale-90 transition-transform duration-200"></div>
+</button>
+</div>
+<div class="flex-1 flex justify-end items-center">
+<button class="bg-primary hover:bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg transition-colors flex items-center gap-2">
+<span>Finish &amp; Review</span>
+<span class="material-icons-round text-lg">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="h-4 mt-2"></div>
+</div>
+</div>
+</body></html>
