@@ -27,3 +27,7 @@ class UserInDBBase(UserBase):
 # Additional properties to return via API
 class User(UserInDBBase):
     pass
+
+# Extended user response that includes org_id from first membership
+class UserMe(UserInDBBase):
+    org_id: Optional[UUID] = None

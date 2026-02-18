@@ -14,8 +14,14 @@ class OrgService:
         """
         Create a new organization and assign the creator as the OWNER.
         """
-        # 1. Create Org
-        org = crud.org.create(db, obj_in=obj_in)
+        # 1. Create Org directly to avoid None-field validation issues
+        org = Organization(
+            name=obj_in.name,
+            slug=obj_in.slug,
+            config=obj_in.config or {},
+        )
+        db.add(org)
+        db.flush()
         
         # 2. Create Membership
         membership = Membership(
