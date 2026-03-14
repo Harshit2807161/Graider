@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { FileText, MoreVertical, Calendar, ListChecks, ArrowRight } from "lucide-react";
 import { Exam } from "@/types/exam.types";
 import styles from "./ExamCard.module.css";
@@ -11,6 +12,8 @@ interface ExamCardProps {
 }
 
 export default function ExamCard({ exam }: ExamCardProps) {
+    const router = useRouter();
+
     const statusColors = {
         draft: styles.statusDraft,
         published: styles.statusPublished,
@@ -50,7 +53,12 @@ export default function ExamCard({ exam }: ExamCardProps) {
             </div>
 
             <div className={styles.footer}>
-                <Button variant="secondary" fullWidth icon={<ArrowRight size={16} />}>
+                <Button
+                    variant="secondary"
+                    fullWidth
+                    icon={<ArrowRight size={16} />}
+                    onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
+                >
                     Open Exam
                 </Button>
             </div>

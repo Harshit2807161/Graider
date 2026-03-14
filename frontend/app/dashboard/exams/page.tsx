@@ -10,17 +10,27 @@ import CreateExamModal from "@/components/features/exams/CreateExamModal";
 import styles from "./page.module.css";
 
 export default function ExamsPage() {
-    const { activeOrg } = useOrgContext();
+    const { orgs, activeOrg } = useOrgContext();
     const { exams, isLoading, error, fetchExams } = useExamContext();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedOrgId, setSelectedOrgId] = useState<string>("");
+
+    // Initialize selected org
+    useEffect(() => {
+        if (activeOrg && !selectedOrgId) {
+            setSelectedOrgId(activeOrg.id);
+        } else if (orgs.length > 0 && !selectedOrgId) {
+            setSelectedOrgId(orgs[0].id);
+        }
+    }, [activeOrg, orgs, selectedOrgId]);
 
     useEffect(() => {
-        if (activeOrg) {
-            fetchExams(activeOrg.id);
+        if (selectedOrgId) {
+            fetchExams(selectedOrgId);
         }
-    }, [activeOrg, fetchExams]);
+    }, [selectedOrgId, fetchExams]);
 
-    if (!activeOrg) {
+    if (!selectedOrgId && orgs.length === 0) {
         return (
             <div className={styles.emptyState}>
                 <GraduationCap size={48} />
@@ -30,12 +40,30 @@ export default function ExamsPage() {
         );
     }
 
+    const selectedOrg = orgs.find(o => o.id === selectedOrgId);
+
     return (
         <div className={styles.container}>
             <header className={styles.header}>
                 <div className={styles.headerInfo}>
                     <h1>Exams Management</h1>
-                    <p>Create and manage exams for {activeOrg.name}</p>
+
+                    <div className={styles.controls}>
+                        <label htmlFor="org-select">Organization:</label>
+                        <select
+                            id="org-select"
+                            className={styles.orgSelect}
+                            value={selectedOrgId}
+                            onChange={(e) => setSelectedOrgId(e.target.value)}
+                        >
+                            <option value="" disabled>Select Organization</option>
+                            {orgs.map((org) => (
+                                <option key={org.id} value={org.id}>
+                                    {org.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
                 <Button
                     onClick={() => setIsCreateModalOpen(true)}
@@ -83,6 +111,7 @@ export default function ExamsPage() {
             <CreateExamModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
+                selectedOrgId={selectedOrgId}
             />
         </div>
     );

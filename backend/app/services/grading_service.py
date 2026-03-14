@@ -12,7 +12,7 @@ from app.core.db import engine
 from app import crud
 from app.schemas.grading import ProcessingStatus, Answer, GradingResult, Triplet
 from app.models.org import Enrollment
-from app.models.exam import SubmissionStatus, Question
+from app.models.exam import SubmissionStatus
 from .ocr_service import get_ocr_service
 from .triplet_service import get_triplet_service
 from app.agents.orchestrator import get_orchestrator
@@ -30,8 +30,8 @@ def is_combined_document(questions_path: str, answers_path: str) -> bool:
 
 async def run_grading_pipeline(
     submission_id: UUID,
-    questions_path: str,
     answers_path: str,
+    questions_path: Optional[str] = None,
     rubric_path: Optional[str] = None,
 ) -> None:
     """
@@ -55,8 +55,11 @@ async def run_grading_pipeline(
 
             ocr_service = get_ocr_service()
 
-            # Check if this is a combined document
-            combined = is_combined_document(questions_path, answers_path)
+            combined = False
+            if questions_path:
+                combined = is_combined_document(questions_path, answers_path)
+            
+            questions = []
 
             if combined:
                 # Combined document: extract both questions and answers together
@@ -104,7 +107,7 @@ async def run_grading_pipeline(
                     obj_in={"current_step": f"Extracted {len(questions)} questions and {len(answers)} answers"}
                 )
 
-            else:
+            elif questions_path:
                 # Separate documents: extract questions first, then answers
                 crud.submission.update(
                     db,
@@ -125,7 +128,38 @@ async def run_grading_pipeline(
                     db_obj=submission,
                     obj_in={"current_step": f"Extracted {len(questions)} questions. Processing answers..."}
                 )
+            else:
+                # No OCR needed for questions; load directly from DB
+                crud.submission.update(
+                    db,
+                    db_obj=submission,
+                    obj_in={"current_step": "Loading questions from database..."}
+                )
+                
+                db_questions = submission.exam.questions
+                if not db_questions:
+                    raise ValueError(
+                        f"Exam {submission.exam.id} has no questions configured in the database, "
+                        "and no question paper document was uploaded."
+                    )
+                
+                # Using the core db model correctly - Mapping to OCR agent's Question schema (app.schemas.grading.Question)
+                from app.schemas.grading import Question as GraderQuestion
+                questions = [GraderQuestion(
+                    id=str(q.id),
+                    text=q.question_text,
+                    max_score=q.max_score,
+                    question_type=q.question_type
+                ) for q in db_questions]
+                
+                crud.submission.update(
+                    db,
+                    db_obj=submission,
+                    obj_in={"current_step": f"Loaded {len(questions)} questions. Processing student answers..."}
+                )
 
+            # Continue to extract answers (we ONLY do answer extraction OCR below if we found questions)
+            if questions and not combined:
                 # Extract answers
                 answers = await ocr_service.extract_answers(Path(answers_path), questions)
                 if not answers:

@@ -3,6 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, BackgroundTasks
 from sqlmodel import Session, select
 
+import os
 from app import crud
 from app.api import deps
 from app.models.user import User, Membership
@@ -10,6 +11,7 @@ from app.schemas.exam import SubmissionRead, SubmissionWithAnswers
 from app.schemas.grading import ProcessingStatus
 from app.services.grading_service import run_grading_pipeline
 from app.core.constants import Role
+from app.worker import grade_exam_task
 
 router = APIRouter()
 
@@ -42,7 +44,11 @@ async def create_submission(
 
     # TODO: In a real app, we would save the file to MinIO and get a URL
     # For now, we'll use a placeholder URL and save to a local folder for the pipeline
+    os.makedirs(f"uploads/submissions/{exam_id}", exist_ok=True)
     file_path = f"uploads/submissions/{exam_id}/{file.filename}"
+    
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
     
     # Create the submission record in PostgreSQL
     submission_in = {
@@ -55,9 +61,8 @@ async def create_submission(
         
     db_submission = crud.submission.create(db, obj_in=submission_in)
     
-    # Trigger grading pipeline in background
-    # Note: Phase 2 will involve refactoring run_grading_pipeline to work with this!
-    # For now, we just log it.
+    # Trigger AI grading pipeline natively via Celery Event Queue
+    grade_exam_task.delay(str(db_submission.id), file_path)
     
     return db_submission
 

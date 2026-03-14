@@ -11,10 +11,10 @@ import styles from "./CreateExamModal.module.css";
 interface CreateExamModalProps {
     isOpen: boolean;
     onClose: () => void;
+    selectedOrgId: string;
 }
 
-export default function CreateExamModal({ isOpen, onClose }: CreateExamModalProps) {
-    const { activeOrg } = useOrgContext();
+export default function CreateExamModal({ isOpen, onClose, selectedOrgId }: CreateExamModalProps) {
     const { createExam } = useExamContext();
 
     const [name, setName] = useState("");
@@ -27,7 +27,7 @@ export default function CreateExamModal({ isOpen, onClose }: CreateExamModalProp
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!activeOrg) return;
+        if (!selectedOrgId) return;
 
         setIsSubmitting(true);
         setError(null);
@@ -36,7 +36,7 @@ export default function CreateExamModal({ isOpen, onClose }: CreateExamModalProp
             const payload: ExamCreate = {
                 name,
                 description,
-                org_id: activeOrg.id,
+                org_id: selectedOrgId,
                 status,
             };
 

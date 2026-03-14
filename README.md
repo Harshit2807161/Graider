@@ -119,7 +119,25 @@ DATABASE_URL=sqlite:///./data/gr8r.db
 UPLOAD_DIR=./data/uploads
 ```
 
-### 4. Start the Backend Server
+### 4. Start the Message Broker (Redis)
+
+Graider now uses an asynchronous event-driven architecture to coordinate AI evaluations without blocking the API. You must have Redis running locally:
+
+```bash
+# Using Docker
+docker run -d -p 6379:6379 redis:latest
+```
+
+### 5. Start the Celery Worker
+
+The LangGraph Orchestrator runs in a background Celery worker process listening to Redis. Start it before uploading exams:
+
+```bash
+cd backend
+celery -A app.worker.celery_app worker --loglevel=info
+```
+
+### 6. Start the Backend Server
 
 ```bash
 cd backend
@@ -130,6 +148,28 @@ Server will be available at:
 - API: http://127.0.0.1:8000
 - Docs: http://127.0.0.1:8000/docs
 - Health: http://127.0.0.1:8000/health
+
+---
+
+## Coding Guidelines: Asynchronous Pipeline Workflow
+
+The grading pipeline has migrated from FastAPI BackgroundTasks to a robust **Celery worker pattern**. When adding new long-running ML or AI tasks:
+
+1. **Do not use `BackgroundTasks` in routers**. Calling heavy pipelines natively in the API thread can stall Uvicorn.
+2. **Define Tasks in `worker.py`**: Wrap your asynchronous jobs dynamically into synchronous blocks to adapt them to Celery:
+   ```python
+   @celery_app.task(name="my_new_ai_task")
+   def my_new_ai_task_wrapper(arg1: str):
+       asyncio.run(actual_async_service(arg1))
+   ```
+3. **Trigger Events**: Invoke your job directly inside FastAPI router boundaries using the `.delay()` method.
+   ```python
+   # inside app/api/v1/endpoints/your_router.py
+   from app.worker import my_new_ai_task_wrapper
+   
+   my_new_ai_task_wrapper.delay(param1="value")
+   ```
+4. **Data Passing**: Always pass basic primitive types (Strings, UUIDs as Strings, Ints) via `.delay()`. Do not pass complex ORM records or memory-heavy files inside Celery queues. Save physical files to disk or S3 and pass the *path URL* instead.
 
 ---
 
