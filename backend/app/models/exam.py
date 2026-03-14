@@ -38,14 +38,17 @@ class Exam(Base, table=True):
     created_by_membership_id: UUID = Field(foreign_key="memberships.id")
     
     name: str
+    description: Optional[str] = None
     status: ExamStatus = Field(default=ExamStatus.DRAFT)
     config: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
+    
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     organization: "Organization" = Relationship(back_populates="exams")
     batch: Optional["Batch"] = Relationship(back_populates="exams")
     created_by: "Membership" = Relationship(back_populates="exams_created")
-    questions: List[Question] = Relationship(back_populates="exam")
+    questions: List[Question] = Relationship(back_populates="exam", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     submissions: List["Submission"] = Relationship(back_populates="exam")
 
 # 9. Submission Answer (Granular)
@@ -86,6 +89,6 @@ class Submission(Base, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    exam: Exam = Relationship(back_populates="submissions")
+    exam: "Exam" = Relationship(back_populates="submissions")
     student_membership: Optional["Membership"] = Relationship(back_populates="submissions")
-    answers: List[SubmissionAnswer] = Relationship(back_populates="submission")
+    answers: List[SubmissionAnswer] = Relationship(back_populates="submission", sa_relationship_kwargs={"cascade": "all, delete-orphan"})

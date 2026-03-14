@@ -6,7 +6,7 @@ from typing import Optional
 
 import structlog
 
-from ..models.schemas import Answer, Question, RubricCriteria, Subject, Triplet
+from app.schemas.grading import Answer, Question, RubricCriteria, Subject, Triplet
 
 logger = structlog.get_logger(__name__)
 

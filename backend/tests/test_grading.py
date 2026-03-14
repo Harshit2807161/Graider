@@ -4,9 +4,9 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 
-from app.models.schemas import (
+from app.schemas.grading import (
     Triplet, GradingResult, Question, Answer, RubricCriteria,
-    QuestionType, SubjectTag
+    QuestionType, Subject
 )
 from app.agents.graders.math_grader import MathGrader
 from app.agents.graders.english_grader import EnglishGrader
@@ -31,7 +31,7 @@ class TestTripletModel:
                 scoring_guide={"full": 1.0, "partial": 0.5, "minimal": 0.2}
             ),
             max_score=5,
-            subject_tag=SubjectTag.MATH,
+            subject=Subject.MATH,
             question_type=QuestionType.PROBLEM
         )
 
@@ -39,7 +39,7 @@ class TestTripletModel:
         """Test creating a Triplet instance."""
         assert sample_triplet.question_id == "Q1"
         assert sample_triplet.max_score == 5
-        assert sample_triplet.subject_tag == SubjectTag.MATH
+        assert sample_triplet.subject == Subject.MATH
         assert sample_triplet.question_type == QuestionType.PROBLEM
 
     def test_triplet_percentage(self, sample_triplet):
@@ -115,7 +115,7 @@ class TestMathGrader:
                 scoring_guide={"full": 1.0, "partial": 0.5}
             ),
             max_score=5,
-            subject_tag=SubjectTag.MATH,
+            subject=Subject.MATH,
             question_type=QuestionType.PROBLEM
         )
 
@@ -176,7 +176,7 @@ class TestEnglishGrader:
                 scoring_guide={"full": 1.0, "partial": 0.6}
             ),
             max_score=15,
-            subject_tag=SubjectTag.ENGLISH,
+            subject=Subject.ENGLISH,
             question_type=QuestionType.ESSAY
         )
 
@@ -236,7 +236,7 @@ class TestScienceGrader:
                 scoring_guide={"full": 1.0, "partial": 0.5}
             ),
             max_score=10,
-            subject_tag=SubjectTag.SCIENCE,
+            subject=Subject.SCIENCE,
             question_type=QuestionType.DESCRIPTIVE
         )
 
@@ -306,7 +306,7 @@ class TestGraderFeedbackLoop:
             candidate_answer="4",
             expected_answer=None,
             max_score=5,
-            subject_tag=SubjectTag.MATH,
+            subject=Subject.MATH,
             question_type=QuestionType.SHORT_ANSWER
         )
 
@@ -354,7 +354,7 @@ class TestScoreBounds:
             candidate_answer="Test",
             expected_answer=None,
             max_score=10,
-            subject_tag=SubjectTag.MATH,
+            subject=Subject.MATH,
             question_type=QuestionType.SHORT_ANSWER
         )
 
@@ -413,7 +413,7 @@ class TestGraderErrorHandling:
             candidate_answer="Test",
             expected_answer=None,
             max_score=10,
-            subject_tag=SubjectTag.MATH,
+            subject=Subject.MATH,
             question_type=QuestionType.SHORT_ANSWER
         )
 

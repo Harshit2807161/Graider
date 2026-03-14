@@ -8,8 +8,8 @@ from typing import Optional
 import anthropic
 import structlog
 
-from ..config import get_settings
-from ..models.schemas import Answer, Question, QuestionType, RubricCriteria
+from app.core.config import get_settings
+from app.schemas.grading import Answer, Question, RubricCriteria, Subject, Triplet
 from .pdf_service import process_directory_files_async, get_pdf_service
 
 logger = structlog.get_logger(__name__)

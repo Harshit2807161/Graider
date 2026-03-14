@@ -36,8 +36,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         statement = statement.offset(skip).limit(limit)
         return db.exec(statement).all()
 
-    def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
+    def create(self, db: Session, *, obj_in: CreateSchemaType, **kwargs: Any) -> ModelType:
         obj_in_data = jsonable_encoder(obj_in)
+        if kwargs:
+            obj_in_data.update(kwargs)
         db_obj = self.model.model_validate(obj_in_data)
         db.add(db_obj)
         db.commit()

@@ -6,6 +6,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
     size?: "sm" | "md" | "lg";
     isLoading?: boolean;
+    icon?: React.ReactNode;
+    fullWidth?: boolean;
 }
 
 export default function Button({
@@ -13,6 +15,8 @@ export default function Button({
     variant = "primary",
     size = "md",
     isLoading = false,
+    icon,
+    fullWidth = false,
     children,
     ...props
 }: ButtonProps) {
@@ -23,6 +27,7 @@ export default function Button({
                 styles[variant],
                 styles[size],
                 isLoading && styles.loading,
+                fullWidth && styles.fullWidth,
                 className
             )}
             disabled={props.disabled || isLoading}
@@ -30,8 +35,12 @@ export default function Button({
         >
             {isLoading ? (
                 <span className={styles.spinner} />
-            ) : null}
-            {children}
+            ) : (
+                <>
+                    {icon && <span className={styles.icon}>{icon}</span>}
+                    {children}
+                </>
+            )}
         </button>
     );
 }

@@ -7,8 +7,8 @@ from typing import Optional
 import anthropic
 import structlog
 
-from ...config import get_settings
-from ...models.schemas import GradingResult, Triplet
+from app.core.config import get_settings
+from app.schemas.grading import GradingResult, Triplet
 
 logger = structlog.get_logger(__name__)
 
@@ -22,8 +22,8 @@ class BaseGrader(ABC):
 
     def __init__(self):
         settings = get_settings()
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self.model = settings.claude_grader_model
+        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        self.model = settings.CLAUDE_GRADER_MODEL
 
     @property
     @abstractmethod

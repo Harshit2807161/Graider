@@ -1,5 +1,6 @@
 from typing import List, Union
 from pathlib import Path
+from functools import lru_cache
 from pydantic import AnyHttpUrl, validator
 from pydantic_settings import BaseSettings
 
@@ -22,36 +23,19 @@ class Settings(BaseSettings):
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")
 
-    def ensure_directories(self) -> None:
-        """Create necessary directories if they don't exist."""
-        self.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    
-    # External APIs
-    ANTHROPIC_API_KEY: str = "sk-ant-api03-placeholder" # Legacy key was present. User should set this in .env
-    
-    # Storage
-    UPLOAD_DIR: Path = Path("./data/uploads")
-    OUTPUT_DIR: Path = Path("./data/outputs")
+    # LLM Models
+    CLAUDE_VISION_MODEL: str = "claude-3-5-sonnet-20240620"
+    CLAUDE_GRADER_MODEL: str = "claude-3-5-sonnet-20240620"
+    CLAUDE_ORCHESTRATOR_MODEL: str = "claude-3-opus-20240229"
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they don't exist."""
         self.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"]
     
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
-
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
         if isinstance(v, str) and not v.startswith("["):
@@ -64,4 +48,8 @@ class Settings(BaseSettings):
         case_sensitive = True
         env_file = ".env"
 
-settings = Settings()
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
+
+settings = get_settings()

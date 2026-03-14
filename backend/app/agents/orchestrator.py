@@ -16,9 +16,9 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
 from langgraph.checkpoint.memory import MemorySaver
 
-from ..config import get_settings
-from ..models.schemas import GradingResult, QuestionType, Subject, Triplet
-from ..core.langgraph_setup import (
+from app.core.config import get_settings
+from app.schemas.grading import GradingResult, QuestionType, Subject, Triplet
+from app.core.langgraph_setup import (
     GradingState,
     BatchGradingState,
     create_initial_state,
@@ -44,9 +44,9 @@ class LangGraphOrchestrator:
 
     def __init__(self):
         settings = get_settings()
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self.orchestrator_model = settings.claude_orchestrator_model
-        self.tagger_model = settings.claude_grader_model  # Use Sonnet for tagging (faster, less congested)
+        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        self.orchestrator_model = settings.CLAUDE_ORCHESTRATOR_MODEL
+        self.tagger_model = settings.CLAUDE_GRADER_MODEL  # Use Sonnet for tagging (faster, less congested)
 
         # Initialize graders
         self.graders = {
