@@ -54,7 +54,7 @@ async def create_submission(
     submission_in = {
         "exam_id": exam_id,
         "original_file_url": file_path,
-        "status": "pending"
+        "status": "PENDING"
     }
     if student_id:
         submission_in["student_membership_id"] = student_id
@@ -66,7 +66,7 @@ async def create_submission(
     
     return db_submission
 
-@router.get("/{submission_id}", response_model=SubmissionWithAnswers)
+@router.get("/submissions/{submission_id}", response_model=SubmissionWithAnswers)
 def read_submission(
     *,
     db: Session = Depends(deps.get_session),

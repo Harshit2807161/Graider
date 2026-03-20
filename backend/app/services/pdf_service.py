@@ -230,7 +230,8 @@ def process_directory_files(
         Tuple of (list of image paths, list of extracted text contents)
     """
     pdf_service = PDFService()
-    output_dir = output_dir or directory
+    if output_dir is None:
+        output_dir = directory.parent if directory.is_file() else directory
 
     logger.info(
         "process_directory_start",
@@ -243,14 +244,23 @@ def process_directory_files(
     all_images = []
     all_texts = []
 
-    # Get all files in directory
-    files_found = list(directory.glob("*"))
-    logger.info(
-        "directory_files_found",
-        directory=str(directory),
-        file_count=len(files_found),
-        files=[f.name for f in files_found]
-    )
+    # Handle single file input
+    if directory.is_file():
+        files_found = [directory]
+        logger.info(
+            "single_file_found",
+            file=str(directory),
+            suffix=directory.suffix.lower()
+        )
+    else:
+        # Get all files in directory
+        files_found = list(directory.glob("*"))
+        logger.info(
+            "directory_files_found",
+            directory=str(directory),
+            file_count=len(files_found),
+            files=[f.name for f in files_found]
+        )
 
     for file_path in sorted(files_found):
         if file_path.is_dir():

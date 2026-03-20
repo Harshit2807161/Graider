@@ -4,10 +4,9 @@ import json
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import anthropic
 import structlog
 
-from app.core.config import get_settings
+from app.core.llm_provider import get_llm_provider
 from app.schemas.grading import GradingResult, Triplet
 
 logger = structlog.get_logger(__name__)
@@ -17,13 +16,11 @@ class BaseGrader(ABC):
     """
     Base class for specialized grading agents.
 
-    Uses Claude Sonnet 4 for grading tasks.
+    Uses the configured LLM provider (OpenAI or Anthropic) for grading tasks.
     """
 
     def __init__(self):
-        settings = get_settings()
-        self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        self.model = settings.CLAUDE_GRADER_MODEL
+        self.provider = get_llm_provider(role="grader")
 
     @property
     @abstractmethod
@@ -83,15 +80,18 @@ Important:
 
 Return ONLY the JSON object."""
 
+    def _parse_llm_response(self, response_text: str) -> str:
+        """Strip markdown code fences from LLM response."""
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+            response_text = response_text.strip()
+        return response_text
+
     async def grade(self, triplet: Triplet) -> GradingResult:
         """
         Grade a triplet and return the result.
-
-        Args:
-            triplet: The question-answer-rubric triplet to grade
-
-        Returns:
-            GradingResult with score, reasoning, and feedback
         """
         prompt = self._build_grading_prompt(triplet)
 
@@ -102,26 +102,19 @@ Return ONLY the JSON object."""
             max_score=triplet.max_score
         )
 
-        response = self.client.messages.create(
-            model=self.model,
+        from app.core.llm_protection import protector
+        protector.check_and_increment()
+
+        response_text = self.provider.chat(
+            system_prompt=self.system_prompt,
+            user_prompt=prompt,
             max_tokens=2048,
-            system=self.system_prompt,
-            messages=[{"role": "user", "content": prompt}]
         )
-
-        response_text = response.content[0].text.strip()
-
-        # Handle markdown code blocks
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+        response_text = self._parse_llm_response(response_text)
 
         try:
             data = json.loads(response_text)
 
-            # Ensure score is within bounds
             score = float(data.get("score", 0))
             score = max(0, min(score, triplet.max_score))
 
@@ -153,7 +146,6 @@ Return ONLY the JSON object."""
                 error=str(e),
                 response=response_text[:500]
             )
-            # Return a default result on parse error
             return GradingResult(
                 question_id=triplet.question_id,
                 score=0,
@@ -171,16 +163,6 @@ Return ONLY the JSON object."""
     ) -> GradingResult:
         """
         Re-grade a triplet incorporating evaluator feedback.
-
-        This method is called when the orchestrator's evaluator rejects
-        a previous grading attempt and provides improvement suggestions.
-
-        Args:
-            triplet: The question-answer-rubric triplet to grade
-            evaluator_feedback: Feedback from the evaluator on how to improve
-
-        Returns:
-            GradingResult with improved score, reasoning, and feedback
         """
         base_prompt = self._build_grading_prompt(triplet)
 
@@ -206,26 +188,19 @@ Return ONLY the JSON object with your improved grading."""
             feedback_length=len(evaluator_feedback)
         )
 
-        response = self.client.messages.create(
-            model=self.model,
+        from app.core.llm_protection import protector
+        protector.check_and_increment()
+
+        response_text = self.provider.chat(
+            system_prompt=self.system_prompt,
+            user_prompt=enhanced_prompt,
             max_tokens=2048,
-            system=self.system_prompt,
-            messages=[{"role": "user", "content": enhanced_prompt}]
         )
-
-        response_text = response.content[0].text.strip()
-
-        # Handle markdown code blocks
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+        response_text = self._parse_llm_response(response_text)
 
         try:
             data = json.loads(response_text)
 
-            # Ensure score is within bounds
             score = float(data.get("score", 0))
             score = max(0, min(score, triplet.max_score))
 
@@ -257,7 +232,6 @@ Return ONLY the JSON object with your improved grading."""
                 error=str(e),
                 response=response_text[:500]
             )
-            # Return a default result on parse error
             return GradingResult(
                 question_id=triplet.question_id,
                 score=0,

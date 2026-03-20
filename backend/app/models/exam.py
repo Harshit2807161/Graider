@@ -84,7 +84,8 @@ class Submission(Base, table=True):
     max_score: Optional[float] = None
     percentage: Optional[float] = None
     
-    status: SubmissionStatus = Field(default=SubmissionStatus.PENDING) 
+    status: SubmissionStatus = Field(default=SubmissionStatus.PENDING)
+    current_step: Optional[str] = Field(default=None) 
     
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

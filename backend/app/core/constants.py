@@ -12,11 +12,12 @@ class ExamStatus(str, Enum):
     ARCHIVED = "archived"
 
 class SubmissionStatus(str, Enum):
-    PENDING = "pending"   # Uploaded, waiting for processing
-    PROCESSING = "processing" # OCR/AI in progress
-    GRADED = "graded"     # AI completed, waiting review
-    APPROVED = "approved" # Teacher reviewed
-    PUBLISHED = "published" # Visible to student
+    PENDING = "PENDING"   # Uploaded, waiting for processing
+    PROCESSING = "PROCESSING" # OCR/AI in progress
+    GRADED = "GRADED"     # AI completed, waiting review
+    FAILED = "FAILED"     # Pipeline error
+    APPROVED = "APPROVED" # Teacher reviewed
+    PUBLISHED = "PUBLISHED" # Visible to student
 
 class QuestionType(str, Enum):
     DESCRIPTIVE = "descriptive"

@@ -21,16 +21,20 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     
     # External APIs
-    ANTHROPIC_API_KEY: str = "sk-ant-api03-placeholder" # Legacy key was present. User should set this in .env
+    ANTHROPIC_API_KEY: str = "sk-ant-api03-placeholder"
+    OPENAI_API_KEY: str = "sk-placeholder"
+    
+    # LLM Provider: "openai" or "anthropic"
+    LLM_PROVIDER: str = "openai"
     
     # Storage
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")
 
-    # LLM Models
-    CLAUDE_VISION_MODEL: str = "claude-3-5-sonnet-20240620"
-    CLAUDE_GRADER_MODEL: str = "claude-3-5-sonnet-20240620"
-    CLAUDE_ORCHESTRATOR_MODEL: str = "claude-3-opus-20240229"
+    # LLM Models (provider-agnostic names)
+    LLM_GRADER_MODEL: str = "gpt-5-nano-2025-08-07"
+    LLM_ORCHESTRATOR_MODEL: str = "gpt-5-nano-2025-08-07"
+    LLM_VISION_MODEL: str = "gpt-5-nano-2025-08-07"
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they don't exist."""

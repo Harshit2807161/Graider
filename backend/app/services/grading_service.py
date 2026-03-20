@@ -50,7 +50,7 @@ async def run_grading_pipeline(
             crud.submission.update(
                 db,
                 db_obj=submission,
-                obj_in={"status": "processing", "current_step": "Analyzing documents..."}
+                obj_in={"status": "PROCESSING", "current_step": "Analyzing documents..."}
             )
 
             ocr_service = get_ocr_service()
@@ -302,7 +302,7 @@ async def run_grading_pipeline(
                 db,
                 db_obj=submission,
                 obj_in={
-                    "status": "graded",
+                    "status": "GRADED",
                     "total_score": total_score,
                     "max_score": max_total_score,
                     "percentage": percentage,
@@ -318,11 +318,15 @@ async def run_grading_pipeline(
 
         except Exception as e:
             logger.exception("pipeline_error", submission_id=str(submission_id), error=str(e))
-            crud.submission.update(
-                db,
-                db_obj=submission,
-                obj_in={
-                    "status": "failed",
-                    "current_step": f"Error: {str(e)}"
-                }
-            )
+            try:
+                if 'submission' in dir() and submission is not None:
+                    crud.submission.update(
+                        db,
+                        db_obj=submission,
+                        obj_in={
+                            "status": "FAILED",
+                            "current_step": f"Error: {str(e)[:400]}"
+                        }
+                    )
+            except Exception:
+                logger.error("failed_to_update_submission_status", submission_id=str(submission_id))
