@@ -1,6 +1,8 @@
 from typing import Any, List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+import io
+import pandas as pd
 from sqlmodel import Session, select
 
 from app import crud
@@ -198,3 +200,85 @@ def sync_exam_questions(
     
     db.commit()
     return new_questions
+
+@router.post("/{exam_id}/questions/upload", response_model=List[QuestionRead])
+async def upload_exam_questions_excel(
+    *,
+    db: Session = Depends(deps.get_session),
+    exam_id: UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Seed/Append questions for an exam via an uploaded Excel file.
+    Expects columns: question_text, max_score, rubric_criteria, question_type (optional).
+    """
+    exam = crud.exam.get(db, id=exam_id)
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    
+    membership = db.exec(
+        select(Membership)
+        .where(Membership.user_id == current_user.id)
+        .where(Membership.org_id == exam.org_id)
+    ).first()
+    
+    if not membership or membership.role not in [Role.OWNER, Role.ADMIN, Role.TEACHER]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    contents = await file.read()
+    try:
+        df = pd.read_excel(io.BytesIO(contents))
+        df.columns = [str(c).lower().strip() for c in df.columns]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse Excel file. Please ensure it is a valid .xlsx or .xls file. Error: {str(e)}")
+        
+    # Define mapping of possible column names to our internal schema for robustness
+    mapping = {
+        'question_text': ['question_text', 'question text', 'question', 'text'],
+        'max_score': ['max_score', 'max score', 'score', 'points', 'max_score'],
+        'rubric_criteria': ['rubric_criteria', 'rubric criteria', 'rubric', 'criteria'],
+        'question_type': ['question_type', 'question type', 'type']
+    }
+    
+    # Helper to find the actual column in df from a list of aliases
+    def get_actual_col(aliases):
+        for alias in aliases:
+            if alias in df.columns: return alias
+        return None
+
+    actual_question_col = get_actual_col(mapping['question_text'])
+    actual_score_col = get_actual_col(mapping['max_score'])
+    actual_rubric_col = get_actual_col(mapping['rubric_criteria'])
+    actual_type_col = get_actual_col(mapping['question_type'])
+
+    if not actual_question_col or not actual_score_col:
+        raise HTTPException(status_code=400, detail=f"Excel file missing required columns. We need a question/text column and a score/points column. Provided: {list(df.columns)}")
+
+    existing_questions = crud.question.get_by_exam(db, exam_id=exam_id)
+    start_index = len(existing_questions) + 1
+    
+    new_questions = []
+    for idx, row in df.iterrows():
+        try:
+            # Safely extract values using the mapped column names
+            q_text = str(row[actual_question_col])
+            m_score = float(row[actual_score_col]) # Use float to be safe
+            r_crit = str(row[actual_rubric_col]) if actual_rubric_col and pd.notna(row[actual_rubric_col]) else None
+            q_type = str(row[actual_type_col]) if actual_type_col and pd.notna(row[actual_type_col]) else 'descriptive'
+
+            q_in = QuestionCreate(
+                question_text=q_text,
+                max_score=m_score,
+                rubric_criteria=r_crit,
+                question_type=q_type,
+                order_index=start_index + idx
+            )
+            db_question = crud.question.create(db, obj_in=q_in, exam_id=exam_id)
+            new_questions.append(db_question)
+        except Exception as e:
+            continue
+            
+    db.commit()
+    return new_questions
+
