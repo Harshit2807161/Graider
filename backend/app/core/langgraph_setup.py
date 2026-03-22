@@ -15,7 +15,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
-from ..models.schemas import (
+from app.schemas.grading import (
     GradingResult,
     QuestionType,
     Subject,

@@ -8,8 +8,9 @@ from typing import Optional
 import anthropic
 import structlog
 
-from ..config import get_settings
-from ..models.schemas import Answer, Question, QuestionType, RubricCriteria
+from app.core.config import get_settings
+from app.core.llm_provider import get_llm_provider
+from app.schemas.grading import Answer, Question, RubricCriteria, Subject, Triplet
 from .pdf_service import process_directory_files_async, get_pdf_service
 
 logger = structlog.get_logger(__name__)
@@ -23,9 +24,7 @@ class OCRService:
 
     def __init__(self):
         settings = get_settings()
-        # Use async client for non-blocking API calls
-        self.client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-        self.vision_model = settings.claude_vision_model
+        self.provider = get_llm_provider(role="vision")
         self.pdf_service = get_pdf_service()
 
     def _encode_image(self, image_path: Path) -> tuple[str, str]:
@@ -56,11 +55,8 @@ class OCRService:
                 image_data, media_type = self._encode_image(path)
                 content.append({
                     "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": image_data,
-                    }
+                    "data": image_data,
+                    "media_type": media_type
                 })
             except Exception as e:
                 logger.error("image_encode_error", path=str(path), error=str(e))
@@ -99,18 +95,39 @@ class OCRService:
                 max_tokens=max_tokens
             )
 
-            response = await self.client.messages.create(
-                model=self.vision_model,
-                max_tokens=max_tokens,
-                messages=[{"role": "user", "content": content}]
+            # Separate prompt from content blocks if possible or just use part of content as prompt
+            # For OCR, typically the last item is the prompt
+            prompt = ""
+            content_blocks = []
+            for item in content:
+                if item["type"] == "text":
+                    if not prompt and item == content[-1]: # If it's the last item and we haven't set a prompt
+                        prompt = item["text"]
+                    else:
+                        content_blocks.append(item)
+                else:
+                    content_blocks.append(item)
+            
+            if not prompt and content:
+                # Fallback: if last item wasn't text or we have no prompt, check if first item is text
+                if content[0]["type"] == "text":
+                    prompt = content[0]["text"]
+                    content_blocks = content[1:]
+
+            response_text = self.provider.chat_vision(
+                prompt=prompt or "Extract text from these images.",
+                content_blocks=content_blocks,
+                max_tokens=max_tokens
             )
 
             logger.info("vision_api_call_success")
-            return response.content[0].text
+            return response_text
 
-        except anthropic.BadRequestError as e:
+        except Exception as e:
             error_str = str(e)
-            if "413" in error_str or "request_too_large" in error_str.lower():
+            # Handle 413 or request too large specifically if possible, 
+            # or generic retry logic for large content
+            if "413" in error_str or "too_large" in error_str.lower() or "too many tokens" in error_str.lower():
                 logger.warning(
                     "vision_api_request_too_large",
                     error=error_str,

@@ -1,0 +1,20 @@
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.error {
+    padding: 0.75rem;
+    background-color: #fee2e2;
+    color: #ef4444;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+}
+
+.fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}

@@ -10,15 +10,14 @@ This module implements a supervisor-worker pattern using LangGraph:
 from typing import Literal, Optional
 import json
 
-import anthropic
 import structlog
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
 from langgraph.checkpoint.memory import MemorySaver
 
-from ..config import get_settings
-from ..models.schemas import GradingResult, QuestionType, Subject, Triplet
-from ..core.langgraph_setup import (
+from app.core.llm_provider import get_llm_provider
+from app.schemas.grading import GradingResult, QuestionType, Subject, Triplet
+from app.core.langgraph_setup import (
     GradingState,
     BatchGradingState,
     create_initial_state,
@@ -38,15 +37,13 @@ class LangGraphOrchestrator:
     """
     LangGraph-based orchestrator that coordinates the grading pipeline.
 
-    Uses Claude Opus 4.5 for tagging and evaluation decisions.
-    Delegates to specialized graders (Claude Sonnet 4) for actual grading.
+    Uses the configured LLM provider for tagging and evaluation decisions.
+    Delegates to specialized graders for actual grading.
     """
 
     def __init__(self):
-        settings = get_settings()
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self.orchestrator_model = settings.claude_orchestrator_model
-        self.tagger_model = settings.claude_grader_model  # Use Sonnet for tagging (faster, less congested)
+        self.tagger_provider = get_llm_provider(role="grader")  # Use grader model for tagging (faster)
+        self.evaluator_provider = get_llm_provider(role="orchestrator")
 
         # Initialize graders
         self.graders = {
@@ -54,7 +51,7 @@ class LangGraphOrchestrator:
             "english_grader": EnglishGrader(),
             "science_grader": ScienceGrader(),
             "history_grader": HistoryGrader(),
-            "general_grader": EnglishGrader(),  # Default fallback
+            "general_grader": MathGrader(),  # Default fallback to Math on failure
         }
 
         # Build the graph
@@ -111,7 +108,7 @@ class LangGraphOrchestrator:
     # ===== Node Implementations =====
 
     def _tag_triplet_node(self, state: GradingState) -> dict:
-        """Tag the triplet with subject and question type using Claude."""
+        """Tag the triplet with subject and question type using the LLM."""
         triplet_data = state["triplet"]
 
         prompt = f"""Analyze this question and classify it:
@@ -136,13 +133,15 @@ Consider:
 
 Return ONLY the JSON object."""
 
-        response = self.client.messages.create(
-            model=self.tagger_model,  # Use Sonnet for faster tagging
+        from app.core.llm_protection import protector
+        protector.check_and_increment()
+
+        response_text = self.tagger_provider.chat(
+            system_prompt="You are a question classifier. Respond only with valid JSON.",
+            user_prompt=prompt,
             max_tokens=256,
-            messages=[{"role": "user", "content": prompt}]
         )
 
-        response_text = response.content[0].text.strip()
         if response_text.startswith("```"):
             response_text = response_text.split("```")[1]
             if response_text.startswith("json"):
@@ -205,7 +204,6 @@ Return ONLY the JSON object."""
 
         # Grade the triplet
         if feedback:
-            # Enhance grading with evaluator feedback
             result = await grader.grade_with_feedback(triplet, feedback)
         else:
             result = await grader.grade(triplet)
@@ -217,7 +215,7 @@ Return ONLY the JSON object."""
             "result": result_dict,
             "attempt_number": state["current_attempt"],
             "feedback": feedback,
-            "is_accepted": False,  # Not yet evaluated
+            "is_accepted": False,
         }
 
         return {
@@ -226,23 +224,18 @@ Return ONLY the JSON object."""
         }
 
     async def _math_grader_node(self, state: GradingState) -> dict:
-        """Math grader node."""
         return await self._grade_with_grader(state, "math_grader")
 
     async def _english_grader_node(self, state: GradingState) -> dict:
-        """English grader node."""
         return await self._grade_with_grader(state, "english_grader")
 
     async def _science_grader_node(self, state: GradingState) -> dict:
-        """Science grader node."""
         return await self._grade_with_grader(state, "science_grader")
 
     async def _history_grader_node(self, state: GradingState) -> dict:
-        """History grader node."""
         return await self._grade_with_grader(state, "history_grader")
 
     async def _general_grader_node(self, state: GradingState) -> dict:
-        """General/fallback grader node."""
         return await self._grade_with_grader(state, "general_grader")
 
     def _evaluate_result_node(self, state: GradingState) -> dict:
@@ -250,7 +243,6 @@ Return ONLY the JSON object."""
         triplet_data = state["triplet"]
         result = state["current_result"]
 
-        # Build evaluation prompt
         prompt = f"""Evaluate this grading result for quality and consistency.
 
 Question ({state['subject_tag']}, {state['question_type_tag']}):
@@ -281,13 +273,15 @@ Respond with JSON:
   "improvement_suggestions": "Specific suggestions if not acceptable"
 }}"""
 
-        response = self.client.messages.create(
-            model=self.orchestrator_model,
+        from app.core.llm_protection import protector
+        protector.check_and_increment()
+
+        response_text = self.evaluator_provider.chat(
+            system_prompt="You are a grading quality evaluator. Respond only with valid JSON.",
+            user_prompt=prompt,
             max_tokens=512,
-            messages=[{"role": "user", "content": prompt}]
         )
 
-        response_text = response.content[0].text.strip()
         if response_text.startswith("```"):
             response_text = response_text.split("```")[1]
             if response_text.startswith("json"):
@@ -300,7 +294,7 @@ Respond with JSON:
             feedback = evaluation.get("improvement_suggestions", "")
         except json.JSONDecodeError:
             logger.warning("evaluation_parse_error", response=response_text[:200])
-            is_acceptable = True  # Accept on parse error
+            is_acceptable = True
             feedback = ""
 
         # Also check confidence threshold
@@ -344,7 +338,6 @@ Respond with JSON:
             question_id=state["triplet"].get("question_id"),
             feedback=state["evaluator_feedback"][:100] if state["evaluator_feedback"] else None
         )
-        # Feedback is already in state, just pass through
         return {}
 
     def _finalize_result_node(self, state: GradingState) -> dict:
@@ -368,26 +361,17 @@ Respond with JSON:
     async def grade_triplet(self, triplet: Triplet) -> GradingResult:
         """
         Grade a single triplet through the LangGraph pipeline.
-
-        Args:
-            triplet: The triplet to grade
-
-        Returns:
-            GradingResult with score, reasoning, and feedback
         """
         initial_state = create_initial_state(triplet)
 
-        # Run the graph asynchronously
         config = {"configurable": {"thread_id": triplet.question_id}}
         final_state = await self.compiled_graph.ainvoke(initial_state, config)
 
-        # Extract result
         result_dict = final_state.get("final_result") or final_state.get("current_result")
 
         if result_dict:
             return GradingResult(**result_dict)
 
-        # Fallback if something went wrong
         return GradingResult(
             question_id=triplet.question_id,
             score=0,
@@ -401,12 +385,6 @@ Respond with JSON:
     async def grade_batch(self, triplets: list[Triplet]) -> list[GradingResult]:
         """
         Grade multiple triplets.
-
-        Args:
-            triplets: List of triplets to grade
-
-        Returns:
-            List of GradingResults
         """
         results = []
         for triplet in triplets:
