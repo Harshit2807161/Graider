@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Graider Login Refined</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1152d4",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#dbe1ff",
+                        "on-primary-container": "#00174a",
+                        "background-light": "#fdfbff",
+                        "background-dark": "#1a1c1e",
+                        "surface": "#fdfbff",
+                        "surface-dark": "#1a1c1e",
+                        "surface-variant": "#e1e2ec",
+                        "surface-variant-dark": "#44474f",
+                        "outline": "#74777f",
+                        "outline-dark": "#8e9099",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply min-h-[800px] h-screen w-full overflow-hidden flex flex-col items-center bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-200;
+            }
+        }
+        .md3-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .md3-input {
+            width: 100%;
+            height: 56px;
+            border-radius: 4px 4px 0 0;
+            padding: 24px 16px 8px;
+            background-color: transparent;
+            border-bottom: 1px solid #74777f;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .dark .md3-input {
+            border-bottom-color: #8e9099;
+        }
+        .md3-input:focus {
+            border-bottom-color: #1152d4;
+            border-bottom-width: 2px;
+        }
+        .dark .md3-input:focus {
+            border-bottom-color: #adc6ff;
+        }
+        .md3-label {
+            position: absolute;
+            left: 16px;
+            top: 18px;
+            font-size: 16px;
+            color: #74777f;
+            pointer-events: none;
+            transition: 0.2s ease all;
+        }
+        .dark .md3-label {
+            color: #c4c6d0;
+        }
+        .md3-input:focus ~ .md3-label,
+        .md3-input:not(:placeholder-shown) ~ .md3-label {
+            top: 8px;
+            font-size: 12px;
+            color: #1152d4;
+        }
+        .dark .md3-input:focus ~ .md3-label,
+        .dark .md3-input:not(:placeholder-shown) ~ .md3-label {
+            color: #adc6ff;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body>
+<div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
+<div class="absolute -top-20 -right-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl opacity-30"></div>
+<div class="absolute -bottom-32 -left-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl opacity-20"></div>
+</div>
+<main class="relative z-10 flex flex-col h-full w-full max-w-[360px] px-6 pt-16 pb-8 safe-area-inset-bottom mx-auto justify-center">
+<div class="flex flex-col items-center space-y-6 mb-12">
+<div class="relative group">
+<div class="absolute -inset-1 bg-primary/20 rounded-2xl blur-lg opacity-40"></div>
+<div class="relative h-20 w-20 bg-surface dark:bg-surface-dark border border-surface-variant/50 dark:border-surface-variant-dark/50 rounded-2xl flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-5xl text-primary dark:text-blue-400" style="font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48">auto_stories</span>
+</div>
+</div>
+<div class="text-center">
+<h1 class="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">Graider</h1>
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400 mt-2">AI-Powered Exam Grading</p>
+</div>
+</div>
+<div class="flex flex-col w-full space-y-6">
+<div class="space-y-4">
+<div class="md3-input-wrapper">
+<input class="md3-input bg-surface-variant/20 dark:bg-surface-variant-dark/20 border-t-0 border-x-0 focus:ring-0" id="email" placeholder=" " type="email"/>
+<label class="md3-label" for="email">Email Address</label>
+</div>
+<div class="md3-input-wrapper">
+<input class="md3-input bg-surface-variant/20 dark:bg-surface-variant-dark/20 border-t-0 border-x-0 focus:ring-0" id="password" placeholder=" " type="password"/>
+<label class="md3-label" for="password">Password</label>
+<button class="absolute right-3 top-4 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-xl">visibility</span>
+</button>
+</div>
+<div class="flex justify-end">
+<a class="text-sm font-medium text-primary dark:text-blue-300 hover:underline" href="#">Forgot Password?</a>
+</div>
+</div>
+<div class="space-y-3 pt-4">
+<button class="w-full bg-primary hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-on-primary font-semibold h-12 rounded-full shadow-md transition-all flex items-center justify-center">
+<span class="text-base tracking-wide">Log In</span>
+</button>
+<div class="relative flex py-4 items-center">
+<div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+<span class="flex-shrink-0 mx-4 text-xs font-semibold text-slate-400 dark:text-slate-600 uppercase tracking-widest">or</span>
+<div class="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+</div>
+<button class="w-full bg-transparent text-primary dark:text-blue-300 font-semibold h-12 rounded-full border-2 border-primary/20 dark:border-blue-400/20 hover:bg-primary/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-xl">account_balance</span>
+<span class="text-sm tracking-wide">Log in with University ID (SSO)</span>
+</button>
+</div>
+</div>
+<div class="w-full flex flex-col items-center mt-12">
+<div class="text-[11px] text-slate-400 dark:text-slate-600 text-center leading-relaxed max-w-[280px]">
+<p>By continuing, you agree to Graider's</p>
+<p class="mt-0.5">
+<a class="underline decoration-slate-300 dark:decoration-slate-700 hover:text-slate-600 dark:hover:text-slate-400" href="#">Privacy Policy</a> 
+                    and 
+                    <a class="underline decoration-slate-300 dark:decoration-slate-700 hover:text-slate-600 dark:hover:text-slate-400" href="#">Terms of Service</a>.
+                </p>
+</div>
+</div>
+</main>
+<div class="fixed inset-0 z-0 opacity-[0.02] dark:opacity-[0.04] pointer-events-none bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBZDDKr4pqjkFjqYGlXyN2Q_HGlhiD_p-PUMwiofsQJKj1tNGcgoc5LIaSY-B0jOOjdOQKBolJA9y28EvaE5VKcWdiA9-1gtIEbROBJSFCKlZkC7N6nic-9eRBRQmIRnouqo8_cJ68ZFpoFTS1yQveaAer0AHWG-OJud5cUGNRGZMIaOUoQQboDcaMffZdATee6LWbLVcaqgDpLN1GkiXWIz99t-9D2hyMBZQlC528k5g6U13KIhTIPaiMzrZZRl7hgrnogpgRyBFxz');"></div>
+
+</body></html>

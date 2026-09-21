@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1A237E","background-light": "#F8F9FA",
+                        "surface-white": "#FFFFFF",
+                        "accent": "#3F51B5",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ios-status-bar {
+            height: 44px;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        :root {
+            --deep-blue: #1A237E;
+        }
+    </style>
+<title>Review &amp; Edit Scans - Graider</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light font-display text-slate-900 antialiased overflow-hidden">
+<div class="relative mx-auto w-full max-w-[360px] h-screen max-h-[800px] flex flex-col bg-background-light overflow-hidden shadow-2xl border-x border-slate-200">
+<div class="ios-status-bar flex justify-between items-end px-6 pb-2 w-full bg-surface-white z-50">
+<span class="text-xs font-semibold text-slate-900">9:41</span>
+<div class="flex gap-1.5 items-center">
+<span class="material-symbols-outlined text-[16px]">signal_cellular_alt</span>
+<span class="material-symbols-outlined text-[16px]">wifi</span>
+<span class="material-symbols-outlined text-[16px]">battery_full</span>
+</div>
+</div>
+<header class="sticky top-0 w-full bg-surface-white border-b border-slate-100 z-40">
+<div class="flex items-center justify-between px-4 py-3">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 rounded-full hover:bg-slate-100 active:scale-95 transition-all text-primary">
+<span class="material-symbols-outlined text-2xl">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-bold text-primary">Review Scans (4 Pages)</h1>
+</div>
+<button class="p-2 rounded-full hover:bg-slate-100 text-primary">
+<span class="material-symbols-outlined text-xl">more_vert</span>
+</button>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto hide-scrollbar bg-background-light p-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="relative group">
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden aspect-[3/4]">
+<img class="w-full h-full object-cover" data-alt="Handwritten physics exam paper with mathematical equations" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADMVUHkCkNg-vwavniNIytAPTKVycf-smjgt9gA5U8f4yL3PtXGrzIi1CAaRXp6pJyjrUGium7PFvhskSPXk9xJRZbTJvOnUdHooeL8pTy38R3VXj9d1TsYvdsqppJXNcnsJfCnzc4IvVgDzzYp8EyIuKLDqNIRiusKfJRTvMYClLqtusx6bUjQ-xpFomE5gVPSvnN-ZY4AEs8EFGeZzp7SDxWw843T0oa1HqQVybl5k9rHfeuLtjag16MZvGimypEsDEnG-QOK-F3"/>
+<div class="absolute top-2 right-2">
+<button class="w-8 h-8 flex items-center justify-center bg-white/90 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-slate-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="absolute bottom-2 left-2 px-2 py-0.5 bg-slate-900/60 backdrop-blur-md rounded text-[10px] text-white font-medium">1</div>
+</div>
+</div>
+<div class="relative group">
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden aspect-[3/4]">
+<img class="w-full h-full object-cover" data-alt="Close up of handwritten notes on a lined paper" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0yQXUlv8BRu_04F0ZnwC1K3zuMsYm5zSpmLarvP0Oyz8LpZaSCU9SYvP3fiG60eWP5SN3-h6BRB-zkGQRootGTS8zVE5mFKjnk-r3_OIt18TFJ7mG7JvwC9qA3ak5zRFj_Zx12m538_ALjsiBOlTSlB9Iw1FJhdosF07khXV_1r6XDGPMfmuxUY7GQdy2tZitUExtibj8-z5YpiOgtu8NsdyUcT-XTofamojlAJitjUogqukDEBrMnhR_g-XEWj31yxCXy1QYPUOr"/>
+<div class="absolute top-2 right-2">
+<button class="w-8 h-8 flex items-center justify-center bg-white/90 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-slate-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="absolute bottom-2 left-2 px-2 py-0.5 bg-slate-900/60 backdrop-blur-md rounded text-[10px] text-white font-medium">2</div>
+</div>
+</div>
+<div class="relative group">
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden aspect-[3/4]">
+<img class="w-full h-full object-cover" data-alt="Document scan of handwriting with diagrams" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAv5OJNrKyM9wCnJR2LJJy5V8IHzNsLGhI8T-so8gCposXqNLB6fCzj75bBXeHmzUc1CryidcoCjug2VMdfOOMXBijPJXt0tMgfaSNJ_fk1vkr6ObNsrFxl-snJLdLw4aw3c0hv6Rlzxr20MeDeabaeQlRLC1eL9MUTD81lX7SAFiBl-6NB-8VYgG6Ff63OyDYHFSzWtmhUlJ7v6XsVYIcIqD4WWkp78mKqBQK9FFgLiA0PoeQqJMC5mBRkrFekLX-ABCdehEcDzNFX"/>
+<div class="absolute top-2 right-2">
+<button class="w-8 h-8 flex items-center justify-center bg-white/90 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-slate-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="absolute bottom-2 left-2 px-2 py-0.5 bg-slate-900/60 backdrop-blur-md rounded text-[10px] text-white font-medium">3</div>
+</div>
+</div>
+<div class="relative group">
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden aspect-[3/4]">
+<img class="w-full h-full object-cover" data-alt="Another page of the exam" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADMVUHkCkNg-vwavniNIytAPTKVycf-smjgt9gA5U8f4yL3PtXGrzIi1CAaRXp6pJyjrUGium7PFvhskSPXk9xJRZbTJvOnUdHooeL8pTy38R3VXj9d1TsYvdsqppJXNcnsJfCnzc4IvVgDzzYp8EyIuKLDqNIRiusKfJRTvMYClLqtusx6bUjQ-xpFomE5gVPSvnN-ZY4AEs8EFGeZzp7SDxWw843T0oa1HqQVybl5k9rHfeuLtjag16MZvGimypEsDEnG-QOK-F3"/>
+<div class="absolute top-2 right-2">
+<button class="w-8 h-8 flex items-center justify-center bg-white/90 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-full shadow-sm backdrop-blur-sm transition-colors border border-slate-100">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<div class="absolute bottom-2 left-2 px-2 py-0.5 bg-slate-900/60 backdrop-blur-md rounded text-[10px] text-white font-medium">4</div>
+</div>
+</div>
+<button class="relative group flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 active:scale-[0.98] transition-all aspect-[3/4] text-primary">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-2xl">add</span>
+</div>
+<span class="text-xs font-bold text-primary">Add Page</span>
+</button>
+</div>
+<div class="h-24"></div>
+</main>
+<div class="absolute bottom-0 w-full bg-surface-white border-t border-slate-100 px-6 pt-4 pb-8 flex flex-col gap-3 z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+<button class="w-full py-3 text-primary text-sm font-bold tracking-wide hover:bg-slate-50 rounded-xl transition-colors border border-slate-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-lg">add_photo_alternate</span>
+        Add More Pages
+    </button>
+<button class="w-full bg-primary hover:bg-accent text-white px-6 py-4 rounded-xl flex items-center justify-center gap-2.5 shadow-lg shadow-primary/30 transition-all active:scale-[0.98]">
+<span class="text-sm font-bold uppercase tracking-wide">Submit &amp; Save</span>
+<span class="material-symbols-outlined text-lg">check_circle</span>
+</button>
+</div>
+<div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-36 h-1 bg-slate-200 rounded-full z-[60]"></div>
+</div>
+</body></html>
