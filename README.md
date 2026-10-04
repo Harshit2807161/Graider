@@ -2,8 +2,6 @@
 
 Gr8r is an AI-powered system that grades handwritten subjective answers using multi-agent orchestration. It uses Claude Vision for OCR extraction and Claude-based specialized agents for grading.
 
-**Brainstorm Doc**: [Google Doc](https://docs.google.com/document/d/1HY6bb-MtIK0mL4Hj4do01L7yVY33X0A_iQKQ2AfomOU/edit?tab=t.0#heading=h.rctywnz3nypk)
-
 ---
 
 ## Features
