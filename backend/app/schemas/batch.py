@@ -17,7 +17,8 @@ class EnrollmentCreate(BaseModel):
     email: str # Enroll by email
 
 class StudentRead(BaseModel):
-    id: UUID
+    id: UUID  # user id
+    membership_id: UUID  # use this as student_id when uploading a submission
     full_name: str
     email: str
     enrolled_at: datetime

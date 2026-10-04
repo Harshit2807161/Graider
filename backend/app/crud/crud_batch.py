@@ -20,7 +20,10 @@ class CRUDBatch(CRUDBase[Batch, BatchCreate, BatchCreate]):
                 Batch.created_at,
                 func.count(Enrollment.id).label("student_count")
             )
-            .outerjoin(Enrollment, Enrollment.batch_id == Batch.id)
+            .outerjoin(
+                Enrollment,
+                (Enrollment.batch_id == Batch.id) & (Enrollment.deleted_at == None),  # noqa: E711
+            )
             .where(Batch.org_id == org_id)
             .where(Batch.deleted_at == None)
             .group_by(Batch.id)

@@ -1,11 +1,14 @@
 from typing import Any, List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app import crud
 from app.api import deps
-from app.models.user import User
+from app.core.constants import Role
+from app.models.org import Organization as OrganizationModel
+from app.models.user import Membership, User
 from app.schemas.org import Organization, OrganizationCreate
 from app.services.org_service import org_service
 
@@ -16,13 +19,36 @@ def read_organizations(
     db: Session = Depends(deps.get_session),
     skip: int = 0,
     limit: int = 100,
-    current_user: User = Depends(deps.get_current_active_superuser),
+    current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """
-    Retrieve organizations.
+    Retrieve organizations: all of them for superusers, otherwise the ones the user belongs to.
     """
-    orgs = crud.org.get_multi(db, skip=skip, limit=limit)
-    return orgs
+    if current_user.is_superuser:
+        return crud.org.get_multi(db, skip=skip, limit=limit)
+
+    return db.exec(
+        select(OrganizationModel)
+        .join(Membership, Membership.org_id == OrganizationModel.id)
+        .where(Membership.user_id == current_user.id)
+        .where(Membership.deleted_at == None)  # noqa: E711
+        .where(OrganizationModel.deleted_at == None)  # noqa: E711
+        .offset(skip)
+        .limit(limit)
+    ).all()
+
+@router.get("/{org_id}", response_model=Organization)
+def read_organization(
+    *,
+    db: Session = Depends(deps.get_session),
+    org_id: UUID,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    org = crud.org.get(db, id=org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    deps.require_org_role(db, user=current_user, org_id=org_id)
+    return org
 
 @router.post("/", response_model=Organization)
 def create_organization(
@@ -41,7 +67,7 @@ def create_organization(
             status_code=400,
             detail=f"Organization with slug '{org_in.slug}' already exists"
         )
-    
+
     org = org_service.create_organization_with_owner(
         db, obj_in=org_in, owner_id=current_user.id
     )
@@ -51,16 +77,16 @@ def create_organization(
 def delete_organization(
     *,
     db: Session = Depends(deps.get_session),
-    org_id: str,
-    current_user: User = Depends(deps.get_current_active_superuser),
+    org_id: UUID,
+    current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """
-    Delete an organization and all related data (cascade).
+    Soft-delete an organization. Allowed for superusers and the org's owner.
     """
     org = crud.org.get(db, id=org_id)
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
-    
-    # Use service to handle cascade deletion
+    deps.require_org_role(db, user=current_user, org_id=org_id, roles=(Role.OWNER,))
+
     org_service.delete_organization(db, org_id=org_id)
     return {"status": "deleted"}
