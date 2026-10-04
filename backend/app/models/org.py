@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, JSON, Column
 from sqlalchemy import UniqueConstraint
 
-from app.models.base import Base
+from app.models.base import Base, utcnow
 
 if TYPE_CHECKING:
     from app.models.user import Membership
@@ -19,7 +19,7 @@ class Organization(Base, table=True):
     slug: str = Field(unique=True, index=True)
     description: Optional[str] = None
     config: Dict[str, Any] = Field(default={}, sa_column=Column(JSON)) # Generic: {"grading_scale": "GPA"}
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     memberships: List["Membership"] = Relationship(back_populates="organization")
     batches: List["Batch"] = Relationship(back_populates="organization")
@@ -33,7 +33,7 @@ class Batch(Base, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     org_id: UUID = Field(foreign_key="organizations.id")
     name: str # "Class 10-A"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     organization: Organization = Relationship(back_populates="batches")
     enrollments: List["Enrollment"] = Relationship(back_populates="batch")
@@ -48,7 +48,7 @@ class Enrollment(Base, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     batch_id: UUID = Field(foreign_key="batches.id")
     membership_id: UUID = Field(foreign_key="memberships.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     batch: Batch = Relationship(back_populates="enrollments")
     membership: "Membership" = Relationship(back_populates="enrollments")

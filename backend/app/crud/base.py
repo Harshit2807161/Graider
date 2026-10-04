@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 from sqlmodel import Session, SQLModel, select
+from app.models.base import utcnow
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -62,7 +63,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         for field in obj_data:
             if field in update_data:
                 setattr(db_obj, field, update_data[field])
-                
+        if hasattr(db_obj, "updated_at") and "updated_at" not in update_data:
+            db_obj.updated_at = utcnow()
+
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
@@ -72,7 +75,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """Soft delete: set deleted_at timestamp instead of removing record"""
         obj = db.get(self.model, id)
         if obj and hasattr(obj, 'deleted_at'):
-            obj.deleted_at = datetime.utcnow()
+            obj.deleted_at = utcnow()
             db.add(obj)
             db.commit()
             db.refresh(obj)

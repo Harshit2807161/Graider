@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, JSON, Column
 from sqlalchemy import UniqueConstraint
 
-from app.models.base import Base
+from app.models.base import Base, utcnow
 from app.core.constants import Role
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class Membership(Base, table=True):
     # Generic Profile: {"roll_number": "123", "house": "Red"}
     profile_data: Dict[str, Any] = Field(default={}, sa_column=Column(JSON)) 
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     user: "User" = Relationship(back_populates="memberships")
     organization: "Organization" = Relationship(back_populates="memberships")
@@ -45,6 +45,6 @@ class User(Base, table=True):
     full_name: str
     hashed_password: Optional[str] = None
     is_superuser: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     memberships: List["Membership"] = Relationship(back_populates="user")

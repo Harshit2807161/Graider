@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, JSON, Column
 
-from app.models.base import Base
+from app.models.base import Base, utcnow
 from app.core.constants import ExamStatus, SubmissionStatus, QuestionType
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ class Question(Base, table=True):
     rubric_criteria: Optional[str] = None
     question_type: QuestionType = Field(default=QuestionType.DESCRIPTIVE)
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     exam: "Exam" = Relationship(back_populates="questions")
     submission_answers: List["SubmissionAnswer"] = Relationship(back_populates="question")
@@ -42,8 +42,8 @@ class Exam(Base, table=True):
     status: ExamStatus = Field(default=ExamStatus.DRAFT)
     config: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
 
     organization: "Organization" = Relationship(back_populates="exams")
     batch: Optional["Batch"] = Relationship(back_populates="exams")
@@ -64,7 +64,7 @@ class SubmissionAnswer(Base, table=True):
     feedback: Optional[str] = None
     reasoning: Optional[str] = None
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     submission: "Submission" = Relationship(back_populates="answers")
     question: Question = Relationship(back_populates="submission_answers")
@@ -87,8 +87,8 @@ class Submission(Base, table=True):
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING)
     current_step: Optional[str] = Field(default=None) 
     
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
 
     exam: "Exam" = Relationship(back_populates="submissions")
     student_membership: Optional["Membership"] = Relationship(back_populates="submissions")

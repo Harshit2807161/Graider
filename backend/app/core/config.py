@@ -1,35 +1,46 @@
-from typing import List, Union
+from typing import Annotated, List, Optional, Union
 from pathlib import Path
 from functools import lru_cache
-from pydantic import AnyHttpUrl, validator
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Graider"
-    
+
     # Database
     DATABASE_URL: str = "postgresql://user:password@localhost:5433/graider"
-    
+    SQL_ECHO: bool = False
+
     # Message Broker
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
-    
+
     # Security
     SECRET_KEY: str # Must be set in .env or environment variable
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     ALGORITHM: str = "HS256"
-    
+
+    # Bootstrap superuser (used by `python -m app.initial_data`)
+    FIRST_SUPERUSER_EMAIL: Optional[str] = None
+    FIRST_SUPERUSER_PASSWORD: Optional[str] = None
+
     # External APIs
     ANTHROPIC_API_KEY: str = "sk-ant-api03-placeholder"
     OPENAI_API_KEY: str = "sk-placeholder"
-    
+
     # LLM Provider: "openai" or "anthropic"
     LLM_PROVIDER: str = "openai"
-    
+
+    # Hard cap on LLM calls for a single submission's grading run (runaway-cost guard)
+    LLM_MAX_CALLS_PER_SUBMISSION: int = 200
+
     # Storage
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")
+    MAX_UPLOAD_SIZE_MB: int = 50
 
     # LLM Models (provider-agnostic names)
     LLM_GRADER_MODEL: str = "gpt-5-nano-2025-08-07"
@@ -41,24 +52,23 @@ class Settings(BaseSettings):
         self.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         self.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"]
-    
-    @validator("BACKEND_CORS_ORIGINS", pre=True)
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, str) and v.startswith("["):
-            import json
-            try:
-                return json.loads(v)
-            except Exception:
-                return v
-        return v
+    # CORS. Accepts a JSON list or a comma-separated string.
+    BACKEND_CORS_ORIGINS: Annotated[List[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+    ]
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("["):
+                import json
+                return json.loads(v)
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v
 
 @lru_cache()
 def get_settings() -> Settings:
