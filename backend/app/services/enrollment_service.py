@@ -8,7 +8,6 @@ import io
 from app import crud
 from app.models.org import Batch, Enrollment
 from app.models.user import User, Membership
-from app.schemas.user import UserCreate
 from app.core.constants import Role
 
 async def process_student_roster(
@@ -34,7 +33,7 @@ async def process_student_roster(
     # 2. Read File
     try:
         content = await file.read()
-        if file.filename.endswith('.csv'):
+        if (file.filename or "").lower().endswith('.csv'):
             df = pd.read_csv(io.BytesIO(content))
         else:
             df = pd.read_excel(io.BytesIO(content))
@@ -42,7 +41,7 @@ async def process_student_roster(
         raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
 
     # Standardize column names
-    df.columns = [c.strip().lower() for c in df.columns]
+    df.columns = [str(c).strip().lower() for c in df.columns]
     
     # Check required columns
     required = {'email', 'name'}
@@ -60,9 +59,12 @@ async def process_student_roster(
     }
 
     for _, row in df.iterrows():
-        email = str(row['email']).strip()
-        name = str(row['name']).strip()
-        
+        if pd.isna(row['email']):
+            results["errors"].append({"email": "", "error": "Missing email"})
+            continue
+        email = str(row['email']).strip().lower()
+        name = str(row['name']).strip() if pd.notna(row['name']) else email.split("@")[0]
+
         if not email or "@" not in email:
             results["errors"].append({"email": email, "error": "Invalid email"})
             continue
@@ -71,8 +73,13 @@ async def process_student_roster(
             # 3. Find or Create User
             user = crud.user.get_by_email(db, email=email)
             if not user:
-                user_in = UserCreate(email=email, full_name=name, password="changeme123!") # Default password
-                user = crud.user.create(db, obj_in=user_in)
+                # No password: the account can't log in until one is set through an
+                # invite/reset flow. (A shared default password made every imported
+                # student's account trivially guessable.)
+                user = User(email=email, full_name=name, hashed_password=None)
+                db.add(user)
+                db.commit()
+                db.refresh(user)
 
             # 4. Ensure Org Membership
             membership = db.exec(
@@ -103,10 +110,17 @@ async def process_student_roster(
                 db.add(enrollment)
                 db.commit()
                 results["enrolled"] += 1
+            elif existing_enrollment.deleted_at is not None:
+                existing_enrollment.deleted_at = None
+                db.add(existing_enrollment)
+                db.commit()
+                results["enrolled"] += 1
             else:
                 results["existing"] += 1
 
         except Exception as e:
+            # Keep the session usable for the remaining rows
+            db.rollback()
             results["errors"].append({"email": email, "error": str(e)})
 
     return results
