@@ -1,148 +1,158 @@
-"""Test script for the grading pipeline."""
+"""Grading pipeline tests against a real (SQLite) database with a fake LLM."""
 
-import asyncio
-import httpx
 import json
-from pathlib import Path
+import shutil
+from app.models.base import utcnow
 
-BASE_URL = "http://127.0.0.1:8000"
+import pytest
+from sqlmodel import Session, select
 
-
-async def test_full_pipeline():
-    """Test the complete upload and grading flow."""
-
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        print("\n=== Gr8r Pipeline Test ===\n")
-
-        # 1. Test root endpoint
-        print("1. Testing root endpoint...")
-        resp = await client.get(f"{BASE_URL}/")
-        print(f"   Status: {resp.status_code}")
-        print(f"   Response: {resp.json()}")
-
-        # 2. Test health endpoint
-        print("\n2. Testing health endpoint...")
-        resp = await client.get(f"{BASE_URL}/health")
-        print(f"   Status: {resp.status_code}")
-        print(f"   Response: {resp.json()}")
-
-        # 3. Create a test image (simple PNG)
-        print("\n3. Creating test question paper image...")
-        test_dir = Path("tests/fixtures")
-        test_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create a minimal valid PNG (1x1 white pixel)
-        # PNG signature + IHDR + IDAT + IEND
-        png_data = bytes([
-            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,  # PNG signature
-            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  # IHDR chunk
-            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,  # 1x1 image
-            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,  # IDAT chunk
-            0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
-            0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
-            0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,  # IEND chunk
-            0x44, 0xAE, 0x42, 0x60, 0x82
-        ])
-
-        question_img = test_dir / "test_question.png"
-        question_img.write_bytes(png_data)
-        print(f"   Created: {question_img}")
-
-        answer_img = test_dir / "test_answer.png"
-        answer_img.write_bytes(png_data)
-        print(f"   Created: {answer_img}")
-
-        # Create a text rubric
-        rubric_txt = test_dir / "test_rubric.txt"
-        rubric_txt.write_text("""
-Q1: What is 2 + 2?
-Expected Answer: 4
-Max Score: 5
-Scoring: Full marks for correct answer, partial for showing work
-
-Q2: Explain photosynthesis.
-Expected Answer: Photosynthesis is the process by which plants convert sunlight, water, and CO2 into glucose and oxygen.
-Max Score: 10
-Key Points: sunlight, chlorophyll, glucose, oxygen, carbon dioxide
-""")
-        print(f"   Created: {rubric_txt}")
-
-        # 4. Upload question paper
-        print("\n4. Uploading question paper...")
-        with open(question_img, "rb") as f:
-            files = {"files": ("question.png", f, "image/png")}
-            resp = await client.post(f"{BASE_URL}/api/upload/questions", files=files)
-        print(f"   Status: {resp.status_code}")
-        data = resp.json()
-        print(f"   Response: {data}")
-        session_id = data.get("session_id")
-        print(f"   Session ID: {session_id}")
-
-        if not session_id:
-            print("   ERROR: No session ID returned!")
-            return
-
-        # 5. Upload answer sheet
-        print("\n5. Uploading answer sheet...")
-        with open(answer_img, "rb") as f:
-            files = {"files": ("answer.png", f, "image/png")}
-            data_fields = {"session_id": session_id}
-            resp = await client.post(
-                f"{BASE_URL}/api/upload/answers",
-                files=files,
-                data=data_fields
-            )
-        print(f"   Status: {resp.status_code}")
-        print(f"   Response: {resp.json()}")
-
-        # 6. Upload rubric
-        print("\n6. Uploading rubric...")
-        with open(rubric_txt, "rb") as f:
-            files = {"files": ("rubric.txt", f, "text/plain")}
-            data_fields = {"session_id": session_id}
-            resp = await client.post(
-                f"{BASE_URL}/api/upload/rubric",
-                files=files,
-                data=data_fields
-            )
-        print(f"   Status: {resp.status_code}")
-        print(f"   Response: {resp.json()}")
-
-        # 7. Check status
-        print("\n7. Checking status...")
-        resp = await client.get(f"{BASE_URL}/api/status/{session_id}")
-        print(f"   Status: {resp.status_code}")
-        print(f"   Response: {resp.json()}")
-
-        # 8. Trigger grading (this will fail with test images, but tests the endpoint)
-        print("\n8. Triggering grading...")
-        resp = await client.post(
-            f"{BASE_URL}/api/grade",
-            json={"session_id": session_id}
-        )
-        print(f"   Status: {resp.status_code}")
-        print(f"   Response: {resp.json()}")
-
-        # 9. Poll status
-        print("\n9. Polling status (waiting for grading)...")
-        for i in range(5):
-            await asyncio.sleep(2)
-            resp = await client.get(f"{BASE_URL}/api/status/{session_id}")
-            status_data = resp.json()
-            print(f"   [{i+1}] Status: {status_data.get('status')}, Progress: {status_data.get('progress')}%")
-            if status_data.get("status") in ["completed", "failed"]:
-                break
-
-        # 10. Get results
-        print("\n10. Getting results...")
-        resp = await client.get(f"{BASE_URL}/api/results/{session_id}")
-        print(f"   Status: {resp.status_code}")
-        result = resp.json()
-        print(f"   Response: {json.dumps(result, indent=2)}")
-
-        print("\n=== Test Complete ===\n")
+from app.core.constants import SubmissionStatus
+from app.core.db import engine
+from app.models.exam import Question, Submission, SubmissionAnswer
+from app.services.grading_service import run_grading_pipeline
+from tests.conftest import FIXTURES
 
 
-if __name__ == "__main__":
-    asyncio.run(test_full_pipeline())
+def make_submission(db: Session, exam, tmp_path) -> Submission:
+    sheet = tmp_path / "answer_sheet.png"
+    shutil.copy(FIXTURES / "test_answer.png", sheet)
+    submission = Submission(exam_id=exam.id, original_file_url=str(sheet))
+    db.add(submission)
+    db.commit()
+    db.refresh(submission)
+    return submission
+
+
+def load(submission_id):
+    with Session(engine) as db:
+        submission = db.get(Submission, submission_id)
+        answers = db.exec(
+            select(SubmissionAnswer, Question)
+            .join(Question, Question.id == SubmissionAnswer.question_id)
+            .where(SubmissionAnswer.submission_id == submission_id)
+            .order_by(Question.order_index)
+        ).all()
+        return submission, answers
+
+
+async def test_grades_each_question_and_saves_against_the_right_question(fake_llm, db, school, tmp_path):
+    submission = make_submission(db, school["exam"], tmp_path)
+
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    graded, answers = load(submission.id)
+    assert graded.status == SubmissionStatus.GRADED
+    assert graded.total_score == 5  # half of 4 + half of 6
+    assert graded.max_score == 10
+    assert graded.percentage == 50
+
+    assert [q.question_text for _, q in answers] == ["Solve 2x + 5 = 15", "Explain photosynthesis"]
+    # The transcribed answer is stored (it used to be overwritten with the question id)
+    assert [a.student_answer_text for a, _ in answers] == ["student answer for Q1", "student answer for Q2"]
+
+
+async def test_ocr_is_given_short_labels_not_database_ids(fake_llm, db, school, tmp_path):
+    submission = make_submission(db, school["exam"], tmp_path)
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    ocr_prompt = fake_llm.calls_of("ocr")[0]["prompt"]
+    assert "EXACTLY one of these ids: Q1, Q2" in ocr_prompt
+    for question in db.exec(select(Question)).all():
+        assert str(question.id) not in ocr_prompt
+
+
+async def test_teacher_rubric_reaches_the_grader(fake_llm, db, school, tmp_path):
+    submission = make_submission(db, school["exam"], tmp_path)
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade") if "2x + 5" in c["prompt"])
+    assert "- Subtract 5" in q1_prompt and "- Divide by 2" in q1_prompt
+
+
+async def test_answers_are_matched_by_label_even_if_returned_out_of_order(fake_llm, db, school, tmp_path):
+    fake_llm.ocr = lambda p: json.dumps({"answers": [
+        {"question_id": "Q2", "text": "chlorophyll", "confidence": 0.9},
+        {"question_id": "Q1", "text": "x = 5", "confidence": 0.9},
+    ]})
+    submission = make_submission(db, school["exam"], tmp_path)
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    _, answers = load(submission.id)
+    by_question = {q.question_text: a.student_answer_text for a, q in answers}
+    assert by_question == {"Solve 2x + 5 = 15": "x = 5", "Explain photosynthesis": "chlorophyll"}
+
+
+async def test_soft_deleted_questions_are_not_graded(fake_llm, db, school, tmp_path):
+    exam = school["exam"]
+    removed = db.exec(select(Question).where(Question.exam_id == exam.id).order_by(Question.order_index)).first()
+    removed.deleted_at = utcnow()
+    db.add(removed)
+    db.commit()
+
+    submission = make_submission(db, exam, tmp_path)
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    graded, answers = load(submission.id)
+    assert graded.max_score == 6
+    assert [q.question_text for _, q in answers] == ["Explain photosynthesis"]
+
+
+@pytest.mark.parametrize("ocr_output", ["I can't read this", '{"answers": []}'])
+async def test_unreadable_answer_sheet_fails_instead_of_scoring_zero(fake_llm, db, school, tmp_path, ocr_output):
+    fake_llm.ocr = lambda p: ocr_output
+    submission = make_submission(db, school["exam"], tmp_path)
+
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    graded, answers = load(submission.id)
+    assert graded.status == SubmissionStatus.FAILED
+    assert graded.current_step.startswith("Error:")
+    assert answers == []
+
+
+async def test_grader_failure_fails_the_submission(fake_llm, db, school, tmp_path):
+    fake_llm.grade = lambda p: "garbage"
+    submission = make_submission(db, school["exam"], tmp_path)
+
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    graded, answers = load(submission.id)
+    assert graded.status == SubmissionStatus.FAILED
+    assert answers == []
+
+
+async def test_regrading_replaces_previous_answers(fake_llm, db, school, tmp_path):
+    submission = make_submission(db, school["exam"], tmp_path)
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    _, answers = load(submission.id)
+    assert len(answers) == 2
+
+
+async def test_regrading_the_same_question_does_not_leak_state_between_runs(fake_llm, db, school, tmp_path):
+    # The old checkpointer keyed graph state by question id, so attempts accumulated across runs
+    from app.agents.orchestrator import get_orchestrator
+
+    first = make_submission(db, school["exam"], tmp_path)
+    await run_grading_pipeline(first.id, first.original_file_url)
+    calls_first_run = len(fake_llm.calls)
+
+    second = make_submission(db, school["exam"], tmp_path)
+    await run_grading_pipeline(second.id, second.original_file_url)
+
+    assert len(fake_llm.calls) == 2 * calls_first_run
+    assert get_orchestrator().compiled_graph.checkpointer is None
+
+
+async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "LLM_MAX_CALLS_PER_SUBMISSION", 2)
+    submission = make_submission(db, school["exam"], tmp_path)
+
+    await run_grading_pipeline(submission.id, submission.original_file_url)
+
+    graded, _ = load(submission.id)
+    assert graded.status == SubmissionStatus.FAILED
+    assert "budget" in graded.current_step
