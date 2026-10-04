@@ -1,163 +1,179 @@
 # Gr8r - AI-Powered Grading System
 
 ## Project Overview
-Gr8r is an AI-powered system that grades handwritten subjective answers using multi-agent orchestration. It uses Claude Vision for OCR and Claude-based agents for grading.
+Gr8r grades handwritten exam answers. Teachers set up organizations, classes (batches) and exams with questions and rubrics, then upload a student's answer sheet (PDF or image). A background worker transcribes the sheet with a vision LLM and grades each answer with LangGraph agents.
+
+Status: multi-tenant web app working end to end (branch `v1-full`). The next stage is the production-grade grading design in [docs/proposals/001-production-grading-architecture.md](../docs/proposals/001-production-grading-architecture.md) — a draft awaiting approval; nothing in it is implemented yet.
 
 ## Tech Stack
 
-### Backend
-- **Framework**: FastAPI (Python 3.12)
-- **OCR**: Claude Vision API (Anthropic)
-- **Agent Orchestration**: LangGraph + AGNTCY Stack
-- **Database**: SQLite (MVP) → PostgreSQL (V1)
-- **Storage**: Local filesystem for uploads
-
-### Frontend
-- **Framework**: React 18+ with Vite
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **HTTP Client**: Axios
+### Backend (`backend/`)
+- **API**: FastAPI (Python 3.12), routes under `/api/v1`
+- **ORM / DB**: SQLModel on PostgreSQL 15 (Docker, host port 5433). Tables are created with `SQLModel.metadata.create_all` (no migrations yet)
+- **Background jobs**: Celery with Redis broker; one task grades one submission
+- **Auth**: JWT bearer tokens (PyJWT) + bcrypt; org-scoped roles owner / admin / teacher / student
+- **Files**: local disk under `UPLOAD_DIR` (shared with the worker via the `./backend/data` volume in Docker). MinIO runs in compose but is not used yet
+- **Logging**: structlog
 
 ### AI/ML
-- **Orchestrator Model**: Claude Opus 4.5 (`claude-opus-4-5-20251101`)
-- **Grader Models**: Claude Sonnet 4 (`claude-sonnet-4-20250514`)
-- **OCR**: Claude Vision (via Messages API with images)
+- **Provider layer**: `app/core/llm_provider.py`, provider-agnostic. `LLM_PROVIDER=openai|anthropic` for the whole app
+- **Models per role**: `LLM_VISION_MODEL` (OCR), `LLM_GRADER_MODEL` (tagging + grading), `LLM_ORCHESTRATOR_MODEL` (evaluator). Defaults are `gpt-5-nano-2025-08-07`; model names must belong to the chosen provider
+- **Orchestration**: LangGraph, one graph run per question (no checkpointer)
+- AGNTCY / observability SDKs are not integrated yet
 
-### Agent Infrastructure (AGNTCY)
-- **App SDK**: `agntcy-app-sdk` - Factory for agent communication
-- **Protocol**: A2A (Agent-to-Agent) over SLIM transport
-- **Observability**: `ioa_observe_sdk` - OpenTelemetry tracing
+### Frontend (`frontend/`)
+- Next.js 16 (App Router), React 19, TypeScript
+- Styling: CSS Modules plus some inline styles (no Tailwind)
+- HTTP: axios client in `lib/api.ts` (bearer token from the `token` cookie, redirects to `/login` on 401). API base URL from `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`)
 
 ## Project Structure
 
 ```
-gr8r/
-├── backend/
-│   ├── app/
-│   │   ├── api/routes/          # FastAPI endpoints
-│   │   ├── services/            # Business logic
-│   │   ├── agents/              # LangGraph agents
-│   │   │   ├── orchestrator.py  # Main orchestrator (Opus 4.5)
-│   │   │   └── graders/         # Specialized graders (Sonnet 4)
-│   │   └── models/              # Pydantic schemas
-│   └── data/                    # SQLite DB + uploads
-├── frontend/
-│   └── src/                     # React application
-└── docs/                        # Documentation & research
+backend/
+├── app/
+│   ├── main.py                    # FastAPI app, CORS, request logging
+│   ├── worker.py                  # Celery app + grade_exam_task
+│   ├── initial_data.py            # create tables + first superuser
+│   ├── api/
+│   │   ├── deps.py                # current user, get_membership, require_org_role
+│   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
+│   ├── core/                      # config, db, security, constants, llm_provider,
+│   │                              # llm_protection (per-run call budget), langgraph_setup
+│   ├── crud/                      # data access (soft-delete aware)
+│   ├── models/                    # SQLModel tables (user, org, exam)
+│   ├── schemas/                   # Pydantic request/response + grading pipeline schemas
+│   ├── services/                  # grading_service (pipeline), ocr_service, pdf_service,
+│   │                              # triplet_service, enrollment_service, org_service
+│   └── agents/
+│       ├── orchestrator.py        # LangGraph graph: tag -> grader -> evaluator loop
+│       └── graders/               # base + math, english, science, history, general
+└── tests/                         # pytest suite (FakeLLM, SQLite or Postgres)
+frontend/
+├── app/                           # (auth)/login, dashboard/{orgs,classes,exams,exams/[id]}
+├── components/ context/ hooks/    # UI, React contexts per resource
+├── services/ types/               # API calls and types per resource
+└── lib/                           # api.ts (axios client), utils.ts
+docs/                              # architecture, ADRs, proposals/
 ```
 
-## Key Patterns
+## Data Model
+`User` (global identity) → `Membership` (user + org + role) → `Organization`.
+`Batch` (class) ← `Enrollment` → student `Membership`.
+`Exam` (org, optional batch) → `Question` (text, `max_score`, free-text `rubric_criteria`, `order_index`, type).
+`Submission` (exam, optional student membership, file path, status, `current_step`, totals) → `SubmissionAnswer` (question, transcribed answer text, score, feedback, reasoning).
 
-### Two-Step Processing Pipeline
-1. **OCR Step**: Claude Vision extracts text from images → structured JSON
-2. **Grading Step**: LangGraph agents grade extracted text → scores + feedback
+All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps are timezone-aware UTC — use `app.models.base.utcnow()`, never `datetime.utcnow()` (SQLModel ≥ 0.0.45 rejects naive datetimes).
 
-### Agent Architecture
-- **Orchestrator**: Routes questions to subject graders, evaluates results
-- **Math Grader**: Evaluates mathematical accuracy and methodology
-- **English Grader**: Evaluates content, grammar, and structure
-- **Science Grader**: Evaluates concepts and reasoning
+Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet.
 
-### Data Flow
-```
-[Upload Images] → [Claude Vision OCR] → [Triplet Formation]
-    → [Orchestrator] → [Specialized Graders] → [Results Dashboard]
-```
+## Grading Pipeline (`services/grading_service.py`)
+1. Load the exam's live questions in order and label them `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
+2. **OCR**: rasterize PDF pages (poppler), send to the vision model in batches of 10 pages, get answers keyed by label.
+3. **Triplets**: pair each question with its answer and its rubric (rubric text → one expected point per line).
+4. **Grade**: per question, LangGraph tags the subject, routes to a subject grader, and an LLM evaluator may request up to 3 attempts.
+5. **Save**: all answers and totals in one transaction; status `GRADED`.
+
+Failure rules: unparseable model output is retried once, then the submission is marked `FAILED` with the error in `current_step` — never record a made-up score. Each run is capped at `LLM_MAX_CALLS_PER_SUBMISSION` LLM calls.
 
 ## Development Commands
 
 ```bash
-# Activate environment
-conda activate gr8r
+# Environment (conda) — installs backend/requirements.txt
+conda env create -f environment.yml && conda activate gr8r
+# Requires poppler (pdftoppm) for PDF conversion: brew install poppler
 
-# Start backend
-cd backend && uvicorn app.main:app --reload --port 8000
+# Infrastructure only
+docker compose up -d db redis
 
-# Start frontend
-cd frontend && npm run dev
+# Backend (from backend/, with backend/.env)
+python -m app.initial_data                                  # tables + first superuser
+uvicorn app.main:app --reload --port 8000
+celery -A app.worker.celery_app worker --loglevel=info
 
-# Run tests
+# Frontend
+cd frontend && npm install && npm run dev                   # http://localhost:3000
+
+# Tests (no API keys needed; FakeLLM + SQLite)
 cd backend && pytest
+TEST_DATABASE_URL=postgresql://user:password@localhost:5433/test pytest   # against Postgres
 
-# Format code
+# Frontend checks
+cd frontend && npx tsc --noEmit && npm run lint && npm run build
+
+# Format / lint backend
 black backend/ && ruff check backend/
 ```
 
+Full stack in Docker: copy root `.env.example` to `.env`, `docker compose up -d --build`, then `docker compose run --rm backend python -m app.initial_data`.
+
 ## Environment Variables
+See `backend/.env.example` (local) and `.env.example` (docker compose). Key ones:
 
 ```bash
-# Required
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Optional (defaults shown)
-CLAUDE_ORCHESTRATOR_MODEL=claude-opus-4-5-20251101
-CLAUDE_GRADER_MODEL=claude-sonnet-4-20250514
-DATABASE_URL=sqlite:///./data/gr8r.db
-UPLOAD_DIR=./data/uploads
+SECRET_KEY=...                       # required
+DATABASE_URL=postgresql://user:password@localhost:5433/graider
+CELERY_BROKER_URL=redis://localhost:6379/0
+LLM_PROVIDER=openai                  # or anthropic
+OPENAI_API_KEY=... / ANTHROPIC_API_KEY=...
+LLM_VISION_MODEL / LLM_GRADER_MODEL / LLM_ORCHESTRATOR_MODEL
+LLM_MAX_CALLS_PER_SUBMISSION=200
+UPLOAD_DIR=./data/uploads            MAX_UPLOAD_SIZE_MB=50
+FIRST_SUPERUSER_EMAIL / FIRST_SUPERUSER_PASSWORD
+BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 ```
 
-## API Endpoints (MVP)
+## API Endpoints (`/api/v1`)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/upload/questions | Upload question paper images |
-| POST | /api/upload/answers | Upload answer sheet images |
-| POST | /api/upload/rubric | Upload rubric (text/image) |
-| POST | /api/grade | Trigger grading pipeline |
-| GET | /api/status/{session_id} | Get processing status |
-| GET | /api/results/{session_id} | Get grading results |
+| Method | Endpoint | Who |
+|--------|----------|-----|
+| POST | /auth/login | anyone (OAuth2 form: username=email) |
+| GET | /users/me | logged in |
+| GET, POST | /users/ | superuser |
+| GET | /orgs/ | own orgs (superuser: all) |
+| POST | /orgs/ | superuser (creator becomes owner) |
+| GET, DELETE | /orgs/{id} | member / owner |
+| GET, POST | /batches/?org_id= , /batches/ | staff / owner+admin |
+| DELETE | /batches/{id} | owner+admin |
+| POST | /batches/{id}/enroll, /batches/{id}/upload-students | staff |
+| GET | /batches/{id}/students | staff |
+| GET, POST | /exams/?org_id=&batch_id= , /exams/ | member / staff |
+| GET, PATCH, DELETE | /exams/{id} | member / staff / owner+admin |
+| POST | /exams/{id}/questions | staff — full-list sync: send `id` for existing questions; missing ones are soft-deleted |
+| POST | /exams/{id}/questions/upload | staff — Excel import, all-or-nothing |
+| GET, POST | /exams/{id}/submissions | staff — list / upload answer sheet (queues grading) |
+| GET | /submissions/{id} | member (students: own only) |
+| POST | /submissions/{id}/regrade | staff |
+| GET | /health | anyone |
+
+"Staff" = owner, admin or teacher. Use `deps.require_org_role(...)` for every org-scoped check.
 
 ## Coding Guidelines
+1. Type hints on all function signatures; Pydantic schemas for request/response
+2. Every org-scoped endpoint checks membership/role via `deps.require_org_role`; validate that referenced ids (batch, student, question) belong to the same org/exam
+3. Never trust client file names; store uploads under `UPLOAD_DIR` with generated names
+4. LLM output: parse with `extract_json_object`, validate, retry once, then raise — never default to a score
+5. Every LLM call goes through `protector.check_and_increment()` and the async `achat` / `achat_vision` helpers
+6. Structured logging with structlog
+7. Mock LLMs in tests with the `fake_llm` fixture (`tests/conftest.py`); tests must not need API keys
 
-1. **Use async/await** for all I/O operations
-2. **Type hints required** on all function signatures
-3. **Pydantic models** for request/response validation
-4. **Structured logging** with structlog
-5. **Error handling** with custom exception classes
-
-## Agent Prompt Files
-System prompts are stored in `backend/app/agents/prompts/`:
-- `orchestrator.txt` - Routing and evaluation logic
-- `math.txt` - Math grading rubric
-- `english.txt` - English grading rubric
-- `science.txt` - Science grading rubric
+## Git Workflow
+- Feature branches + PRs; don't commit directly to `master`
+- Small commits, one concern each, conventional messages (`fix(scope): ...`, `feat`, `refactor`, `test`, `docs`, `build`)
+- Run `pytest` and the frontend checks before pushing
 
 ## Testing
-- Unit tests in `backend/tests/`
-- Use fixtures for sample documents
-- Mock Claude API calls in tests
+- `backend/tests/test_pipeline.py` — grading pipeline against a real DB with FakeLLM
+- `backend/tests/test_api.py` — auth, tenant isolation, question sync/import, uploads, submissions
+- `backend/tests/test_grading.py` — JSON extraction, grader retries, call budget
+
+## Known Gaps
+- No Alembic migrations; schema changes need a manual migration or DB reset
+- Frontend lint has existing `any` / hook warnings
+- No audit trail of prompts/LLM calls, no human review/approval flow, single provider per deployment — see the proposal
 
 ## Key Documents
-- [Implementation Plan](docs/plan.md)
-- [Task List](docs/TODO.md)
-- [EyePop Research](docs/eyepop_docs_overview.md)
-- [AGNTCY Research](docs/agntcy_docs_overview.md)
-- [Original Requirements](docs/start.txt)
-
-## Version Roadmap
-
-### MVP (Current)
-- OCR ingestion using Claude Vision
-- Basic pipeline setup (OCR → Triplets → Grading)
-- API endpoints for testing
-- AGNTCY-based orchestration
-- Local data storage (SQLite + JSON)
-- Local frontend without users, stateless
-- 3 grader agents (Math, English, Science)
-
-### V1 (Future)
-- Instructor & student portals with polished UI
-- Landing page for website
-- Locally hosted end-to-end with working API
-- Custom OCR training for improved accuracy
-- Agent observability setup (AGNTCY Observe SDK)
-- Cost and latency optimization
-- User login system
-- 5+ agents: Math, English, Science, History, MCQ, Reasoning specialists
-
-### V2 (Future)
-- Different input cost and latency optimizations
-- Cloud hosting (AWS/GCP/Azure)
-- Production backend infrastructure
-- Proper DevOps (CI/CD, monitoring, logging)
-- Agent chain-of-thought hooked to frontend for user transparency
+- [Production grading proposal](../docs/proposals/001-production-grading-architecture.md)
+- [Startup Guide](../STARTUP_GUIDE.md)
+- [Architecture](../docs/architecture.md), [ADRs](../docs/ADRs.md)
+- [System flow](../docs/system-flow.md), [User flow](../docs/user-flow.md)
+- [Original requirements](../docs/start.txt)
