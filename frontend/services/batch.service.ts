@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { Batch, BatchCreatePayload, Student } from "@/types/batch.types";
+import { Batch, BatchCreatePayload, RosterImportResult, Student } from "@/types/batch.types";
 
 export const batchService = {
     getAllByOrg: async (orgId: string): Promise<Batch[]> => {
@@ -20,7 +20,7 @@ export const batchService = {
         await api.post(`/batches/${batchId}/enroll`, { email });
     },
 
-    uploadStudents: async (batchId: string, file: File): Promise<any> => {
+    uploadStudents: async (batchId: string, file: File): Promise<RosterImportResult> => {
         const formData = new FormData();
         formData.append("file", file);
         const response = await api.post(`/batches/${batchId}/upload-students`, formData, {

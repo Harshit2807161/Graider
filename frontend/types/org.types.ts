@@ -11,8 +11,3 @@ export interface CreateOrgPayload {
     slug: string;
     description?: string;
 }
-
-export interface UpdateOrgPayload {
-    name?: string;
-    description?: string;
-}

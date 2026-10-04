@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { examService } from "@/services/exam.service";
-import { Exam, ExamCreate, QuestionCreate } from "@/types/exam.types";
+import { Exam, ExamCreate, QuestionSync } from "@/types/exam.types";
 
 interface ExamContextType {
     exams: Exam[];
@@ -14,7 +14,7 @@ interface ExamContextType {
     createExam: (payload: ExamCreate) => Promise<void>;
     updateExam: (id: string, payload: Partial<ExamCreate>) => Promise<void>;
     deleteExam: (id: string) => Promise<void>;
-    syncQuestions: (examId: string, questions: QuestionCreate[]) => Promise<void>;
+    syncQuestions: (examId: string, questions: QuestionSync[]) => Promise<void>;
 }
 
 const ExamContext = createContext<ExamContextType | undefined>(undefined);
@@ -89,9 +89,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const syncQuestions = async (examId: string, questions: QuestionCreate[]) => {
+    const syncQuestions = async (examId: string, questions: QuestionSync[]) => {
         try {
-            const updatedQuestions = await examService.syncQuestions(examId, questions);
+            await examService.syncQuestions(examId, questions);
             // Re-fetch exam details to get the full updated state including metadata
             const updatedExam = await examService.getExam(examId);
             setSelectedExam(updatedExam);

@@ -1,9 +1,9 @@
 import { api } from "@/lib/api";
-import { Org, CreateOrgPayload, UpdateOrgPayload } from "@/types/org.types";
+import { Org, CreateOrgPayload } from "@/types/org.types";
 
 export const orgService = {
     getAll: async (): Promise<Org[]> => {
-        const { data } = await api.get("/orgs");
+        const { data } = await api.get("/orgs/");
         return data;
     },
 
@@ -13,12 +13,7 @@ export const orgService = {
     },
 
     create: async (payload: CreateOrgPayload): Promise<Org> => {
-        const { data } = await api.post("/orgs", payload);
-        return data;
-    },
-
-    update: async (id: string, payload: UpdateOrgPayload): Promise<Org> => {
-        const { data } = await api.put(`/orgs/${id}`, payload);
+        const { data } = await api.post("/orgs/", payload);
         return data;
     },
 

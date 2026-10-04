@@ -1,5 +1,6 @@
 export type ExamStatus = 'draft' | 'published' | 'archived';
-export type SubmissionStatus = 'pending' | 'processing' | 'graded' | 'approved' | 'published' | 'failed';
+// Matches the backend enum values (uppercase)
+export type SubmissionStatus = 'PENDING' | 'PROCESSING' | 'GRADED' | 'APPROVED' | 'PUBLISHED' | 'FAILED';
 export type QuestionType = 'descriptive' | 'mcq' | 'problem';
 
 export interface Question {
@@ -20,7 +21,7 @@ export interface Exam {
     org_id: string;
     batch_id?: string;
     status: ExamStatus;
-    config: any;
+    config: Record<string, unknown>;
     created_by_membership_id: string;
     created_at: string;
     updated_at: string;
@@ -49,6 +50,7 @@ export interface Submission {
     max_score?: number;
     percentage?: number;
     status: SubmissionStatus;
+    current_step?: string | null;
     created_at: string;
     updated_at: string;
     answers?: SubmissionAnswer[];
@@ -68,4 +70,9 @@ export interface QuestionCreate {
     max_score: number;
     rubric_criteria?: string;
     question_type: QuestionType;
+}
+
+/** A question in a full-list sync: existing questions carry their id, new ones omit it. */
+export interface QuestionSync extends QuestionCreate {
+    id?: string;
 }
