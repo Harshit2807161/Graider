@@ -16,6 +16,11 @@ class QuestionBase(BaseModel):
 class QuestionCreate(QuestionBase):
     pass
 
+
+class QuestionSync(QuestionBase):
+    """A question in a full-list sync. Existing questions carry their id; new ones omit it."""
+    id: Optional[UUID] = None
+
 class QuestionUpdate(BaseModel):
     question_text: Optional[str] = None
     order_index: Optional[int] = None
@@ -92,6 +97,7 @@ class SubmissionBase(BaseModel):
     status: SubmissionStatus = SubmissionStatus.PENDING
 
 class SubmissionRead(SubmissionBase):
+    current_step: Optional[str] = None
     id: UUID
     created_at: datetime
     updated_at: datetime

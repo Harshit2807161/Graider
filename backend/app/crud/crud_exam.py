@@ -16,9 +16,12 @@ class CRUDExam(CRUDBase[Exam, ExamCreate, ExamUpdate]):
         )
         return db.exec(statement).all()
 
-    def get_by_batch(self, db: Session, *, batch_id: UUID, skip: int = 0, limit: int = 100) -> List[Exam]:
+    def get_by_batch(
+        self, db: Session, *, org_id: UUID, batch_id: UUID, skip: int = 0, limit: int = 100
+    ) -> List[Exam]:
         statement = (
             select(self.model)
+            .where(self.model.org_id == org_id)
             .where(self.model.batch_id == batch_id)
             .where(self.model.deleted_at == None)
             .offset(skip)
@@ -30,7 +33,10 @@ class CRUDExam(CRUDBase[Exam, ExamCreate, ExamUpdate]):
         """Fetch exams with the count of questions for display."""
         statement = (
             select(Exam, func.count(Question.id).label("question_count"))
-            .outerjoin(Question)
+            .outerjoin(
+                Question,
+                (Question.exam_id == Exam.id) & (Question.deleted_at == None),  # noqa: E711
+            )
             .where(Exam.org_id == org_id)
             .where(Exam.deleted_at == None)
             .group_by(Exam.id)
@@ -62,6 +68,7 @@ class CRUDSubmission(CRUDBase[Submission, SubmissionBase, SubmissionBase]):
             select(self.model)
             .where(self.model.exam_id == exam_id)
             .where(self.model.deleted_at == None)
+            .order_by(self.model.created_at.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -69,10 +76,13 @@ class CRUDSubmission(CRUDBase[Submission, SubmissionBase, SubmissionBase]):
 
 class CRUDSubmissionAnswer(CRUDBase[SubmissionAnswer, SubmissionAnswerBase, SubmissionAnswerBase]):
     def get_by_submission(self, db: Session, *, submission_id: UUID) -> List[SubmissionAnswer]:
+        """Answers in exam question order."""
         statement = (
             select(self.model)
+            .join(Question, Question.id == self.model.question_id)
             .where(self.model.submission_id == submission_id)
             .where(self.model.deleted_at == None)
+            .order_by(Question.order_index)
         )
         return db.exec(statement).all()
 
