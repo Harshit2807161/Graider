@@ -18,14 +18,17 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
+    # Re-deliver a task if the worker dies mid-run instead of losing it
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    worker_prefetch_multiplier=1,
 )
 
-@celery_app.task(name="grade_exam_task")
+@celery_app.task(name="grade_exam_task", soft_time_limit=30 * 60, time_limit=35 * 60)
 def grade_exam_task(submission_id: str, answers_path: str):
     """Celery background task to grade an exam submission asynchronously."""
     asyncio.run(run_grading_pipeline(
         submission_id=UUID(submission_id),
-        questions_path=None,  # Bypass OCR extractor, use DB instead
         answers_path=answers_path,
     ))
 
