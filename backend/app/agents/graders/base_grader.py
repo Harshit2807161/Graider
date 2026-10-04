@@ -1,15 +1,19 @@
 """Base grader class for specialized grading agents."""
 
-import json
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 
-from app.core.llm_provider import get_llm_provider
+from app.core.llm_protection import protector
+from app.core.llm_provider import LLMResponseError, extract_json_object, get_llm_provider
 from app.schemas.grading import GradingResult, Triplet
 
 logger = structlog.get_logger(__name__)
+
+
+class GradingError(RuntimeError):
+    """A grader could not produce a usable result for a question."""
 
 
 class BaseGrader(ABC):
@@ -18,6 +22,9 @@ class BaseGrader(ABC):
 
     Uses the configured LLM provider (OpenAI or Anthropic) for grading tasks.
     """
+
+    # Attempts per grade() call when the model returns unusable output
+    MAX_PARSE_ATTEMPTS = 2
 
     def __init__(self):
         self.provider = get_llm_provider(role="grader")
@@ -34,23 +41,23 @@ class BaseGrader(ABC):
         """System prompt for this grader."""
         pass
 
+    def _build_rubric_section(self, triplet: Triplet) -> str:
+        rubric = triplet.expected_answer
+        if not rubric or not (rubric.expected_points or rubric.sample_answer):
+            return "Rubric: none provided. Grade on correctness and completeness."
+
+        parts = []
+        if rubric.expected_points:
+            parts.append(
+                "Teacher's rubric (grade against this; it takes precedence over your own judgement):\n"
+                + "\n".join(f"- {point}" for point in rubric.expected_points)
+            )
+        if rubric.sample_answer:
+            parts.append(f"Model answer:\n{rubric.sample_answer}")
+        return "\n\n".join(parts)
+
     def _build_grading_prompt(self, triplet: Triplet) -> str:
         """Build the grading prompt for a triplet."""
-        rubric_section = ""
-        if triplet.expected_answer:
-            rubric_section = f"""
-Expected Points to Cover:
-{chr(10).join(f"- {point}" for point in triplet.expected_answer.expected_points)}
-
-Sample Answer:
-{triplet.expected_answer.sample_answer or "Not provided"}
-
-Scoring Guide:
-- Full marks: {triplet.expected_answer.scoring_guide.get('full', 1.0) * 100}% of max score
-- Partial marks: {triplet.expected_answer.scoring_guide.get('partial', 0.5) * 100}% of max score
-- Minimal marks: {triplet.expected_answer.scoring_guide.get('minimal', 0.2) * 100}% of max score
-"""
-
         return f"""Grade the following student answer.
 
 Question ({triplet.question_type.value}):
@@ -58,15 +65,15 @@ Question ({triplet.question_type.value}):
 
 Maximum Score: {triplet.max_score} points
 
-Student's Answer:
-{triplet.candidate_answer}
+{self._build_rubric_section(triplet)}
 
-{rubric_section}
+Student's Answer (transcribed from handwriting):
+{triplet.candidate_answer}
 
 Provide your grading as a JSON object with these fields:
 {{
   "score": <numeric score between 0 and {triplet.max_score}>,
-  "reasoning": "<detailed explanation of how you arrived at this score>",
+  "reasoning": "<detailed explanation of how you arrived at this score, citing the rubric>",
   "feedback": "<constructive feedback for the student on how to improve>",
   "confidence": <your confidence in this grading from 0.0 to 1.0>
 }}
@@ -80,93 +87,8 @@ Important:
 
 Return ONLY the JSON object."""
 
-    def _parse_llm_response(self, response_text: str) -> str:
-        """Strip markdown code fences from LLM response."""
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-        return response_text
-
-    async def grade(self, triplet: Triplet) -> GradingResult:
-        """
-        Grade a triplet and return the result.
-        """
-        prompt = self._build_grading_prompt(triplet)
-
-        logger.info(
-            "grader_start",
-            grader=self.name,
-            question_id=triplet.question_id,
-            max_score=triplet.max_score
-        )
-
-        from app.core.llm_protection import protector
-        protector.check_and_increment()
-
-        response_text = self.provider.chat(
-            system_prompt=self.system_prompt,
-            user_prompt=prompt,
-            max_tokens=2048,
-        )
-        response_text = self._parse_llm_response(response_text)
-
-        try:
-            data = json.loads(response_text)
-
-            score = float(data.get("score", 0))
-            score = max(0, min(score, triplet.max_score))
-
-            result = GradingResult(
-                question_id=triplet.question_id,
-                score=score,
-                max_score=triplet.max_score,
-                reasoning=data.get("reasoning", "No reasoning provided"),
-                feedback=data.get("feedback", "No feedback provided"),
-                grader=self.name,
-                confidence=float(data.get("confidence", 0.8))
-            )
-
-            logger.info(
-                "grader_complete",
-                grader=self.name,
-                question_id=triplet.question_id,
-                score=result.score,
-                confidence=result.confidence
-            )
-
-            return result
-
-        except json.JSONDecodeError as e:
-            logger.error(
-                "grader_parse_error",
-                grader=self.name,
-                question_id=triplet.question_id,
-                error=str(e),
-                response=response_text[:500]
-            )
-            return GradingResult(
-                question_id=triplet.question_id,
-                score=0,
-                max_score=triplet.max_score,
-                reasoning="Error parsing grader response",
-                feedback="Please review this answer manually",
-                grader=self.name,
-                confidence=0.0
-            )
-
-    async def grade_with_feedback(
-        self,
-        triplet: Triplet,
-        evaluator_feedback: str
-    ) -> GradingResult:
-        """
-        Re-grade a triplet incorporating evaluator feedback.
-        """
-        base_prompt = self._build_grading_prompt(triplet)
-
-        enhanced_prompt = f"""{base_prompt}
+    def _build_retry_prompt(self, triplet: Triplet, evaluator_feedback: str) -> str:
+        return f"""{self._build_grading_prompt(triplet)}
 
 IMPORTANT - Previous Grading Feedback:
 Your previous grading was reviewed and needs improvement. The evaluator provided this feedback:
@@ -181,63 +103,104 @@ Please carefully consider this feedback and provide an improved grading that:
 
 Return ONLY the JSON object with your improved grading."""
 
+    def _parse_result(self, data: dict[str, Any], triplet: Triplet) -> GradingResult:
+        """Validate the model's JSON. Raises LLMResponseError if it is unusable."""
+        try:
+            score = float(data["score"])
+        except (KeyError, TypeError, ValueError):
+            raise LLMResponseError(f"Missing or non-numeric 'score': {data.get('score')!r}")
+
+        if score < 0 or score > triplet.max_score:
+            logger.warning(
+                "grader_score_out_of_range",
+                grader=self.name,
+                question_id=triplet.question_id,
+                score=score,
+                max_score=triplet.max_score,
+            )
+            score = max(0.0, min(score, triplet.max_score))
+
+        try:
+            confidence = float(data.get("confidence", 0.5))
+        except (TypeError, ValueError):
+            confidence = 0.5
+        confidence = max(0.0, min(confidence, 1.0))
+
+        reasoning = str(data.get("reasoning") or "").strip()
+        if not reasoning:
+            raise LLMResponseError("Grader returned no reasoning")
+
+        return GradingResult(
+            question_id=triplet.question_id,
+            score=score,
+            max_score=triplet.max_score,
+            reasoning=reasoning,
+            feedback=str(data.get("feedback") or "").strip() or "No feedback provided",
+            grader=self.name,
+            confidence=confidence,
+        )
+
+    async def _run(self, triplet: Triplet, prompt: str) -> GradingResult:
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.MAX_PARSE_ATTEMPTS + 1):
+            protector.check_and_increment()
+            try:
+                response_text = await self.provider.achat(
+                    system_prompt=self.system_prompt,
+                    user_prompt=prompt,
+                    max_tokens=2048,
+                )
+                result = self._parse_result(extract_json_object(response_text), triplet)
+            except LLMResponseError as e:
+                last_error = e
+                logger.warning(
+                    "grader_unusable_response",
+                    grader=self.name,
+                    question_id=triplet.question_id,
+                    attempt=attempt,
+                    error=str(e),
+                )
+                continue
+
+            logger.info(
+                "grader_complete",
+                grader=self.name,
+                question_id=triplet.question_id,
+                score=result.score,
+                confidence=result.confidence,
+                attempt=attempt,
+            )
+            return result
+
+        # Never record a made-up score: a parse failure used to be saved as a real 0.
+        raise GradingError(
+            f"{self.name} could not grade question {triplet.question_id}: {last_error}"
+        )
+
+    async def grade(self, triplet: Triplet) -> GradingResult:
+        """
+        Grade a triplet and return the result.
+        """
+        logger.info(
+            "grader_start",
+            grader=self.name,
+            question_id=triplet.question_id,
+            max_score=triplet.max_score
+        )
+        return await self._run(triplet, self._build_grading_prompt(triplet))
+
+    async def grade_with_feedback(
+        self,
+        triplet: Triplet,
+        evaluator_feedback: str
+    ) -> GradingResult:
+        """
+        Re-grade a triplet incorporating evaluator feedback.
+        """
         logger.info(
             "grader_retry_with_feedback",
             grader=self.name,
             question_id=triplet.question_id,
             feedback_length=len(evaluator_feedback)
         )
-
-        from app.core.llm_protection import protector
-        protector.check_and_increment()
-
-        response_text = self.provider.chat(
-            system_prompt=self.system_prompt,
-            user_prompt=enhanced_prompt,
-            max_tokens=2048,
-        )
-        response_text = self._parse_llm_response(response_text)
-
-        try:
-            data = json.loads(response_text)
-
-            score = float(data.get("score", 0))
-            score = max(0, min(score, triplet.max_score))
-
-            result = GradingResult(
-                question_id=triplet.question_id,
-                score=score,
-                max_score=triplet.max_score,
-                reasoning=data.get("reasoning", "No reasoning provided"),
-                feedback=data.get("feedback", "No feedback provided"),
-                grader=self.name,
-                confidence=float(data.get("confidence", 0.8))
-            )
-
-            logger.info(
-                "grader_retry_complete",
-                grader=self.name,
-                question_id=triplet.question_id,
-                score=result.score,
-                confidence=result.confidence
-            )
-
-            return result
-
-        except json.JSONDecodeError as e:
-            logger.error(
-                "grader_retry_parse_error",
-                grader=self.name,
-                question_id=triplet.question_id,
-                error=str(e),
-                response=response_text[:500]
-            )
-            return GradingResult(
-                question_id=triplet.question_id,
-                score=0,
-                max_score=triplet.max_score,
-                reasoning="Error parsing grader response on retry",
-                feedback="Please review this answer manually",
-                grader=self.name,
-                confidence=0.0
-            )
+        return await self._run(triplet, self._build_retry_prompt(triplet, evaluator_feedback))

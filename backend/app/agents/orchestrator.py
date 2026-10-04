@@ -13,9 +13,9 @@ import json
 import structlog
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
-from langgraph.checkpoint.memory import MemorySaver
 
-from app.core.llm_provider import get_llm_provider
+from app.core.llm_protection import protector
+from app.core.llm_provider import LLMResponseError, extract_json_object, get_llm_provider
 from app.schemas.grading import GradingResult, QuestionType, Subject, Triplet
 from app.core.langgraph_setup import (
     GradingState,
@@ -23,12 +23,12 @@ from app.core.langgraph_setup import (
     create_initial_state,
     create_batch_initial_state,
     subject_to_grader,
-    get_memory_saver,
 )
 from .graders.math_grader import MathGrader
 from .graders.english_grader import EnglishGrader
 from .graders.science_grader import ScienceGrader
 from .graders.history_grader import HistoryGrader
+from .graders.general_grader import GeneralGrader
 
 logger = structlog.get_logger(__name__)
 
@@ -51,13 +51,14 @@ class LangGraphOrchestrator:
             "english_grader": EnglishGrader(),
             "science_grader": ScienceGrader(),
             "history_grader": HistoryGrader(),
-            "general_grader": MathGrader(),  # Default fallback to Math on failure
+            "general_grader": GeneralGrader(),
         }
 
-        # Build the graph
+        # Build the graph. No checkpointer: each triplet is graded in one shot, and the
+        # previous MemorySaver keyed threads by question id, so state from one submission
+        # leaked into the next grading of the same question and memory grew without bound.
         self.graph = self._build_graph()
-        self.memory = get_memory_saver()
-        self.compiled_graph = self.graph.compile(checkpointer=self.memory)
+        self.compiled_graph = self.graph.compile()
 
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph state graph for grading."""
@@ -107,7 +108,7 @@ class LangGraphOrchestrator:
 
     # ===== Node Implementations =====
 
-    def _tag_triplet_node(self, state: GradingState) -> dict:
+    async def _tag_triplet_node(self, state: GradingState) -> dict:
         """Tag the triplet with subject and question type using the LLM."""
         triplet_data = state["triplet"]
 
@@ -133,27 +134,20 @@ Consider:
 
 Return ONLY the JSON object."""
 
-        from app.core.llm_protection import protector
         protector.check_and_increment()
 
-        response_text = self.tagger_provider.chat(
-            system_prompt="You are a question classifier. Respond only with valid JSON.",
-            user_prompt=prompt,
-            max_tokens=256,
-        )
-
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-
         try:
-            tags = json.loads(response_text)
-            subject_tag = tags.get("subject", "general")
-            question_type_tag = tags.get("question_type", "descriptive")
-        except json.JSONDecodeError:
-            logger.warning("tag_parse_error", response=response_text[:200])
+            response_text = await self.tagger_provider.achat(
+                system_prompt="You are a question classifier. Respond only with valid JSON.",
+                user_prompt=prompt,
+                max_tokens=256,
+            )
+            tags = extract_json_object(response_text)
+            subject_tag = str(tags.get("subject", "general")).lower()
+            question_type_tag = str(tags.get("question_type", "descriptive")).lower()
+        except LLMResponseError as e:
+            # Tagging only picks a grader persona; fall back to the general grader
+            logger.warning("tag_parse_error", error=str(e))
             subject_tag = "general"
             question_type_tag = "descriptive"
 
@@ -238,7 +232,7 @@ Return ONLY the JSON object."""
     async def _general_grader_node(self, state: GradingState) -> dict:
         return await self._grade_with_grader(state, "general_grader")
 
-    def _evaluate_result_node(self, state: GradingState) -> dict:
+    async def _evaluate_result_node(self, state: GradingState) -> dict:
         """Evaluate the grading result for quality."""
         triplet_data = state["triplet"]
         result = state["current_result"]
@@ -273,27 +267,19 @@ Respond with JSON:
   "improvement_suggestions": "Specific suggestions if not acceptable"
 }}"""
 
-        from app.core.llm_protection import protector
         protector.check_and_increment()
 
-        response_text = self.evaluator_provider.chat(
-            system_prompt="You are a grading quality evaluator. Respond only with valid JSON.",
-            user_prompt=prompt,
-            max_tokens=512,
-        )
-
-        if response_text.startswith("```"):
-            response_text = response_text.split("```")[1]
-            if response_text.startswith("json"):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
-
         try:
-            evaluation = json.loads(response_text)
-            is_acceptable = evaluation.get("is_acceptable", True)
-            feedback = evaluation.get("improvement_suggestions", "")
-        except json.JSONDecodeError:
-            logger.warning("evaluation_parse_error", response=response_text[:200])
+            response_text = await self.evaluator_provider.achat(
+                system_prompt="You are a grading quality evaluator. Respond only with valid JSON.",
+                user_prompt=prompt,
+                max_tokens=512,
+            )
+            evaluation = extract_json_object(response_text)
+            is_acceptable = evaluation.get("is_acceptable", True) is not False
+            feedback = str(evaluation.get("improvement_suggestions") or "")
+        except LLMResponseError as e:
+            logger.warning("evaluation_parse_error", error=str(e))
             is_acceptable = True
             feedback = ""
 
@@ -363,24 +349,13 @@ Respond with JSON:
         Grade a single triplet through the LangGraph pipeline.
         """
         initial_state = create_initial_state(triplet)
-
-        config = {"configurable": {"thread_id": triplet.question_id}}
-        final_state = await self.compiled_graph.ainvoke(initial_state, config)
+        final_state = await self.compiled_graph.ainvoke(initial_state)
 
         result_dict = final_state.get("final_result") or final_state.get("current_result")
-
-        if result_dict:
-            return GradingResult(**result_dict)
-
-        return GradingResult(
-            question_id=triplet.question_id,
-            score=0,
-            max_score=triplet.max_score,
-            reasoning="Error: Unable to complete grading",
-            feedback="Please review this answer manually",
-            grader="orchestrator",
-            confidence=0.0
-        )
+        if not result_dict:
+            # Don't invent a score; let the pipeline mark the submission as failed
+            raise RuntimeError(f"Grading graph produced no result for question {triplet.question_id}")
+        return GradingResult(**result_dict)
 
     async def grade_batch(self, triplets: list[Triplet]) -> list[GradingResult]:
         """

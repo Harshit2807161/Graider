@@ -4,14 +4,61 @@ Provider-agnostic LLM abstraction layer.
 Supports OpenAI and Anthropic. Switch providers via LLM_PROVIDER in .env.
 """
 
+import asyncio
+import json
+import re
 from abc import ABC, abstractmethod
+from typing import Any
+
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 
+class LLMResponseError(ValueError):
+    """The model's response could not be used (refusal, truncation, or unparseable output)."""
+
+
+def extract_json_object(text: str) -> dict[str, Any]:
+    """
+    Parse the JSON object in a model response.
+
+    Accepts bare JSON, JSON in a ```json fence, or JSON surrounded by prose.
+    Raises LLMResponseError if no JSON object can be parsed.
+    """
+    candidate = text.strip()
+    fence = re.search(r"```(?:json)?\s*(.*?)```", candidate, re.DOTALL)
+    if fence:
+        candidate = fence.group(1).strip()
+    try:
+        data = json.loads(candidate)
+    except json.JSONDecodeError:
+        start, end = candidate.find("{"), candidate.rfind("}")
+        if start == -1 or end <= start:
+            raise LLMResponseError(f"No JSON object in model response: {text[:200]!r}")
+        try:
+            data = json.loads(candidate[start:end + 1])
+        except json.JSONDecodeError as e:
+            raise LLMResponseError(f"Invalid JSON in model response: {e}") from e
+    if not isinstance(data, dict):
+        raise LLMResponseError("Model response JSON is not an object")
+    return data
+
+
 class LLMProvider(ABC):
     """Abstract base for all LLM providers."""
+
+    @abstractmethod
+    def chat(self, system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> str:
+        ...
+
+    # The SDK clients used below are synchronous; run them in a worker thread so
+    # async callers (graders, OCR) don't block the event loop.
+    async def achat(self, system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> str:
+        return await asyncio.to_thread(self.chat, system_prompt, user_prompt, max_tokens)
+
+    async def achat_vision(self, prompt: str, content_blocks: list[dict], max_tokens: int = 4096) -> str:
+        return await asyncio.to_thread(self.chat_vision, prompt, content_blocks, max_tokens)
 
     @abstractmethod
     def chat_vision(self, prompt: str, content_blocks: list[dict], max_tokens: int = 4096) -> str:
@@ -30,18 +77,55 @@ class LLMProvider(ABC):
 class OpenAIProvider(LLMProvider):
     """OpenAI (GPT) provider."""
 
+    # Reasoning models (gpt-5*, o-series) spend part of max_completion_tokens on hidden
+    # reasoning; small caps (e.g. 256 for tagging) can leave nothing for the answer.
+    REASONING_MIN_COMPLETION_TOKENS = 4096
+
     def __init__(self, api_key: str, model: str):
         from openai import OpenAI
         self.client = OpenAI(api_key=api_key)
         self.model = model
 
+    @property
+    def _is_reasoning_model(self) -> bool:
+        name = self.model.lower()
+        return name.startswith(("o1", "o3", "o4")) or "gpt-5" in name
+
+    def _system_role(self) -> str:
+        # Reasoning models prefer the 'developer' role over 'system'
+        return "developer" if self._is_reasoning_model else "system"
+
+    def _completion_tokens(self, max_tokens: int) -> int:
+        if self._is_reasoning_model:
+            return max(max_tokens, self.REASONING_MIN_COMPLETION_TOKENS)
+        return max_tokens
+
+    def _complete(self, messages: list[dict], max_tokens: int, json_mode: bool = False) -> str:
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_completion_tokens": self._completion_tokens(max_tokens),
+            "messages": messages,
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = self.client.chat.completions.create(**kwargs)
+        choice = response.choices[0]
+        content = (choice.message.content or "").strip()
+        if not content:
+            raise LLMResponseError(
+                f"Model returned no content (finish_reason={choice.finish_reason})"
+            )
+        if choice.finish_reason == "length":
+            raise LLMResponseError("Model response was truncated (hit max_completion_tokens)")
+        logger.debug("llm_response", model=self.model, content_preview=content[:200])
+        return content
+
     def chat_vision(self, prompt: str, content_blocks: list[dict], max_tokens: int = 4096) -> str:
         messages = []
         if prompt:
-            # Some newer models prefer 'developer' role over 'system' 
-            role = "developer" if "o1" in self.model.lower() or "gpt-5" in self.model.lower() else "system"
-            messages.append({"role": role, "content": prompt})
-        
+            messages.append({"role": self._system_role(), "content": prompt})
+
         oai_content = []
         for block in content_blocks:
             if block["type"] == "text":
@@ -53,41 +137,18 @@ class OpenAIProvider(LLMProvider):
                         "url": f"data:{block['media_type']};base64,{block['data']}"
                     }
                 })
-        
+
         messages.append({"role": "user", "content": oai_content})
-        
-        response = self.client.chat.completions.create(
-            model=self.model,
-            max_completion_tokens=max_tokens,
-            messages=messages,
-        )
-        content = response.choices[0].message.content or ""
-        logger.debug("llm_vision_response", model=self.model, content_preview=content[:200])
-        return content.strip()
+        return self._complete(messages, max_tokens)
 
     def chat(self, system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> str:
-        # Some newer models prefer 'developer' role over 'system'
-        role = "developer" if "o1" in self.model.lower() or "gpt-5" in self.model.lower() else "system"
-        
-        # Use JSON mode if requested in system prompt
-        response_format = {"type": "json_object"} if "JSON" in system_prompt.upper() else None
-        
-        response = self.client.chat.completions.create(
-            model=self.model,
-            max_completion_tokens=max_tokens,
-            response_format=response_format,
-            messages=[
-                {"role": role, "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        content = response.choices[0].message.content or ""
-        # If no content, try reasoning_content (for some o1 models)
-        if not content and hasattr(response.choices[0].message, 'reasoning_content'):
-            content = getattr(response.choices[0].message, 'reasoning_content') or ""
-            
-        logger.debug("llm_chat_response", model=self.model, content_preview=content[:200])
-        return content.strip()
+        messages = [
+            {"role": self._system_role(), "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        # JSON mode requires the word "JSON" to appear in the messages
+        json_mode = "JSON" in system_prompt.upper()
+        return self._complete(messages, max_tokens, json_mode=json_mode)
 
 
 class AnthropicProvider(LLMProvider):
@@ -119,17 +180,26 @@ class AnthropicProvider(LLMProvider):
             system=prompt,
             messages=[{"role": "user", "content": anth_content}],
         )
-        return response.content[0].text.strip()
+        return self._text_from(response)
 
     def chat(self, system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> str:
-        # ... (unchanged)
         response = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
-        return response.content[0].text.strip()
+        return self._text_from(response)
+
+    def _text_from(self, response: Any) -> str:
+        # Current Claude models may return thinking blocks before the text block,
+        # so content[0] is not necessarily text.
+        if response.stop_reason == "refusal":
+            raise LLMResponseError("Model declined the request (stop_reason=refusal)")
+        if response.stop_reason == "max_tokens":
+            raise LLMResponseError("Model response was truncated (hit max_tokens)")
+        text = "".join(block.text for block in response.content if block.type == "text")
+        return text.strip()
 
 
 # ===== Factory =====

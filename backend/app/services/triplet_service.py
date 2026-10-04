@@ -27,8 +27,10 @@ class TripletService:
         math_keywords = [
             "calculate", "solve", "equation", "formula", "graph",
             "derivative", "integral", "algebra", "geometry", "trigonometry",
-            "∫", "∑", "√", "=", "+", "-", "×", "÷", "π",
-            "number", "value", "x =", "y =", "prove that"
+            # Single "-", "+", "=" matched almost any text (e.g. "well-known"), so only
+            # unambiguous symbols are used here.
+            "∫", "∑", "√", "×", "÷", "π",
+            "x =", "y =", "prove that"
         ]
         if any(kw in text_lower for kw in math_keywords):
             return Subject.MATH

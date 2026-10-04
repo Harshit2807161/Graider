@@ -1,6 +1,6 @@
 """Main grading pipeline service."""
 
-import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from uuid import UUID
@@ -8,325 +8,165 @@ from uuid import UUID
 import structlog
 from sqlmodel import Session
 
+from app.core.config import get_settings
+from app.core.constants import SubmissionStatus
 from app.core.db import engine
+from app.core.llm_protection import protector
 from app import crud
-from app.schemas.grading import ProcessingStatus, Answer, GradingResult, Triplet
-from app.models.org import Enrollment
-from app.models.exam import SubmissionStatus
+from app.models.exam import Question as DBQuestion, Submission, SubmissionAnswer
+from app.schemas.grading import (
+    Answer,
+    GradingResult,
+    Question as GraderQuestion,
+    QuestionType as GraderQuestionType,
+    RubricCriteria,
+)
 from .ocr_service import get_ocr_service
 from .triplet_service import get_triplet_service
 from app.agents.orchestrator import get_orchestrator
+from app.models.base import utcnow
 
 logger = structlog.get_logger(__name__)
 
 
-def is_combined_document(questions_path: str, answers_path: str) -> bool:
-    """Check if this is a combined document upload."""
-    # Combined if paths are the same and contain "combined" in the path
-    if questions_path == answers_path:
-        return "combined" in questions_path.lower()
-    return False
+def question_label(index: int) -> str:
+    """Short, stable id ("Q1", "Q2", ...) that the OCR model can echo back reliably."""
+    return f"Q{index + 1}"
 
 
-async def run_grading_pipeline(
-    submission_id: UUID,
-    answers_path: str,
-    questions_path: Optional[str] = None,
-    rubric_path: Optional[str] = None,
-) -> None:
+def rubric_from_text(label: str, rubric_text: Optional[str]) -> Optional[RubricCriteria]:
+    """Turn a teacher's free-text rubric into rubric criteria (one point per non-empty line)."""
+    if not rubric_text or not rubric_text.strip():
+        return None
+    points = [line.strip(" \t-•*") for line in rubric_text.splitlines()]
+    points = [p for p in points if p]
+    return RubricCriteria(question_id=label, expected_points=points)
+
+
+def _to_grader_question(label: str, q: DBQuestion) -> GraderQuestion:
+    return GraderQuestion(
+        id=label,
+        text=q.question_text,
+        max_score=q.max_score,
+        question_type=GraderQuestionType(q.question_type.value),
+    )
+
+
+def _set_progress(db: Session, submission: Submission, step: str, **fields) -> None:
+    crud.submission.update(db, db_obj=submission, obj_in={"current_step": step, **fields})
+
+
+async def run_grading_pipeline(submission_id: UUID, answers_path: str) -> None:
     """
-    Run the complete grading pipeline using PostgreSQL.
+    Grade one submission against its exam's questions (stored in the database).
+
+    Steps: OCR the answer sheet -> pair answers with questions + rubrics -> grade each
+    pair with the agent graph -> save per-question results and totals.
     """
+    settings = get_settings()
     with Session(engine) as db:
+        submission = crud.submission.get(db, id=submission_id)
+        if not submission:
+            logger.error("submission_not_found", submission_id=str(submission_id))
+            return
+
         try:
-            # Fetch submission
-            submission = crud.submission.get(db, id=submission_id)
-            if not submission:
-                logger.error("submission_not_found", submission_id=str(submission_id))
-                return
-
-            # ===== Step 1: OCR Processing =====
-            logger.info("pipeline_step", step="ocr", submission_id=str(submission_id))
-            crud.submission.update(
-                db,
-                db_obj=submission,
-                obj_in={"status": "PROCESSING", "current_step": "Analyzing documents..."}
-            )
-
-            ocr_service = get_ocr_service()
-
-            combined = False
-            if questions_path:
-                combined = is_combined_document(questions_path, answers_path)
-            
-            questions = []
-
-            if combined:
-                # Combined document: extract both questions and answers together
-                logger.info(
-                    "combined_document_detected",
-                    submission_id=str(submission_id),
-                    path=questions_path
-                )
-
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": "Extracting Q&A from combined document..."}
-                )
-
-                questions, answers = await ocr_service.extract_questions_and_answers(
-                    Path(questions_path)
-                )
-
-                if not questions:
-                    raise ValueError(
-                        "Failed to extract questions from combined document. "
-                        "Make sure the document contains visible question text."
-                    )
-
-                if not answers:
-                    logger.warning(
-                        "no_answers_in_combined",
-                        submission_id=str(submission_id),
-                        question_count=len(questions)
-                    )
-                    # Create placeholder answers for unanswered questions
-                    answers = [
-                        Answer(
-                            question_id=q.id,
-                            text="No answer provided",
-                            confidence=0.0
-                        )
-                        for q in questions
-                    ]
-
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": f"Extracted {len(questions)} questions and {len(answers)} answers"}
-                )
-
-            elif questions_path:
-                # Separate documents: extract questions first, then answers
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": "Extracting text from question paper..."}
-                )
-
-                # Extract questions
-                questions = await ocr_service.extract_questions(Path(questions_path))
-                if not questions:
-                    raise ValueError(
-                        "Failed to extract questions from document. "
-                        "Make sure the question paper contains visible question text."
-                    )
-
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": f"Extracted {len(questions)} questions. Processing answers..."}
-                )
-            else:
-                # No OCR needed for questions; load directly from DB
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": "Loading questions from database..."}
-                )
-                
-                db_questions = submission.exam.questions
-                if not db_questions:
-                    raise ValueError(
-                        f"Exam {submission.exam.id} has no questions configured in the database, "
-                        "and no question paper document was uploaded."
-                    )
-                
-                # Using the core db model correctly - Mapping to OCR agent's Question schema (app.schemas.grading.Question)
-                from app.schemas.grading import Question as GraderQuestion
-                questions = [GraderQuestion(
-                    id=str(q.id),
-                    text=q.question_text,
-                    max_score=q.max_score,
-                    question_type=q.question_type
-                ) for q in db_questions]
-                
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": f"Loaded {len(questions)} questions. Processing student answers..."}
-                )
-
-            # Continue to extract answers (we ONLY do answer extraction OCR below if we found questions)
-            if questions and not combined:
-                # Extract answers
-                answers = await ocr_service.extract_answers(Path(answers_path), questions)
-                if not answers:
-                    logger.warning(
-                        "no_answers_extracted",
-                        submission_id=str(submission_id),
-                        question_count=len(questions)
-                    )
-                    # Create placeholder answers
-                    answers = [
-                        Answer(
-                            question_id=q.id,
-                            text="No answer provided",
-                            confidence=0.0
-                        )
-                        for q in questions
-                    ]
-
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": f"Extracted {len(answers)} answers. Processing rubric..."}
-                )
-
-            # Extract rubric if provided (In new flow, we might fetch it from DB later)
-            rubric_criteria = []
-            if rubric_path:
-                logger.info(
-                    "rubric_extraction_starting",
-                    submission_id=str(submission_id),
-                    rubric_path=rubric_path,
-                    rubric_path_exists=Path(rubric_path).exists()
-                )
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": "Extracting rubric criteria..."}
-                )
-                rubric_criteria = await ocr_service.extract_rubric(Path(rubric_path))
-                logger.info(
-                    "rubric_extracted",
-                    submission_id=str(submission_id),
-                    criteria_count=len(rubric_criteria),
-                    rubric_path=rubric_path
-                )
-            else:
-                logger.info(
-                    "no_rubric_path_provided",
-                    submission_id=str(submission_id)
-                )
-
-            # ===== Step 2: Triplet Formation =====
-            logger.info("pipeline_step", step="triplets", submission_id=str(submission_id))
-            crud.submission.update(
-                db,
-                db_obj=submission,
-                obj_in={"current_step": "Forming question-answer-rubric triplets"}
-            )
-
-            triplet_service = get_triplet_service()
-            triplets = triplet_service.form_triplets(questions, answers, rubric_criteria)
-
-            if not triplets:
-                raise ValueError(
-                    "Failed to form triplets. Match check failed."
-                )
-
-            crud.submission.update(
-                db,
-                db_obj=submission,
-                obj_in={"current_step": f"Formed {len(triplets)} triplets. Starting grading..."}
-            )
-
-            # ===== Step 3: Agent Grading =====
-            logger.info("pipeline_step", step="grading", submission_id=str(submission_id))
-
-            orchestrator = get_orchestrator()
-            results: list[GradingResult] = []
-
-            for i, triplet in enumerate(triplets):
-                crud.submission.update(
-                    db,
-                    db_obj=submission,
-                    obj_in={"current_step": f"Grading question {triplet.question_id} ({i + 1}/{len(triplets)})"}
-                )
-
-                result = await orchestrator.grade_triplet(triplet)
-                results.append(result)
-
-                logger.info(
-                    "question_graded",
-                    submission_id=str(submission_id),
-                    question_id=triplet.question_id,
-                    score=result.score,
-                    max_score=result.max_score,
-                    grader=result.grader
-                )
-
-            # ===== Step 4: Save Results to PostgreSQL =====
-            logger.info("pipeline_step", step="save_results", submission_id=str(submission_id))
-
-            total_score = sum(r.score for r in results)
-            max_total_score = sum(r.max_score for r in results)
-            percentage = (total_score / max_total_score * 100) if max_total_score > 0 else 0
-
-            # Clear existing answers if any (to make it idempotent)
-            existing_answers = crud.submission_answer.get_by_submission(db, submission_id=submission_id)
-            for old_ans in existing_answers:
-                db.delete(old_ans)
-            db.commit() # Commit deletions before adding new ones
-
-            # Map Question IDs to DB Question UUIDs
-            # For MVP, we'll try to match by order_index or partial name
-            db_questions = crud.question.get_by_exam(db, exam_id=submission.exam_id)
-            q_map = {q.order_index: q.id for q in db_questions}
-            # Fallback map by ID string if possible
-            if not q_map:
-                q_map = {str(i+1): q.id for i, q in enumerate(db_questions)}
-
-            for i, res in enumerate(results):
-                # Try to find corresponding DB question
-                q_id = q_map.get(i + 1) or q_map.get(str(i+1))
-                if not q_id and db_questions:
-                    q_id = db_questions[min(i, len(db_questions)-1)].id
-
-                crud.submission_answer.create(
-                    db,
-                    obj_in={
-                        "submission_id": submission_id,
-                        "question_id": q_id,
-                        "student_answer_text": res.question_id, # Simplified for now
-                        "score": res.score,
-                        "feedback": res.feedback,
-                        "reasoning": res.reasoning
-                    }
-                )
-
-            # Update final submission status
-            crud.submission.update(
-                db,
-                db_obj=submission,
-                obj_in={
-                    "status": "GRADED",
-                    "total_score": total_score,
-                    "max_score": max_total_score,
-                    "percentage": percentage,
-                    "current_step": "Grading complete"
-                }
-            )
-
-            logger.info(
-                "pipeline_complete",
-                submission_id=str(submission_id),
-                score=f"{total_score}/{max_total_score}"
-            )
-
+            with protector.budget(settings.LLM_MAX_CALLS_PER_SUBMISSION):
+                await _grade(db, submission, Path(answers_path))
         except Exception as e:
             logger.exception("pipeline_error", submission_id=str(submission_id), error=str(e))
+            # A failed flush/commit leaves the session unusable until rolled back
+            db.rollback()
             try:
-                if 'submission' in dir() and submission is not None:
-                    crud.submission.update(
-                        db,
-                        db_obj=submission,
-                        obj_in={
-                            "status": "FAILED",
-                            "current_step": f"Error: {str(e)[:400]}"
-                        }
-                    )
+                submission = crud.submission.get(db, id=submission_id)
+                crud.submission.update(
+                    db,
+                    db_obj=submission,
+                    obj_in={
+                        "status": SubmissionStatus.FAILED,
+                        "current_step": f"Error: {str(e)[:400]}",
+                    },
+                )
             except Exception:
-                logger.error("failed_to_update_submission_status", submission_id=str(submission_id))
+                logger.exception("failed_to_update_submission_status", submission_id=str(submission_id))
+
+
+async def _grade(db: Session, submission: Submission, answers_path: Path) -> None:
+    submission_id = str(submission.id)
+    _set_progress(db, submission, "Loading questions...", status=SubmissionStatus.PROCESSING)
+
+    # Ordered, non-deleted questions (exam.questions includes soft-deleted rows)
+    db_questions = crud.question.get_by_exam(db, exam_id=submission.exam_id)
+    if not db_questions:
+        raise ValueError("This exam has no questions configured.")
+
+    labels = [question_label(i) for i in range(len(db_questions))]
+    db_question_by_label = dict(zip(labels, db_questions))
+    questions = [_to_grader_question(label, q) for label, q in db_question_by_label.items()]
+    rubrics = [
+        r for r in (rubric_from_text(label, q.rubric_criteria) for label, q in db_question_by_label.items())
+        if r is not None
+    ]
+
+    # ===== Step 1: OCR =====
+    logger.info("pipeline_step", step="ocr", submission_id=submission_id)
+    _set_progress(db, submission, f"Reading answer sheet for {len(questions)} questions...")
+    answers: list[Answer] = await get_ocr_service().extract_answers(answers_path, questions)
+    if not answers:
+        # The model read the sheet but matched nothing; grading would award all zeros.
+        raise ValueError(
+            "No answers could be matched to the exam's questions. "
+            "Check that the uploaded file is this exam's answer sheet."
+        )
+
+    # ===== Step 2: Triplet Formation =====
+    logger.info("pipeline_step", step="triplets", submission_id=submission_id)
+    triplets = get_triplet_service().form_triplets(questions, answers, rubrics)
+    answer_text_by_label = {t.question_id: t.candidate_answer for t in triplets}
+    _set_progress(db, submission, f"Matched {len(answers)} answers. Starting grading...")
+
+    # ===== Step 3: Agent Grading =====
+    logger.info("pipeline_step", step="grading", submission_id=submission_id)
+    orchestrator = get_orchestrator()
+    results: list[GradingResult] = []
+    for i, triplet in enumerate(triplets):
+        _set_progress(db, submission, f"Grading question {triplet.question_id} ({i + 1}/{len(triplets)})")
+        result = await orchestrator.grade_triplet(triplet)
+        results.append(result)
+        logger.info(
+            "question_graded",
+            submission_id=submission_id,
+            question_id=triplet.question_id,
+            score=result.score,
+            max_score=result.max_score,
+            grader=result.grader,
+        )
+
+    # ===== Step 4: Save results (one transaction) =====
+    logger.info("pipeline_step", step="save_results", submission_id=submission_id)
+    for old_answer in crud.submission_answer.get_by_submission(db, submission_id=submission.id):
+        db.delete(old_answer)
+
+    for result in results:
+        db_question = db_question_by_label[result.question_id]
+        db.add(SubmissionAnswer(
+            submission_id=submission.id,
+            question_id=db_question.id,
+            student_answer_text=answer_text_by_label.get(result.question_id),
+            score=result.score,
+            feedback=result.feedback,
+            reasoning=result.reasoning,
+        ))
+
+    total_score = sum(r.score for r in results)
+    max_total_score = sum(q.max_score for q in db_questions)
+    submission.status = SubmissionStatus.GRADED
+    submission.total_score = total_score
+    submission.max_score = max_total_score
+    submission.percentage = (total_score / max_total_score * 100) if max_total_score > 0 else 0
+    submission.current_step = "Grading complete"
+    submission.updated_at = utcnow()
+    db.add(submission)
+    db.commit()
+
+    logger.info("pipeline_complete", submission_id=submission_id, score=f"{total_score}/{max_total_score}")

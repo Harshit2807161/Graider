@@ -5,11 +5,11 @@ import json
 from pathlib import Path
 from typing import Optional
 
-import anthropic
 import structlog
 
 from app.core.config import get_settings
-from app.core.llm_provider import get_llm_provider
+from app.core.llm_protection import protector
+from app.core.llm_provider import LLMResponseError, extract_json_object, get_llm_provider
 from app.schemas.grading import Answer, Question, RubricCriteria, Subject, Triplet
 from .pdf_service import process_directory_files_async, get_pdf_service
 
@@ -17,6 +17,10 @@ logger = structlog.get_logger(__name__)
 
 # Maximum number of images to send in a single API request
 MAX_IMAGES_PER_REQUEST = 10
+
+
+class OCRError(RuntimeError):
+    """Answer sheets could not be transcribed."""
 
 
 class OCRService:
@@ -83,86 +87,36 @@ class OCRService:
 
     async def _call_vision_api(self, content: list[dict], max_tokens: int = 8192) -> str:
         """
-        Call Claude Vision API with error handling for large requests.
+        Send images + instructions to the vision model.
 
-        Handles 413 (request too large) errors by retrying with fewer images.
+        The last text block is used as the instruction prompt; everything else is content.
         """
+        prompt = ""
+        content_blocks = list(content)
+        if content_blocks and content_blocks[-1]["type"] == "text":
+            prompt = content_blocks.pop()["text"]
+
+        logger.info(
+            "vision_api_call_start",
+            content_items=len(content_blocks),
+            image_count=sum(1 for c in content_blocks if c.get("type") == "image"),
+            max_tokens=max_tokens,
+        )
+        protector.check_and_increment()
         try:
-            logger.info(
-                "vision_api_call_start",
-                content_items=len(content),
-                image_count=sum(1 for c in content if c.get("type") == "image"),
-                max_tokens=max_tokens
-            )
-
-            # Separate prompt from content blocks if possible or just use part of content as prompt
-            # For OCR, typically the last item is the prompt
-            prompt = ""
-            content_blocks = []
-            for item in content:
-                if item["type"] == "text":
-                    if not prompt and item == content[-1]: # If it's the last item and we haven't set a prompt
-                        prompt = item["text"]
-                    else:
-                        content_blocks.append(item)
-                else:
-                    content_blocks.append(item)
-            
-            if not prompt and content:
-                # Fallback: if last item wasn't text or we have no prompt, check if first item is text
-                if content[0]["type"] == "text":
-                    prompt = content[0]["text"]
-                    content_blocks = content[1:]
-
-            response_text = self.provider.chat_vision(
+            response_text = await self.provider.achat_vision(
                 prompt=prompt or "Extract text from these images.",
                 content_blocks=content_blocks,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
             )
-
-            logger.info("vision_api_call_success")
-            return response_text
-
         except Exception as e:
-            error_str = str(e)
-            # Handle 413 or request too large specifically if possible, 
-            # or generic retry logic for large content
-            if "413" in error_str or "too_large" in error_str.lower() or "too many tokens" in error_str.lower():
-                logger.warning(
-                    "vision_api_request_too_large",
-                    error=error_str,
-                    content_items=len(content),
-                    image_count=sum(1 for c in content if c.get("type") == "image")
-                )
-
-                # Try to reduce images and retry
-                image_items = [c for c in content if c.get("type") == "image"]
-                text_items = [c for c in content if c.get("type") == "text"]
-
-                if len(image_items) > 1:
-                    # Reduce to half the images and retry
-                    reduced_images = image_items[:len(image_items) // 2]
-                    logger.info(
-                        "retrying_with_fewer_images",
-                        original_count=len(image_items),
-                        reduced_count=len(reduced_images)
-                    )
-
-                    # Rebuild content with reduced images
-                    reduced_content = text_items[:-1] + reduced_images + [text_items[-1]] if text_items else reduced_images
-
-                    return await self._call_vision_api(reduced_content, max_tokens)
-
-                # If we can't reduce further, re-raise
-                raise ValueError(
-                    f"Request too large for Claude Vision API even with minimal images. "
-                    f"Try using smaller image files or PDFs with fewer pages. Error: {error_str}"
-                )
-            raise
-
-        except Exception as e:
+            # Previously a "request too large" error silently retried with half the pages,
+            # dropping the rest of the answer sheet. Fail loudly instead; callers batch pages.
             logger.error("vision_api_call_failed", error=str(e), error_type=type(e).__name__)
             raise
+
+        logger.info("vision_api_call_success")
+        return response_text
 
     async def _prepare_directory_content(self, directory: Path) -> tuple[list[dict], list[str]]:
         """
@@ -301,38 +255,61 @@ Return ONLY the JSON object, no other text."""
         Extract answers from student answer sheet files (images or PDFs).
 
         Args:
-            images_dir: Directory containing answer sheet files
-            questions: List of questions to match answers to
+            images_dir: Answer sheet file, or a directory of them
+            questions: Questions to match answers to. Their `id`s should be short labels
+                like "Q1" that the model can echo back reliably (not database UUIDs).
 
         Returns:
-            List of extracted Answer objects
+            One Answer per question id the model found, in question order.
+
+        Raises:
+            OCRError: if the files can't be read or the model response is unusable.
         """
         image_content, text_contents = await self._prepare_directory_content(images_dir)
 
         if not image_content and not text_contents:
-            logger.error("no_answer_files", dir=str(images_dir))
-            return []
+            raise OCRError(f"No readable pages found in {images_dir}")
 
-        # Build question context for better extraction
-        question_context = "\n".join([f"- {q.id}: {q.text[:150]}..." if len(q.text) > 150 else f"- {q.id}: {q.text}" for q in questions])
+        valid_ids = [q.id for q in questions]
+        question_context = "\n".join(
+            f"- {q.id}: {q.text[:150]}..." if len(q.text) > 150 else f"- {q.id}: {q.text}"
+            for q in questions
+        )
 
-        content = []
+        # Large answer sheets are sent in page batches; answers that continue across
+        # batches are stitched back together below.
+        batches = [
+            image_content[i:i + MAX_IMAGES_PER_REQUEST]
+            for i in range(0, len(image_content), MAX_IMAGES_PER_REQUEST)
+        ] or [[]]
+        total_pages = len(image_content)
 
-        # Add any extracted text from PDFs
-        if text_contents:
-            combined_text = "\n\n---\n\n".join(text_contents)
+        merged: dict[str, Answer] = {}
+        for batch_index, batch in enumerate(batches):
+            first_page = batch_index * MAX_IMAGES_PER_REQUEST + 1
+            content: list[dict] = []
+
+            # Embedded PDF text (typed documents) only needs to be sent once
+            if text_contents and batch_index == 0:
+                combined_text = "\n\n---\n\n".join(text_contents)
+                content.append({
+                    "type": "text",
+                    "text": f"Extracted text from documents:\n\n{combined_text}\n\n---"
+                })
+            content.extend(batch)
+
+            page_note = ""
+            if len(batches) > 1:
+                page_note = (
+                    f"\nThese images are pages {first_page}-{first_page + len(batch) - 1} "
+                    f"of a {total_pages}-page answer sheet. Only extract answers visible on these pages; "
+                    "omit questions that don't appear here.\n"
+                )
+
             content.append({
                 "type": "text",
-                "text": f"Extracted text from documents:\n\n{combined_text}\n\n---"
-            })
-
-        # Add images
-        content.extend(image_content)
-
-        content.append({
-            "type": "text",
-            "text": f"""Analyze these student answer sheet documents and extract ALL answers.
-
+                "text": f"""Analyze these student answer sheet documents and extract ALL answers.
+{page_note}
 The documents may contain:
 - Handwritten answers (most common)
 - Printed/typed answers
@@ -343,7 +320,7 @@ The questions being answered are:
 {question_context}
 
 For each answer found, provide:
-1. question_id: Match to the corresponding question ID from above (e.g., "Q1", "1", "1a")
+1. question_id: EXACTLY one of these ids: {", ".join(valid_ids)}
 2. text: The complete answer text (transcribe handwriting carefully, include all work shown)
 3. confidence: Your confidence in the transcription accuracy (0.0 to 1.0)
 
@@ -351,7 +328,7 @@ Return your response as a JSON object with this exact structure:
 {{
   "answers": [
     {{
-      "question_id": "Q1",
+      "question_id": "{valid_ids[0] if valid_ids else 'Q1'}",
       "text": "Photosynthesis is the process by which plants convert sunlight into energy...",
       "confidence": 0.95
     }}
@@ -362,32 +339,55 @@ Important:
 - Transcribe handwritten text as accurately as possible
 - For mathematical work, include all steps and calculations
 - If handwriting is unclear, make your best interpretation and lower confidence
-- Match answers to the correct question IDs (students may not write "Q1" - match by position/context)
+- Students may not write the question number exactly; match by position/context and use the ids above
 - Include partial or incomplete answers
-- If an answer is blank or missing, include it with text "No answer provided" and confidence 0
 - Look for answer numbers that may be written as "1.", "1)", "Ans 1:", etc.
-- For multi-part questions (a, b, c), try to separate each part
 
 Return ONLY the JSON object, no other text."""
-        })
+            })
 
-        logger.info("ocr_answers_start", image_count=len(image_content), text_count=len(text_contents))
+            logger.info(
+                "ocr_answers_start",
+                batch=batch_index + 1,
+                batches=len(batches),
+                image_count=len(batch),
+                text_count=len(text_contents),
+            )
 
-        response_text = await self._call_vision_api(content, max_tokens=16384)
-
-        data = self._parse_json_response(response_text)
-
-        answers = []
-        for a in data.get("answers", []):
+            response_text = await self._call_vision_api(content, max_tokens=16384)
             try:
-                answers.append(Answer(
-                    question_id=str(a["question_id"]),
-                    text=a["text"],
-                    confidence=float(a.get("confidence", 1.0))
-                ))
-            except Exception as e:
-                logger.error("answer_parse_error", answer=a, error=str(e))
+                data = extract_json_object(response_text)
+            except LLMResponseError as e:
+                raise OCRError(f"Could not parse answer transcription: {e}") from e
+            if not isinstance(data.get("answers"), list):
+                raise OCRError("Answer transcription is missing the 'answers' list")
 
+            for a in data["answers"]:
+                try:
+                    answer = Answer(
+                        question_id=str(a["question_id"]).strip(),
+                        text=str(a["text"]),
+                        confidence=float(a.get("confidence", 1.0)),
+                    )
+                except (KeyError, TypeError, ValueError) as e:
+                    logger.error("answer_parse_error", answer=a, error=str(e))
+                    continue
+
+                previous = merged.get(answer.question_id)
+                if previous is None:
+                    merged[answer.question_id] = answer
+                else:
+                    merged[answer.question_id] = Answer(
+                        question_id=answer.question_id,
+                        text=f"{previous.text}\n{answer.text}",
+                        confidence=min(previous.confidence, answer.confidence),
+                    )
+
+        unknown = sorted(set(merged) - set(valid_ids))
+        if unknown:
+            logger.warning("ocr_unknown_question_ids", ids=unknown)
+
+        answers = list(merged.values())
         logger.info("ocr_answers_complete", answer_count=len(answers))
         return answers
 
