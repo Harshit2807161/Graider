@@ -48,29 +48,16 @@ source .venv/bin/activate  # macOS/Linux
 ### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
-# Note: Ensure pydantic-settings and redis are installed
-pip install pydantic-settings redis
 ```
+*(Or use conda: `conda env create -f environment.yml && conda activate gr8r` from the repo root.)*
 
 ### 3. Configure Environment (`.env`)
-Create a `.env` file in the `backend/` directory:
-```env
-# API Keys (Required)
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Provider Configuration
-LLM_PROVIDER=openai  # or anthropic
-
-# Model Selection (defaults to cost-optimized GPT-5-Nano)
-LLM_GRADER_MODEL=gpt-5-nano-2025-08-07
-LLM_ORCHESTRATOR_MODEL=gpt-5-nano-2025-08-07
-LLM_VISION_MODEL=gpt-5-nano-2025-08-07
-
-# Infrastructure
-DATABASE_URL=postgresql://user:password@localhost:5433/graider
-CELERY_BROKER_URL=redis://localhost:6379/0
+Copy the template and fill in your values:
+```bash
+cp .env.example .env   # inside backend/
 ```
+At minimum set `SECRET_KEY` (`openssl rand -hex 32`), `LLM_PROVIDER` with its API key, and the
+three `LLM_*_MODEL` values for that provider. See `backend/.env.example` for every setting.
 
 ---
 
@@ -79,9 +66,19 @@ CELERY_BROKER_URL=redis://localhost:6379/0
 The easiest way to run the infrastructure is via Docker:
 
 ```bash
-# Start Redis and Postgres (from project root)
-docker-compose up -d
+# Start Redis and Postgres only (from project root)
+docker compose up -d db redis
 ```
+
+Then create the database tables and the first superuser (uses `FIRST_SUPERUSER_EMAIL` /
+`FIRST_SUPERUSER_PASSWORD` from `backend/.env`):
+```bash
+cd backend
+python -m app.initial_data
+```
+
+To run the whole stack in Docker instead, copy the root `.env.example` to `.env`, then
+`docker compose up -d --build` and `docker compose run --rm backend python -m app.initial_data`.
 
 *(If you don't have docker-compose, ensure Redis is running on `6379` and Postgres on `5433`).*
 
@@ -122,25 +119,28 @@ npm run dev
 ### 1. Health Check
 Visit `http://localhost:8000/health` to ensure the backend can talk to the DB and Redis.
 
-### 2. Test Grading Pipeline
-You can trigger a manual test grading using the script provided:
+### 2. Run the Tests
 ```bash
 cd backend
-python test_celery_submission.py
+pytest                                   # SQLite + fake LLM, no keys needed
+TEST_DATABASE_URL=postgresql://... pytest  # optionally against Postgres
 ```
 
-### 3. Monitor AI Costs
-The system has a built-in **LLM Usage Protector**. You can check or reset the call count via Python:
-```bash
-# Reset count if you hit the safety limit
-python -c "from app.core.llm_protection import protector; protector.reset()"
-```
+### 3. Grade a Submission
+Log in at `http://localhost:3000`, create an organization and exam, add questions (with a
+rubric, one point per line), then upload an answer sheet on the exam page. Progress and
+results appear on the same page.
+
+### 4. LLM Cost Guard
+Each submission may make at most `LLM_MAX_CALLS_PER_SUBMISSION` LLM calls (default 200);
+a run that exceeds it fails with a clear error instead of running up costs.
 
 ---
 
 ## 💡 Troubleshooting
 
-- **401 Unauthorized in Frontend**: Ensure your `.env` has the correct `BACKEND_CORS_ORIGINS`.
+- **CORS errors in Frontend**: Ensure `BACKEND_CORS_ORIGINS` in `backend/.env` includes the frontend URL.
+- **Frontend can't reach the API**: Set `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
 - **OCR failing on PDFs**: Ensure `pdftoppm` (part of Poppler) is in your PATH.
 - **Grader returning empty responses**: Check your LLM API balance and ensure you are using a model that supports the `developer` role if configured.
 - **Celery Task Not Found**: Ensure you are running the worker from the `backend/` directory.
