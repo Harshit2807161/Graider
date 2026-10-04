@@ -3,60 +3,12 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  # Core Python
   - python=3.12
-  - pip=25.3
-
-  # Scientific stack
-  - numpy
-  - pandas
-  - pillow
-
-  # Database
-  - sqlite
-
+  - pip
+  - poppler  # pdf2image needs pdftoppm
   # Development tools
-  - pytest
   - black
   - ruff
-
   - pip:
-      # ===== BACKEND FRAMEWORK =====
-      - fastapi>=0.115.0
-      - uvicorn[standard]>=0.34.0
-      - python-multipart  # File uploads
-      - pydantic>=2.10.0
-      - pydantic-settings>=2.7.0
-
-      # ===== AI/LLM =====
-      - anthropic>=0.45.0
-      - langchain>=0.3.0
-      - langchain-anthropic>=0.3.0
-      - langchain-core>=0.3.0
-      - langgraph>=0.4.0
-
-      # ===== AGNTCY STACK =====
-      - agntcy-app-sdk
-      - agntcy-acp
-      - ioa_observe_sdk
-
-      # ===== OCR & DOCUMENT PROCESSING =====
-      # Claude Vision handles OCR, but keeping these for rubric parsing
-      - pypdf>=5.0.0
-      - pdf2image
-
-      # ===== ASYNC & HTTP =====
-      - httpx>=0.28.0
-      - aiofiles
-
-      # ===== UTILITIES =====
-      - python-dotenv>=1.0.0
-      - tenacity  # Retry logic
-      - structlog  # Structured logging
-
-      # ===== EXISTING DEPENDENCIES (preserved) =====
-      - flask
-      - flask-cors
-      - langchain-community
-      - eyepop>=3.9.0
-      - matplotlib
+      # Single source of truth for Python deps (shared with the Docker image)
+      - -r backend/requirements.txt
