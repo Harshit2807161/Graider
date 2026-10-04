@@ -12,8 +12,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 const Input = forwardRef<HTMLInputElement, InputProps>(
     ({ className, label, error, helperText, id, ...props }, ref) => {
-        // Generate random ID if not provided, for accessibility
-        const inputId = id || useId();
+        // Hooks must run unconditionally; fall back to a generated id for accessibility
+        const generatedId = useId();
+        const inputId = id || generatedId;
 
         return (
             <div className={styles.container}>

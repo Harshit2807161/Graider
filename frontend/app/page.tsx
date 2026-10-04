@@ -1,5 +1,4 @@
 import Link from "next/link";
-import styles from "./page.module.css"; // We'll create a temp module for this
 
 export default function Home() {
   return (

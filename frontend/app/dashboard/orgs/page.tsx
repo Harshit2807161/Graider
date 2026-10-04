@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import OrgList from "@/components/features/orgs/OrgList";
 import CreateOrgModal from "@/components/features/orgs/CreateOrgModal";
 
-export default function OrgsPage(): JSX.Element {
+export default function OrgsPage(): React.JSX.Element {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
