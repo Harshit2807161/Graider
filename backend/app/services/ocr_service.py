@@ -10,7 +10,7 @@ import structlog
 from app.core.config import get_settings
 from app.core.llm_protection import protector
 from app.core.llm_provider import LLMResponseError, extract_json_object, get_llm_provider
-from app.schemas.grading import Answer, Question, RubricCriteria, Subject, Triplet
+from app.schemas.grading import Answer, Question, QuestionType, RubricCriteria, Subject, Triplet
 from .pdf_service import process_directory_files_async, get_pdf_service
 
 logger = structlog.get_logger(__name__)
