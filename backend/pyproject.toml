@@ -1,0 +1,14 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+# Correctness-focused set; style rules can be added incrementally.
+select = ["E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ files re-export names on purpose
+"__init__.py" = ["F401"]
+# conftest sets env vars before importing the app
+"tests/conftest.py" = ["E402"]

@@ -8,7 +8,7 @@ from app.models.base import Base, utcnow
 from app.core.constants import Role
 
 if TYPE_CHECKING:
-    from app.models.org import Organization, Batch, Enrollment
+    from app.models.org import Organization, Enrollment
     from app.models.exam import Exam, Submission
 
 # 3. Membership (The Link / Role)

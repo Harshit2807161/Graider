@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 from sqlmodel import Session, select
 
@@ -7,7 +7,7 @@ from app.models.org import Batch
 from app.schemas.batch import BatchCreate
 
 from sqlalchemy import func
-from app.models.org import Batch, Enrollment
+from app.models.org import Enrollment
 
 class CRUDBatch(CRUDBase[Batch, BatchCreate, BatchCreate]):
     def get_by_org(self, db: Session, *, org_id: UUID) -> List[Batch]:

@@ -11,12 +11,10 @@ from typing import Annotated, Literal, Optional
 from typing_extensions import TypedDict
 import operator
 
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.types import Command
 
 from app.schemas.grading import (
-    GradingResult,
     QuestionType,
     Subject,
     Triplet,

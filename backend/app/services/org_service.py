@@ -1,8 +1,8 @@
 from uuid import UUID
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app import crud
-from app.models.org import Organization, Batch, Enrollment
+from app.models.org import Organization
 from app.models.user import Membership
 from app.schemas.org import OrganizationCreate
 from app.core.constants import Role

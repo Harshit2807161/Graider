@@ -7,7 +7,7 @@ This module implements a supervisor-worker pattern using LangGraph:
 4. Provides feedback loop for rejected grades
 """
 
-from typing import Literal, Optional
+from typing import Optional
 import json
 
 import structlog
@@ -16,13 +16,10 @@ from langgraph.types import Command
 
 from app.core.llm_protection import protector
 from app.core.llm_provider import LLMResponseError, extract_json_object, get_llm_provider
-from app.schemas.grading import GradingResult, QuestionType, Subject, Triplet
+from app.schemas.grading import GradingResult, Triplet
 from app.core.langgraph_setup import (
     GradingState,
-    BatchGradingState,
     create_initial_state,
-    create_batch_initial_state,
-    subject_to_grader,
 )
 from .graders.math_grader import MathGrader
 from .graders.english_grader import EnglishGrader
