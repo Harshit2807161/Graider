@@ -1,7 +1,7 @@
-# Shared settings for the backend image (API, worker and one-shot migrate job)
+# Shared settings for the backend image (API, worker and one-shot migrate job).
+# Only `backend` builds the image; `migrate` and `worker` reuse it (building the same tag
+# from several services races).
 x-backend: &backend
-  build:
-    context: ./backend
   image: graider-backend
   environment:
     - DATABASE_URL=postgresql://user:password@db:5432/graider
@@ -61,6 +61,7 @@ services:
   # Applies pending Alembic migrations, then exits. API and worker start after it succeeds.
   migrate:
     <<: *backend
+    pull_policy: never
     restart: "no"
     command: alembic upgrade head
     depends_on:
@@ -69,6 +70,8 @@ services:
 
   backend:
     <<: *backend
+    build:
+      context: ./backend
     restart: always
     ports:
       - "8000:8000"
@@ -80,6 +83,7 @@ services:
 
   worker:
     <<: *backend
+    pull_policy: never
     restart: always
     command: celery -A app.worker.celery_app worker --loglevel=info
     depends_on:
