@@ -36,8 +36,6 @@ langfuse>=4.17.0,<5
 langchain>=1.4.0  # required by langfuse.langchain (the LangChain/LangGraph callback handler)
 
 # ===== DOCUMENT PROCESSING =====
-pypdf>=5.0.0  # PDF text extraction
-pdf2image>=1.17.0  # PDF to image conversion (requires poppler)
 Pillow>=11.0.0
 filetype>=1.2.0  # identify uploads by their bytes, not their names (MIT)
 pypdfium2>=5.14.0  # render PDF pages + text layers (BSD-3/Apache-2.0; not PyMuPDF, which is AGPL)
