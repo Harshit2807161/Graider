@@ -1,4 +1,4 @@
-"""Shared test setup: SQLite database, temp upload dir, and a scripted fake LLM."""
+"""Shared test setup: SQLite database, temp upload dir, and a scripted fake model invoker."""
 
 import json
 import os
@@ -6,15 +6,13 @@ import re
 import sys
 import tempfile
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 # Configure the app before anything imports app.core.config (settings are cached at import).
 _TMP = Path(tempfile.mkdtemp(prefix="gr8r-tests-"))
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{_TMP / 'test.db'}")
 os.environ["UPLOAD_DIR"] = str(_TMP / "uploads")
-os.environ["LLM_PROVIDER"] = "openai"
-os.environ["OPENAI_API_KEY"] = "sk-test"
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -22,10 +20,11 @@ import pytest  # noqa: E402
 from sqlmodel import Session, SQLModel  # noqa: E402
 
 import app.models  # noqa: E402,F401  (registers tables)
-from app.core import llm_provider  # noqa: E402
 from app.core.constants import Role  # noqa: E402
 from app.core.db import engine  # noqa: E402
-from app.core.llm_provider import LLMProvider  # noqa: E402
+from app.llm import router as router_module  # noqa: E402
+from app.llm.invoker import InvokeRequest, InvokeResponse  # noqa: E402
+from app.llm.types import TextPart, Usage  # noqa: E402
 from app.core.security import get_password_hash  # noqa: E402
 from app.models.exam import Exam, Question  # noqa: E402
 from app.models.org import Organization  # noqa: E402
@@ -34,73 +33,112 @@ from app.models.user import Membership, User  # noqa: E402
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
-class FakeLLM(LLMProvider):
-    """
-    Scripted stand-in for every LLM role.
+# Output schema title → short kind name used by tests
+SCHEMA_KINDS = {
+    "AnswerTranscription": "ocr",
+    "GradeOutput": "grade",
+    "TagOutput": "tag",
+    "EvaluationOutput": "evaluate",
+}
 
-    Routes each call by prompt content (OCR / tagging / evaluation / grading) and records
-    what was asked so tests can assert on prompts. Override a route by assigning a
-    callable that takes the prompt text and returns the raw model output.
+
+class FakeInvoker:
+    """
+    Scripted stand-in for the model invoker (the boundary below the router).
+
+    Routes each call by output-schema title and records every request. Override a route by
+    assigning `fake.ocr` / `fake.grade` / `fake.evaluate` / `fake.tag` to a callable that takes
+    the prompt text and returns either a dict (the structured output) or a string (raw model
+    text, parsed as JSON if possible, e.g. to simulate invalid output). A handler may also
+    return an InvokeResponse or raise/return an exception.
     """
 
     def __init__(self):
-        self.calls: list[dict] = []
-        self.ocr: Optional[Callable[[str], str]] = None
-        self.grade: Optional[Callable[[str], str]] = None
-        self.evaluate: Optional[Callable[[str], str]] = None
+        self.calls: list[dict[str, Any]] = []
+        self.ocr: Optional[Callable[[str], Any]] = None
+        self.grade: Optional[Callable[[str], Any]] = None
+        self.evaluate: Optional[Callable[[str], Any]] = None
+        self.tag: Optional[Callable[[str], Any]] = None
+
+    @staticmethod
+    def prompt_of(req: InvokeRequest) -> str:
+        return "\n".join(p.text for p in req.parts if isinstance(p, TextPart))
 
     # --- default behaviours ---
     @staticmethod
-    def _default_ocr(prompt: str) -> str:
-        ids = re.search(r"EXACTLY one of these ids: (.+)", prompt).group(1).split(", ")
-        return json.dumps({
+    def _default_ocr(req: InvokeRequest) -> dict:
+        labels = req.json_schema["properties"]["answers"]["items"]["properties"]["question_id"]["enum"]
+        return {
             "answers": [
-                {"question_id": qid, "text": f"student answer for {qid}", "confidence": 0.9}
-                for qid in ids
+                {"question_id": qid, "text": f"student answer for {qid}", "confidence": 0.9} for qid in labels
             ]
-        })
+        }
 
     @staticmethod
-    def _default_grade(prompt: str) -> str:
+    def _default_grade(prompt: str) -> dict:
         max_score = float(re.search(r"Maximum Score: ([\d.]+)", prompt).group(1))
-        return json.dumps({
+        return {
             "score": max_score / 2,
             "reasoning": "Half the rubric points are covered.",
             "feedback": "Cover the remaining points.",
             "confidence": 0.9,
-        })
+        }
 
-    # --- LLMProvider interface ---
-    def chat(self, system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> str:
-        if "question classifier" in system_prompt:
-            kind, handler = "tag", lambda p: '{"subject": "math", "question_type": "problem"}'
-        elif "grading quality evaluator" in system_prompt:
-            kind, handler = "evaluate", self.evaluate or (lambda p: '{"is_acceptable": true}')
+    async def invoke(self, req: InvokeRequest) -> InvokeResponse:
+        kind = SCHEMA_KINDS.get(req.json_schema.get("title"), "other")
+        prompt = self.prompt_of(req)
+        self.calls.append({"kind": kind, "system": req.system, "prompt": prompt, "request": req})
+
+        if kind == "ocr":
+            out = self.ocr(prompt) if self.ocr else self._default_ocr(req)
+        elif kind == "grade":
+            out = (self.grade or self._default_grade)(prompt)
+        elif kind == "tag":
+            out = self.tag(prompt) if self.tag else {"subject": "math", "question_type": "problem"}
+        elif kind == "evaluate":
+            out = self.evaluate(prompt) if self.evaluate else {
+                "is_acceptable": True, "concerns": "", "improvement_suggestions": ""
+            }
         else:
-            kind, handler = "grade", self.grade or self._default_grade
-        self.calls.append({"kind": kind, "system": system_prompt, "prompt": user_prompt})
-        return handler(user_prompt)
+            raise AssertionError(f"unexpected schema {req.json_schema.get('title')}")
 
-    def chat_vision(self, prompt: str, content_blocks: list[dict], max_tokens: int = 4096) -> str:
-        self.calls.append({"kind": "ocr", "prompt": prompt, "blocks": content_blocks})
-        return (self.ocr or self._default_ocr)(prompt)
+        if isinstance(out, BaseException):
+            raise out
+        if isinstance(out, InvokeResponse):
+            return out
+        parsed, parse_error, text = None, None, out if isinstance(out, str) else json.dumps(out)
+        if isinstance(out, dict):
+            parsed = out
+        else:
+            try:
+                candidate = json.loads(out)
+                parsed = candidate if isinstance(candidate, dict) else None
+            except json.JSONDecodeError:
+                pass
+            if parsed is None:
+                parse_error = "JSONDecodeError: not a JSON object"
+        return InvokeResponse(
+            text=text,
+            parsed=parsed,
+            parse_error=parse_error,
+            model_answered=req.target.model,
+            response_id=f"fake-{len(self.calls)}",
+            usage=Usage(input_tokens=1000, output_tokens=200),
+            request={"model": req.target.model, "system": req.system},
+        )
 
     def calls_of(self, kind: str) -> list[dict]:
         return [c for c in self.calls if c["kind"] == kind]
 
 
 @pytest.fixture
-def fake_llm(monkeypatch) -> FakeLLM:
-    """Install a FakeLLM for every role and reset cached service singletons."""
-    fake = FakeLLM()
-    monkeypatch.setattr(llm_provider, "_grader_provider", fake)
-    monkeypatch.setattr(llm_provider, "_orchestrator_provider", fake)
-    monkeypatch.setattr(llm_provider, "_vision_provider", fake)
+def fake_llm(monkeypatch) -> FakeInvoker:
+    """Route every model call through a FakeInvoker (no API keys, no network)."""
+    fake = FakeInvoker()
+    monkeypatch.setattr(router_module, "_invoker_factory", lambda: fake)
 
     import app.agents.orchestrator as orchestrator_module
-    import app.services.ocr_service as ocr_module
     monkeypatch.setattr(orchestrator_module, "_orchestrator", None)
-    monkeypatch.setattr(ocr_module, "_ocr_service", None)
     return fake
 
 

@@ -27,25 +27,16 @@ class Settings(BaseSettings):
     FIRST_SUPERUSER_EMAIL: Optional[str] = None
     FIRST_SUPERUSER_PASSWORD: Optional[str] = None
 
-    # External APIs
-    ANTHROPIC_API_KEY: str = "sk-ant-api03-placeholder"
-    OPENAI_API_KEY: str = "sk-placeholder"
-
-    # LLM Provider: "openai" or "anthropic"
-    LLM_PROVIDER: str = "openai"
-
-    # Hard cap on LLM calls for a single submission's grading run (runaway-cost guard)
-    LLM_MAX_CALLS_PER_SUBMISSION: int = 200
+    # Provider API keys. Which models each role uses is configured with LLM__* settings
+    # (app/llm/config.py); keys are looked up by name from here or the environment.
+    ANTHROPIC_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
+    OPENWEIGHT_API_KEY: Optional[str] = None  # only if your vLLM/SGLang server requires a key
 
     # Storage
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")
     MAX_UPLOAD_SIZE_MB: int = 50
-
-    # LLM Models (provider-agnostic names)
-    LLM_GRADER_MODEL: str = "gpt-5-nano-2025-08-07"
-    LLM_ORCHESTRATOR_MODEL: str = "gpt-5-nano-2025-08-07"
-    LLM_VISION_MODEL: str = "gpt-5-nano-2025-08-07"
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they don't exist."""

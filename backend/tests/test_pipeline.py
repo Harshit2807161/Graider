@@ -57,7 +57,7 @@ async def test_ocr_is_given_short_labels_not_database_ids(fake_llm, db, school, 
     await run_grading_pipeline(submission.id, submission.original_file_url)
 
     ocr_prompt = fake_llm.calls_of("ocr")[0]["prompt"]
-    assert "EXACTLY one of these ids: Q1, Q2" in ocr_prompt
+    assert "one of these ids: Q1, Q2" in ocr_prompt
     for question in db.exec(select(Question)).all():
         assert str(question.id) not in ocr_prompt
 
@@ -147,8 +147,9 @@ async def test_regrading_the_same_question_does_not_leak_state_between_runs(fake
 
 
 async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, monkeypatch):
-    from app.core.config import settings
-    monkeypatch.setattr(settings, "LLM_MAX_CALLS_PER_SUBMISSION", 2)
+    from app.llm.config import get_llm_settings
+    monkeypatch.setattr(get_llm_settings(), "max_calls_base", 2)
+    monkeypatch.setattr(get_llm_settings(), "max_calls_per_question", 0)
     submission = make_submission(db, school["exam"], tmp_path)
 
     await run_grading_pipeline(submission.id, submission.original_file_url)
