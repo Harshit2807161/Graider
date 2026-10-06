@@ -30,3 +30,4 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
   - Each call took 26–64s, so a question costs about 3 minutes with one evaluator round.
   - The evaluator rejected round 1 in 2/2 runs. The grader then *lowered* its score (3.0 → 0.5 in one run, → 2.0 in the other) for the same answer.
   - Takeaways: same-answer inconsistency plus the grader caving to the evaluator is exactly what M5's push-back rule and M8's flip-rate/variance metrics target; a 4B model is only a development profile.
+- [M2, evidence for M8/M9] **Local OCR with Qwen3-VL-4B-Instruct (Ollama):** a rendered two-answer sheet in a handwriting-style font was read in about 10s. Both answers went under the right question labels, and the math answer was exact. The prose answer came back as "carbon díoxído" (diacritics added to handwriting-style letters). It's still readable for grading, but measure character error rate on real handwriting before using a 4B VLM beyond development.
