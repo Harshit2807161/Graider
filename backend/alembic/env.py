@@ -10,7 +10,8 @@ import app.models  # noqa: F401  (registers all tables on SQLModel.metadata)
 from app.core.config import settings
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Callers (e.g. the migration tests) may target another database via config.attributes
+config.set_main_option("sqlalchemy.url", config.attributes.get("database_url") or settings.DATABASE_URL)
 
 # Only configure logging when run from the alembic CLI; when the app calls
 # upgrade_to_head() it keeps its own logging setup.
