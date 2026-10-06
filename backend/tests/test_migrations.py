@@ -126,3 +126,13 @@ def test_llm_calls_need_a_run_or_a_question(alembic_config, engine):
                 "0, 0, 0, 0, 0, 0, 'S', 'h', false, now())"
             ))
 
+
+def test_rubric_specs_are_append_only(alembic_config, engine):
+    command.downgrade(alembic_config, "base")
+    command.upgrade(alembic_config, "head")
+    insert = (
+        "INSERT INTO rubric_specs (id, question_id, version, source, status, validation_errors, spec, "
+        "input_hash, inputs, created_at) VALUES "
+        "(gen_random_uuid(), :question_id, 1, 'ai', 'ready', '[]', '{}', 'h', '{}', now())"
+    )
+    assert_append_only(engine, "rubric_specs", insert, {"question_id": make_question(engine)})
