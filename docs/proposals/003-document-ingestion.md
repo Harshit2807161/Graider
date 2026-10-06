@@ -1,6 +1,6 @@
 # Proposal 003: Document ingestion (entry modes and file formats)
 
-- **Status:** Proposed (2026-10-06). The owner has decided the mode A source, class batches and choice questions (§11). Awaiting approval to start M4b. Nothing is built yet.
+- **Status:** Proposed (2026-10-06). The owner has decided the mode A source, class batches, choice questions and the office converter (§11). Awaiting approval to start M4b. Nothing is built yet.
 - **Extends:** [Proposal 002](002-grading-v2-architecture.md). Its rubric parser (M4) and grading graph (M5) stay as they are. This proposal adds how questions, answers and rubrics *arrive*.
 
 ## 1. Summary
@@ -295,9 +295,9 @@ Measured:
 2. **Class batches (S6):** a later phase, after M5.
 3. **Choice questions** ("attempt either / any k of n"): supported **now**. Choice groups are part of M4c's question tree; M5 grades the attempted option and flags both-attempted cases.
 4. **Printable Gr8r QR booklets:** not now (backlog).
+5. **Gotenberg** sidecar (sandboxed LibreOffice) for DOCX, DOC, ODT, RTF and PPTX: approved.
 
 **Still open:**
-5. **Gotenberg:** a sidecar container with LibreOffice inside, needed for DOCX, DOC, ODT, RTF and PPTX. Without it, those formats can't be converted safely.
 6. **Real handwriting for live tests:** a few consented scans or photos per mode from the owner. Public datasets such as IAM are mostly non-commercial-only.
 
 ## 12. Sources
