@@ -24,7 +24,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | Merged |
 | M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | Merged |
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | Merged |
-| M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | – | In review |
+| M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | In review |
 | M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | – | Not started |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
