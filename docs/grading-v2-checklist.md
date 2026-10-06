@@ -23,7 +23,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M1 | CI and migrations | `chore/ci-and-migrations` | – | [#6](https://github.com/Harshit2807161/Graider/pull/6) | Merged |
 | M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | Merged |
 | M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | Merged |
-| M4 | Rubric parser | `feat/rubric-parser` | M3 | – | In review |
+| M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | In review |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
 | M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
