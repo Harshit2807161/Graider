@@ -9,7 +9,7 @@ Status: multi-tenant web app working end to end (branch `v1-full`). The next sta
 
 ### Backend (`backend/`)
 - **API**: FastAPI (Python 3.12), routes under `/api/v1`
-- **ORM / DB**: SQLModel on PostgreSQL 15 (Docker, host port 5433). Tables are created with `SQLModel.metadata.create_all` (no migrations yet)
+- **ORM / DB**: SQLModel on PostgreSQL 15 (Docker, host port 5433). Schema versioned with **Alembic** (`backend/alembic/`); the app never calls `create_all` (tests do). Any model change needs a migration (`alembic revision --autogenerate`, then review it); CI runs `alembic check`
 - **Background jobs**: Celery with Redis broker; one task grades one submission
 - **Auth**: JWT bearer tokens (PyJWT) + bcrypt; org-scoped roles owner / admin / teacher / student
 - **Files**: local disk under `UPLOAD_DIR` (shared with the worker via the `./backend/data` volume in Docker). MinIO runs in compose but is not used yet
@@ -33,7 +33,7 @@ backend/
 ├── app/
 │   ├── main.py                    # FastAPI app, CORS, request logging
 │   ├── worker.py                  # Celery app + grade_exam_task
-│   ├── initial_data.py            # create tables + first superuser
+│   ├── initial_data.py            # alembic upgrade head + first superuser
 │   ├── api/
 │   │   ├── deps.py                # current user, get_membership, require_org_role
 │   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
@@ -86,7 +86,8 @@ conda env create -f environment.yml && conda activate gr8r
 docker compose up -d db redis
 
 # Backend (from backend/, with backend/.env)
-python -m app.initial_data                                  # tables + first superuser
+python -m app.initial_data                                  # migrations + first superuser
+alembic upgrade head / alembic check                        # migrations only / drift check
 uvicorn app.main:app --reload --port 8000
 celery -A app.worker.celery_app worker --loglevel=info
 
@@ -101,10 +102,10 @@ TEST_DATABASE_URL=postgresql://user:password@localhost:5433/test pytest   # agai
 cd frontend && npx tsc --noEmit && npm run lint && npm run build
 
 # Format / lint backend
-black backend/ && ruff check backend/
+cd backend && ruff check app tests alembic    # same as CI
 ```
 
-Full stack in Docker: copy root `.env.example` to `.env`, `docker compose up -d --build`, then `docker compose run --rm backend python -m app.initial_data`.
+Full stack in Docker: copy root `.env.example` to `.env`, `docker compose up -d --build` (the `migrate` service runs migrations first), then `docker compose run --rm backend python -m app.initial_data` for the superuser. CI: `.github/workflows/ci.yml`.
 
 ## Environment Variables
 See `backend/.env.example` (local) and `.env.example` (docker compose). Key ones:
@@ -167,7 +168,6 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - `backend/tests/test_grading.py` — JSON extraction, grader retries, call budget
 
 ## Known Gaps
-- No Alembic migrations; schema changes need a manual migration or DB reset
 - Frontend lint has existing `any` / hook warnings
 - No audit trail of prompts/LLM calls, no human review/approval flow, single provider per deployment — see the proposal
 
