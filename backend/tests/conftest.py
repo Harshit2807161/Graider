@@ -171,6 +171,18 @@ def rubric_parses(monkeypatch) -> list[tuple]:
     return calls
 
 
+if engine.dialect.name == "sqlite":
+    # Enforce foreign keys like Postgres does (SQLite ignores them by default), so insert-order
+    # bugs fail here too and not only in CI's Postgres job
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "connect")
+    def _sqlite_foreign_keys(dbapi_connection, _record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
 @pytest.fixture(autouse=True)
 def fresh_db():
     SQLModel.metadata.drop_all(engine)
