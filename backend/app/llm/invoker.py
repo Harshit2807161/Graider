@@ -45,6 +45,9 @@ class InvokeRequest(BaseModel):
     parts: list[Part]
     json_schema: dict[str, Any]
     max_tokens: int
+    # Tracing only: LangChain run name and metadata (e.g. "grader.grade", {"question": "Q1"})
+    trace_name: Optional[str] = None
+    trace_metadata: dict[str, str] = {}
 
 
 class InvokeResponse(BaseModel):
@@ -175,8 +178,9 @@ class LangChainInvoker:
     def __init__(self) -> None:
         self._models: dict[tuple[str, int], Any] = {}
 
-    def _chat_model(self, target: ModelTarget, max_tokens: int) -> Any:
-        cache_key = (target.key, max_tokens)
+    def _chat_model(self, target: ModelTarget, max_tokens: int, name: Optional[str] = None) -> Any:
+        # `name` labels the model's runs in traces (e.g. "grader.grade"), so dashboards can split by role
+        cache_key = (target.key, max_tokens, name)
         if cache_key in self._models:
             return self._models[cache_key]
 
@@ -192,6 +196,7 @@ class LangChainInvoker:
                 "api_key": api_key,
                 "timeout": target.timeout_s,
                 "max_retries": 2,
+                "name": name,
             }
             if target.base_url:
                 kwargs["base_url"] = target.base_url
@@ -213,13 +218,14 @@ class LangChainInvoker:
                 max_retries=2,
                 use_responses_api=False,
                 include_response_headers=True,
+                name=name,
             )
         self._models[cache_key] = model
         return model
 
     async def invoke(self, req: InvokeRequest) -> InvokeResponse:
         target = req.target
-        model = self._chat_model(target, req.max_tokens)
+        model = self._chat_model(target, req.max_tokens, req.trace_name)
         degraded = not target.supports_json_schema
 
         system = req.system
@@ -241,18 +247,19 @@ class LangChainInvoker:
             "output_schema": req.json_schema,
         }
 
+        run_config: dict[str, Any] = {"run_name": req.trace_name, "metadata": req.trace_metadata}
         started = time.monotonic()
         parse_error: Optional[str] = None
         parsed: Optional[dict[str, Any]] = None
         try:
             if degraded:
-                raw: AIMessage = await model.ainvoke(messages)
+                raw: AIMessage = await model.ainvoke(messages, config=run_config)
             else:
                 structured_kwargs: dict[str, Any] = {"method": "json_schema", "include_raw": True}
                 if target.provider != Provider.ANTHROPIC:
                     structured_kwargs["strict"] = True
                 runnable = model.with_structured_output(req.json_schema, **structured_kwargs)
-                out = await runnable.ainvoke(messages)
+                out = await runnable.ainvoke(messages, config=run_config)
                 raw = out["raw"]
                 parsed = out.get("parsed")
                 if out.get("parsing_error") is not None:

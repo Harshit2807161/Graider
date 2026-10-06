@@ -63,3 +63,26 @@ def test_upgrade_matches_models_and_downgrade_is_clean(alembic_config, engine):
     # And it can be applied again from scratch
     command.upgrade(alembic_config, "head")
     assert "submissions" in inspect(engine).get_table_names()
+
+
+def test_llm_calls_are_append_only(alembic_config, engine):
+    command.downgrade(alembic_config, "base")
+    command.upgrade(alembic_config, "head")
+    insert = text(
+        "INSERT INTO llm_calls (id, role, purpose, attempt_no, attempt_kind, provider, model_requested, "
+        "external, request, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, "
+        "reasoning_tokens, latency_ms, schema_name, schema_hash, degraded, created_at) VALUES "
+        "(gen_random_uuid(), 'grader', 'grade', 1, 'initial', 'anthropic', 'claude-sonnet-5-5', true, "
+        "'{}', 0, 0, 0, 0, 0, 0, 'GradeOutput', 'h', false, now())"
+    )
+    with engine.begin() as conn:
+        conn.execute(insert)
+
+    for statement in ("UPDATE llm_calls SET cost_usd = 0", "DELETE FROM llm_calls", "TRUNCATE llm_calls"):
+        with pytest.raises(Exception, match="append-only"):
+            with engine.begin() as conn:
+                conn.execute(text(statement))
+
+    with engine.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM llm_calls")).scalar() == 1
+

@@ -2,6 +2,7 @@
 
 import io
 from pathlib import Path
+from uuid import UUID
 
 import pandas as pd
 import pytest
@@ -11,6 +12,7 @@ from sqlmodel import select
 from app.core.config import settings
 from app.core.constants import Role, SubmissionStatus
 from app.main import app
+from app.models.audit import GradingRun
 from app.models.exam import Question, Submission, SubmissionAnswer
 from app.models.org import Batch
 from app.models.user import User
@@ -30,7 +32,7 @@ def queued(monkeypatch):
     """Capture Celery dispatches instead of needing Redis."""
     calls = []
     from app.api.v1.endpoints import submissions
-    monkeypatch.setattr(submissions.grade_exam_task, "delay", lambda *args: calls.append(args))
+    monkeypatch.setattr(submissions.grade_submission_task, "delay", lambda *args: calls.append(args))
     return calls
 
 
@@ -206,14 +208,17 @@ class TestSubmissions:
             headers=headers,
         )
 
-    def test_upload_queues_grading_with_a_safe_path(self, client, school, queued):
+    def test_upload_queues_grading_with_a_safe_path(self, client, db, school, queued):
         response = self.upload(client, login(client, "teacher@school.test"), school["exam"].id, "../../evil.png")
 
         assert response.status_code == 200, response.text
         stored = Path(response.json()["original_file_url"]).resolve()
         assert stored.name == "answer_sheet.png"
         assert stored.is_relative_to(settings.UPLOAD_DIR.resolve())
-        assert queued == [(response.json()["id"], response.json()["original_file_url"])]
+        # The task carries only the id of the grading run created for this upload
+        assert len(queued) == 1
+        run = db.get(GradingRun, UUID(queued[0][0]))
+        assert str(run.submission_id) == response.json()["id"] and run.trigger == "upload"
 
     def test_two_uploads_with_same_name_do_not_overwrite(self, client, school, queued):
         headers = login(client, "teacher@school.test")
@@ -255,6 +260,19 @@ class TestSubmissions:
         assert [s["id"] for s in listed] == [created["id"]]
         assert detail["status"] == "PENDING"
         assert "current_step" in detail and detail["answers"] == []
+
+    def test_regrade_creates_a_new_run(self, client, db, school, queued):
+        headers = login(client, "teacher@school.test")
+        created = self.upload(client, headers, school["exam"].id).json()
+        db.exec(select(Submission).where(Submission.id == UUID(created["id"]))).one().status = SubmissionStatus.FAILED
+        db.commit()
+
+        response = client.post(f"{API}/submissions/{created['id']}/regrade", headers=headers)
+
+        assert response.status_code == 200
+        runs = db.exec(select(GradingRun).where(GradingRun.submission_id == UUID(created["id"]))).all()
+        assert sorted(r.trigger for r in runs) == ["regrade", "upload"]
+        assert len(queued) == 2
 
     def test_regrade_is_refused_while_in_progress(self, client, school, queued):
         headers = login(client, "teacher@school.test")

@@ -18,6 +18,19 @@ These items are deliberately out of scope for grading v1 ([Proposal 002](proposa
 | Request-id capture for Claude via a `ChatAnthropic` subclass | LangChain doesn't expose the HTTP `request-id` header | Add if Anthropic support tickets need it. |
 | httpOnly cookie auth with refresh tokens | Security hardening beyond v1 | Currently a bearer token stored in a JS cookie. |
 
+## Audit trail: deferred after M3 research (see docs/audit-trail.md)
+
+| Item | Why deferred | Notes |
+|---|---|---|
+| Tamper evidence beyond triggers | Needs an ops decision (key management, WORM storage) | Hash-chain per run (metadata + payload digests, not payloads) with daily PII-free anchors in S3 Object Lock; scheduled verifier; app DB role with INSERT/SELECT only on audit tables |
+| Retention tiers, purge jobs, legal holds | Needs a records policy / legal input | Starting point from research: decision records per the institution's schedule; raw payloads max(6 months, appeal window); Langfuse traces short-lived (automatic retention is an Enterprise feature when self-hosted; otherwise a scheduled delete via the Langfuse API). AI Act Arts. 19/26 require ≥ 6 months |
+| Erasure-compatible payload store | GDPR status of crypto-shredding is unsettled | Separate payloads (transcripts, raw responses) per student, encrypted with a per-student key; erase = delete key, keep tombstone + hashes |
+| Per-student export, logging reads of audit data | GDPR Art. 15, FERPA 99.10/99.32 | API export of runs, calls and decisions for one student; audit-reader role, row-level security per school |
+| Provider request ids and hidden SDK retries | LangChain doesn't expose Anthropic's `request-id`; SDKs retry internally (default 2) | Option: subclass `ChatAnthropic` or set `max_retries=0` and retry in the router so every HTTP attempt gets a row |
+| "Started" call rows written before sending | An in-flight attempt is lost if the process dies mid-call | Would need an update to finalize the row, which conflicts with append-only; consider a separate `call_started` event row |
+| Langfuse trace retention and deletion | Self-hosted Langfuse OSS has no automatic retention (Enterprise feature) | Scheduled job deleting traces older than N days via the public API; delete a student's traces on erasure requests (traces carry the submission id) |
+| EU AI Act classification and Art. 6(3) assessment | Legal | Annex III 3(b) "evaluate learning outcomes"; obligations from 2 Dec 2027 |
+
 ## Found during implementation
 
 _(Append entries as `- [M#, PR #] description: proposed handling`.)_
@@ -31,3 +44,4 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
   - The evaluator rejected round 1 in 2/2 runs. The grader then *lowered* its score (3.0 → 0.5 in one run, → 2.0 in the other) for the same answer.
   - Takeaways: same-answer inconsistency plus the grader caving to the evaluator is exactly what M5's push-back rule and M8's flip-rate/variance metrics target; a 4B model is only a development profile.
 - [M2, evidence for M8/M9] **Local OCR with Qwen3-VL-4B-Instruct (Ollama):** a rendered two-answer sheet in a handwriting-style font was read in about 10s. Both answers went under the right question labels, and the math answer was exact. The prose answer came back as "carbon díoxído" (diacritics added to handwriting-style letters). It's still readable for grading, but measure character error rate on real handwriting before using a 4B VLM beyond development.
+- [M3] **One trace per run with LangGraph is span-heavy** (100+ spans for 2 questions: graph node spans plus model calls). Fine for debugging; if volume becomes a problem, sample with `LANGFUSE_SAMPLE_RATE` rather than reduce what the audit tables store.

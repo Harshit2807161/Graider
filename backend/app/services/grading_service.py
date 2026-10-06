@@ -11,7 +11,12 @@ from app.core.constants import SubmissionStatus
 from app.core.db import engine
 from app.llm.budget import budget
 from app.llm.config import get_llm_settings
+from app.llm.recorder import recording_to
 from app.llm.router import run_router
+from app.audit.recorder import DbCallRecorder
+from app.audit.runs import finish_run, set_trace_id, start_run
+from app.models.audit import GradingRun, RunStatus
+from app.observability.tracing import run_trace
 from app.llm.types import CallContext
 from app import crud
 from app.models.exam import Question as DBQuestion, Submission, SubmissionAnswer
@@ -57,43 +62,59 @@ def _set_progress(db: Session, submission: Submission, step: str, **fields) -> N
     crud.submission.update(db, db_obj=submission, obj_in={"current_step": step, **fields})
 
 
-async def run_grading_pipeline(submission_id: UUID, answers_path: str) -> None:
+async def run_grading(run_id: UUID) -> None:
     """
-    Grade one submission against its exam's questions (stored in the database).
+    Execute one grading run (the unit of audit): grade its submission against the exam's
+    questions, recording every model call in `llm_calls` and the outcome on the run.
 
     Steps: OCR the answer sheet -> pair answers with questions + rubrics -> grade each
     pair with the agent graph -> save per-question results and totals.
+    Idempotent per run: a redelivered task for a finished run does nothing.
     """
     llm_settings = get_llm_settings()
     with Session(engine) as db:
-        submission = crud.submission.get(db, id=submission_id)
+        run = db.get(GradingRun, run_id)
+        if run is None:
+            logger.error("grading_run_not_found", run_id=str(run_id))
+            return
+        if run.status in RunStatus.TERMINAL:
+            logger.info("grading_run_already_finished", run_id=str(run_id), status=run.status)
+            return
+        submission = crud.submission.get(db, id=run.submission_id)
         if not submission:
-            logger.error("submission_not_found", submission_id=str(submission_id))
+            finish_run(db, run, error="Submission not found")
             return
 
+        start_run(db, run)
+        error: Optional[str] = None
         try:
             question_count = len(crud.question.get_by_exam(db, exam_id=submission.exam_id))
-            # One router (and set of model clients) and one cost/call budget per grading run
-            with run_router(), budget(
+            # One router, one call/cost budget and one audit recorder per grading run
+            with run_trace(run.id, submission.id, run.trigger) as trace_id, run_router(), budget(
                 llm_settings.max_calls_for(question_count), llm_settings.max_cost_usd_per_submission
-            ):
-                await _grade(db, submission, Path(answers_path))
+            ), recording_to(DbCallRecorder(run.id, submission.id)):
+                set_trace_id(db, run, trace_id)
+                await _grade(db, submission, Path(submission.original_file_url))
         except Exception as e:
-            logger.exception("pipeline_error", submission_id=str(submission_id), error=str(e))
+            error = str(e)
+            logger.exception("pipeline_error", run_id=str(run_id), submission_id=str(submission.id), error=error)
             # A failed flush/commit leaves the session unusable until rolled back
             db.rollback()
             try:
-                submission = crud.submission.get(db, id=submission_id)
+                submission = crud.submission.get(db, id=run.submission_id)
                 crud.submission.update(
                     db,
                     db_obj=submission,
                     obj_in={
                         "status": SubmissionStatus.FAILED,
-                        "current_step": f"Error: {str(e)[:400]}",
+                        "current_step": f"Error: {error[:400]}",
                     },
                 )
             except Exception:
-                logger.exception("failed_to_update_submission_status", submission_id=str(submission_id))
+                logger.exception("failed_to_update_submission_status", submission_id=str(run.submission_id))
+
+        db.refresh(run)
+        finish_run(db, run, error=error)
 
 
 async def _grade(db: Session, submission: Submission, answers_path: Path) -> None:

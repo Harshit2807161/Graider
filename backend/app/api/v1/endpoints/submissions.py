@@ -12,7 +12,8 @@ from app.core.config import settings
 from app.core.constants import Role, SubmissionStatus
 from app.models.user import User, Membership
 from app.schemas.exam import SubmissionAnswerRead, SubmissionRead, SubmissionWithAnswers
-from app.worker import grade_exam_task
+from app.audit.runs import create_run
+from app.worker import grade_submission_task
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -80,7 +81,7 @@ async def create_submission(
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
 
-    deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
+    membership = deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
     student_membership_id = _resolve_student(db, student_id=student_id, org_id=exam.org_id)
 
     if not crud.question.get_by_exam(db, exam_id=exam_id):
@@ -101,9 +102,13 @@ async def create_submission(
         },
     )
 
-    # Trigger AI grading pipeline natively via Celery Event Queue
-    grade_exam_task.delay(str(db_submission.id), str(file_path))
-    logger.info("submission_queued", submission_id=str(db_submission.id), exam_id=str(exam_id))
+    # Each grading attempt is an audited run; the task only carries the run id
+    run = create_run(
+        db, submission_id=db_submission.id, trigger="upload",
+        created_by_membership_id=membership.id if membership else None,
+    )
+    grade_submission_task.delay(str(run.id))
+    logger.info("submission_queued", submission_id=str(db_submission.id), run_id=str(run.id), exam_id=str(exam_id))
 
     return db_submission
 
@@ -177,7 +182,7 @@ def regrade_submission(
     exam = crud.exam.get(db, id=submission.exam_id)
     if not exam:
         raise HTTPException(status_code=404, detail="Submission not found")
-    deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
+    membership = deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
 
     if submission.status in (SubmissionStatus.PENDING, SubmissionStatus.PROCESSING):
         raise HTTPException(status_code=409, detail="Submission is already being graded")
@@ -187,5 +192,9 @@ def regrade_submission(
         db_obj=submission,
         obj_in={"status": SubmissionStatus.PENDING, "current_step": "Queued for regrading"},
     )
-    grade_exam_task.delay(str(submission.id), submission.original_file_url)
+    run = create_run(
+        db, submission_id=submission.id, trigger="regrade",
+        created_by_membership_id=membership.id if membership else None,
+    )
+    grade_submission_task.delay(str(run.id))
     return submission

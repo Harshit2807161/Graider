@@ -88,6 +88,8 @@ services:
       redis:
         condition: service_started
 
+  # Optional: LLM observability (Langfuse) is in docker-compose.langfuse.yml
+
 volumes:
   postgres_data:
   minio_data:

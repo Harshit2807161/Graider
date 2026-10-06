@@ -33,6 +33,15 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     OPENWEIGHT_API_KEY: Optional[str] = None  # only if your vLLM/SGLang server requires a key
 
+    # Deployed code version (e.g. git SHA), recorded on every grading run for audit
+    CODE_VERSION: Optional[str] = None
+
+    # Optional Langfuse tracing (engineering observability, not the audit record). On only when
+    # all three are set; see docs/observability.md
+    LANGFUSE_BASE_URL: Optional[str] = None
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+
     # Storage
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")

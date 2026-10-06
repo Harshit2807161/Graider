@@ -31,6 +31,10 @@ openai>=2.45.0
 # ===== ORCHESTRATION =====
 langgraph>=1.2.0
 
+# ===== OBSERVABILITY (optional, enabled by LANGFUSE_* settings) =====
+langfuse>=4.17.0,<5
+langchain>=1.4.0  # required by langfuse.langchain (the LangChain/LangGraph callback handler)
+
 # ===== DOCUMENT PROCESSING =====
 pypdf>=5.0.0  # PDF text extraction
 pdf2image>=1.17.0  # PDF to image conversion (requires poppler)

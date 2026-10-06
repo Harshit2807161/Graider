@@ -21,8 +21,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 |---|---|---|---|---|---|
 | M0 | Docs: proposal 002, checklist, backlog, ADRs | `docs/grading-v2-final` | – | [#5](https://github.com/Harshit2807161/Graider/pull/5) | Merged |
 | M1 | CI and migrations | `chore/ci-and-migrations` | – | [#6](https://github.com/Harshit2807161/Graider/pull/6) | Merged |
-| M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | In review |
-| M3 | Audit trail and MLflow | `feat/audit-and-tracing` | M2 | – | Not started |
+| M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | Merged |
+| M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | In review |
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | – | Not started |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
@@ -42,7 +42,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [x] `CLAUDE.md` and `README.md` point to 002 and this checklist; retired model ids removed from README (historical docs and ADRs keep them as written)
 
 ## M1: CI and migrations
-*Alembic versions the Postgres schema. The baseline is today's tables, and each later PR ships a numbered migration. `alembic upgrade head` applies whatever a database is missing, without losing data. It is unrelated to MLflow.*
+*Alembic versions the Postgres schema. The baseline is today's tables, and each later PR ships a numbered migration. `alembic upgrade head` applies whatever a database is missing, without losing data. It is unrelated to tracing.*
 - [x] fix(ocr): missing `QuestionType` import
 - [x] chore(lint): ruff config, unused imports removed
 - [x] Alembic: `alembic.ini` and `alembic/env.py` (app settings, SQLModel metadata, SQLite batch mode); baseline migration that drops enums on downgrade; upgrade → downgrade → upgrade works; `alembic check` clean
@@ -96,34 +96,18 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 
 **Acceptance:** provider classes exist only under `app/llm/`; every call yields an `AttemptRecord`; switching any role between Claude and a self-hosted open-weight model takes config only.
 
-## M3: Audit trail and MLflow
-- [ ] Migration:
-  - New tables: `grading_runs`, `llm_calls`, `submission_pages`, `transcriptions` (versioned), `answer_grades` (versioned), `grade_events`
-  - Projection columns on `submission_answers` and `submissions`
-  - `NEEDS_REVIEW` added to the enum (irreversible, run in an autocommit block)
-  - VARCHAR for new status columns; JSONB on Postgres
-- [ ] Append-only enforcement: Postgres triggers allow updating only `is_current`; an ORM guard does the same for SQLite
-- [ ] `app/audit/`:
-  - `DbCallRecorder`: a short transaction per call, committed immediately
-  - `RunRecorder`: start, heartbeat, finish, config snapshot and hash
-- [ ] Idempotent tasks:
-  - The API creates the run; `grade_submission_task(run_id)` takes an advisory lock
-  - Terminal run ⇒ no-op; stale heartbeat ⇒ abort and retry
-  - Celery `visibility_timeout` longer than the task `time_limit`
-- [ ] MLflow:
-  - `app/observability/tracing.py`: autolog, plus a root span per run, only when `MLFLOW_TRACKING_URI` is set
-  - Trace id stored on `llm_calls`
-  - Tracing can never fail a run
-  - Compose profile `observability`
-- [ ] Tests:
-  - A failed run keeps its `llm_calls`
-  - Every attempt is recorded
-  - Updates and deletes are rejected
-  - Snapshot content is correct
-  - A duplicate task delivery is a no-op
-  - With MLflow off, nothing changes
+## M3: Audit trail and observability
+*Scope trimmed after researching production audit practice and tracing-tool docs (see [audit-trail.md](audit-trail.md)). Tables are added in the milestone that writes them, and machinery that needs a policy decision first went to the backlog.*
+- [x] Migration: `grading_runs` (status, trigger, config snapshot + hash, code version, totals, Langfuse trace link) and `llm_calls` (one row per attempt, failures included); JSONB on Postgres, VARCHAR statuses
+- [x] Append-only `llm_calls`: Postgres triggers reject UPDATE/DELETE (row-level) and TRUNCATE (statement-level)
+- [x] `app/audit/`: `DbCallRecorder` (one short transaction per attempt, **fails closed**: no grade without its record) and run lifecycle (status only moves forward; config snapshot taken in the worker)
+- [x] Idempotent tasks: the API creates the run, `grade_submission_task(run_id)` skips finished runs, and Celery `visibility_timeout` (2h) exceeds the task hard limit (35 min)
+- [x] Langfuse (optional, replaces MLflow after comparing 9 tools, see [observability.md](observability.md)): client per process after fork, flushed on worker shutdown; one trace per run (id derived from the run id; session = submission; tag = trigger; release = code version); LangGraph nodes and every model call nested via a LangChain configure hook; model calls named `role.purpose` with question/round/attempt metadata; images never exported (media upload off + mask); `docker-compose.langfuse.yml` self-hosts it, wired to the worker
+- [x] Tests: success records every call and config; failure keeps calls and reason; redelivery is a no-op; audit-write failure fails the run; forward-only status; tracing off by default; regrade creates a new run; append-only triggers (Postgres)
+- [x] E2E: graded a submission fully locally (Ollama) with self-hosted Langfuse on; see the PR for the verified trace, cost and dashboard results
+- Moved: versioned transcriptions/grades and `NEEDS_REVIEW` → M5; append-only human actions → M6; tamper-evidence, retention, erasure, export → [backlog](v2-backlog.md)
 
-**Acceptance:** any grade can be reconstructed from the tables: its spec, its transcript, every call and every round.
+**Acceptance:** every model call of every grading run is recorded, linked to its run and submission, and can't be changed; a grade is never stored without its audit record.
 
 ## M4: Rubric parser
 - [ ] `app/rubrics/schema.py` (RubricSpec v1) and `validate.py` (pure functions): sum equals max, unique ids, points > 0, `pass_fail` rules, subject enum, `derived` rule
@@ -233,7 +217,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
   - MAE, QWK (in-house, unit-tested), exact and within-1 agreement
   - Escalation rate, revision flip rate, evaluator drift from its own view
   - OCR character error rate, cost, latency, bootstrap confidence intervals
-  - Results logged to MLflow; `compare.py`
+  - Results logged to Langfuse (datasets + experiments); `compare.py`
 - [ ] CI smoke test with a synthetic golden set
 
 **Acceptance:** one command compares two configs on the owner's golden set.
@@ -243,7 +227,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [ ] Converters into our manifest format; seeded samples of about 50–100 answers per dataset
 - [ ] Suites: **middle school**, **high school**, **college**; grade-only (typed answers) plus a handwriting/OCR suite where the licence allows
 - [ ] A download script puts data into `GOLDEN_SET_DIR` (never committed); `docs/evals/datasets.md` records licence and citation per dataset; non-commercial sets stay out of the default suites
-- [ ] Baseline runs (Claude-only vs hybrid vs open-weight) recorded in MLflow and `docs/evals/baseline.md`
+- [ ] Baseline runs (Claude-only vs hybrid vs open-weight) recorded in Langfuse and `docs/evals/baseline.md`
 
 **Acceptance:** `python -m evals.run --suite middle|high|college` works end to end.
 

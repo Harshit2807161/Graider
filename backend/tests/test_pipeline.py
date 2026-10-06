@@ -10,7 +10,8 @@ from sqlmodel import Session, select
 from app.core.constants import SubmissionStatus
 from app.core.db import engine
 from app.models.exam import Question, Submission, SubmissionAnswer
-from app.services.grading_service import run_grading_pipeline
+from app.audit.runs import create_run
+from app.services.grading_service import run_grading
 from tests.conftest import FIXTURES
 
 
@@ -22,6 +23,13 @@ def make_submission(db: Session, exam, tmp_path) -> Submission:
     db.commit()
     db.refresh(submission)
     return submission
+
+
+async def grade(submission: Submission) -> None:
+    """Grade a submission the way the worker does: through a grading run."""
+    with Session(engine) as db:
+        run = create_run(db, submission_id=submission.id, trigger="upload")
+    await run_grading(run.id)
 
 
 def load(submission_id):
@@ -39,7 +47,7 @@ def load(submission_id):
 async def test_grades_each_question_and_saves_against_the_right_question(fake_llm, db, school, tmp_path):
     submission = make_submission(db, school["exam"], tmp_path)
 
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     graded, answers = load(submission.id)
     assert graded.status == SubmissionStatus.GRADED
@@ -54,7 +62,7 @@ async def test_grades_each_question_and_saves_against_the_right_question(fake_ll
 
 async def test_ocr_is_given_short_labels_not_database_ids(fake_llm, db, school, tmp_path):
     submission = make_submission(db, school["exam"], tmp_path)
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     ocr_prompt = fake_llm.calls_of("ocr")[0]["prompt"]
     assert "one of these ids: Q1, Q2" in ocr_prompt
@@ -64,7 +72,7 @@ async def test_ocr_is_given_short_labels_not_database_ids(fake_llm, db, school, 
 
 async def test_teacher_rubric_reaches_the_grader(fake_llm, db, school, tmp_path):
     submission = make_submission(db, school["exam"], tmp_path)
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade") if "2x + 5" in c["prompt"])
     assert "- Subtract 5" in q1_prompt and "- Divide by 2" in q1_prompt
@@ -76,7 +84,7 @@ async def test_answers_are_matched_by_label_even_if_returned_out_of_order(fake_l
         {"question_id": "Q1", "text": "x = 5", "confidence": 0.9},
     ]})
     submission = make_submission(db, school["exam"], tmp_path)
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     _, answers = load(submission.id)
     by_question = {q.question_text: a.student_answer_text for a, q in answers}
@@ -91,7 +99,7 @@ async def test_soft_deleted_questions_are_not_graded(fake_llm, db, school, tmp_p
     db.commit()
 
     submission = make_submission(db, exam, tmp_path)
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     graded, answers = load(submission.id)
     assert graded.max_score == 6
@@ -103,7 +111,7 @@ async def test_unreadable_answer_sheet_fails_instead_of_scoring_zero(fake_llm, d
     fake_llm.ocr = lambda p: ocr_output
     submission = make_submission(db, school["exam"], tmp_path)
 
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     graded, answers = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED
@@ -115,7 +123,7 @@ async def test_grader_failure_fails_the_submission(fake_llm, db, school, tmp_pat
     fake_llm.grade = lambda p: "garbage"
     submission = make_submission(db, school["exam"], tmp_path)
 
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     graded, answers = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED
@@ -124,8 +132,8 @@ async def test_grader_failure_fails_the_submission(fake_llm, db, school, tmp_pat
 
 async def test_regrading_replaces_previous_answers(fake_llm, db, school, tmp_path):
     submission = make_submission(db, school["exam"], tmp_path)
-    await run_grading_pipeline(submission.id, submission.original_file_url)
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
+    await grade(submission)
 
     _, answers = load(submission.id)
     assert len(answers) == 2
@@ -136,11 +144,11 @@ async def test_regrading_the_same_question_does_not_leak_state_between_runs(fake
     from app.agents.orchestrator import get_orchestrator
 
     first = make_submission(db, school["exam"], tmp_path)
-    await run_grading_pipeline(first.id, first.original_file_url)
+    await grade(first)
     calls_first_run = len(fake_llm.calls)
 
     second = make_submission(db, school["exam"], tmp_path)
-    await run_grading_pipeline(second.id, second.original_file_url)
+    await grade(second)
 
     assert len(fake_llm.calls) == 2 * calls_first_run
     assert get_orchestrator().compiled_graph.checkpointer is None
@@ -152,7 +160,7 @@ async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, mon
     monkeypatch.setattr(get_llm_settings(), "max_calls_per_question", 0)
     submission = make_submission(db, school["exam"], tmp_path)
 
-    await run_grading_pipeline(submission.id, submission.original_file_url)
+    await grade(submission)
 
     graded, _ = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED
