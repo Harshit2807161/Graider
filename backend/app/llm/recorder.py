@@ -59,8 +59,5 @@ def recording_to(recorder: CallRecorder) -> Iterator[CallRecorder]:
 
 
 def record(attempt: AttemptRecord) -> None:
-    try:
-        _current.get().record(attempt)
-    except Exception:
-        # Recording must never break grading; M3's DB recorder handles its own errors too
-        logger.exception("llm_call_record_failed", model=attempt.model_requested)
+    # Errors propagate: if the audit record can't be written, the call (and run) must fail
+    _current.get().record(attempt)

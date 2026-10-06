@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     OPENWEIGHT_API_KEY: Optional[str] = None  # only if your vLLM/SGLang server requires a key
 
+    # Deployed code version (e.g. git SHA), recorded on every grading run for audit
+    CODE_VERSION: Optional[str] = None
+
+    # Optional MLflow tracing (engineering observability, not the audit record)
+    MLFLOW_TRACKING_URI: Optional[str] = None
+    MLFLOW_EXPERIMENT: str = "gr8r-grading"
+
     # Storage
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")
