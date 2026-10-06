@@ -1,6 +1,5 @@
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from uuid import UUID
-from datetime import datetime
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel

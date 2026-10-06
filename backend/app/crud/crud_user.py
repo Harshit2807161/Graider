@@ -1,5 +1,4 @@
 from typing import Any, Dict, Optional, Union
-from uuid import UUID
 
 from sqlmodel import Session, select
 

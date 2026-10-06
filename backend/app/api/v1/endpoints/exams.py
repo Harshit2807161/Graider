@@ -1,15 +1,14 @@
-from datetime import datetime
 from typing import Any, List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 import io
 import pandas as pd
 from pydantic import ValidationError
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app import crud
 from app.api import deps
-from app.models.exam import Exam, SubmissionAnswer
+from app.models.exam import Exam
 from app.models.user import User
 from app.schemas.exam import (
     ExamCreate,

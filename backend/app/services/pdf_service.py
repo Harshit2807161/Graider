@@ -1,9 +1,6 @@
 """PDF processing service for converting PDFs to images."""
 
 import asyncio
-import io
-import os
-import tempfile
 from pathlib import Path
 from typing import Optional
 

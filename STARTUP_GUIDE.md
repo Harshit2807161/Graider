@@ -47,7 +47,7 @@ source .venv/bin/activate  # macOS/Linux
 
 ### 2. Install Dependencies
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime deps + pytest/ruff
 ```
 *(Or use conda: `conda env create -f environment.yml && conda activate gr8r` from the repo root.)*
 
@@ -70,15 +70,36 @@ The easiest way to run the infrastructure is via Docker:
 docker compose up -d db redis
 ```
 
-Then create the database tables and the first superuser (uses `FIRST_SUPERUSER_EMAIL` /
+Then apply the database migrations and create the first superuser (uses `FIRST_SUPERUSER_EMAIL` /
 `FIRST_SUPERUSER_PASSWORD` from `backend/.env`):
 ```bash
 cd backend
-python -m app.initial_data
+python -m app.initial_data      # runs `alembic upgrade head`, then creates the superuser
 ```
 
 To run the whole stack in Docker instead, copy the root `.env.example` to `.env`, then
-`docker compose up -d --build` and `docker compose run --rm backend python -m app.initial_data`.
+`docker compose up -d --build`. The one-shot `migrate` service applies migrations before the API
+and worker start. Create the first superuser with `docker compose run --rm backend python -m app.initial_data`.
+
+### Database migrations (Alembic)
+The schema is versioned with Alembic (`backend/alembic/`). The app never creates tables on its own.
+
+```bash
+cd backend
+alembic upgrade head            # apply pending migrations
+alembic current                 # show the database's revision
+alembic check                   # fail if models and migrations differ
+alembic revision --autogenerate -m "describe change"   # after changing a model; review the file!
+```
+
+**Existing database created before migrations** (tables made by the old `create_all`): don't run
+`upgrade` on it. Mark it as already at the baseline once, then check for drift:
+```bash
+alembic stamp head && alembic check
+```
+If `check` reports differences (e.g. columns added by the old ad-hoc scripts with different types),
+either recreate the database (dev data) with `docker compose down -v`, or fix the columns by hand
+before continuing.
 
 *(If you don't have docker-compose, ensure Redis is running on `6379` and Postgres on `5433`).*
 
@@ -122,9 +143,12 @@ Visit `http://localhost:8000/health` to ensure the backend can talk to the DB an
 ### 2. Run the Tests
 ```bash
 cd backend
+ruff check app tests alembic
 pytest                                   # SQLite + fake LLM, no keys needed
-TEST_DATABASE_URL=postgresql://... pytest  # optionally against Postgres
+TEST_DATABASE_URL=postgresql://... MIGRATIONS_DATABASE_URL=postgresql://.../empty_db pytest
+                                         # same suite on Postgres + migration round-trip test
 ```
+CI runs the same checks on every PR (`.github/workflows/ci.yml`), plus the frontend type-check and build.
 
 ### 3. Grade a Submission
 Log in at `http://localhost:3000`, create an organization and exam, add questions (with a

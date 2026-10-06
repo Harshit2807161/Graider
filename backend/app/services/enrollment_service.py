@@ -1,12 +1,12 @@
 import pandas as pd
-from typing import List, Dict, Any
+from typing import Dict, Any
 from uuid import UUID
 from fastapi import UploadFile, HTTPException
 from sqlmodel import Session, select
 import io
 
 from app import crud
-from app.models.org import Batch, Enrollment
+from app.models.org import Enrollment
 from app.models.user import User, Membership
 from app.core.constants import Role
 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 from sqlmodel import Session, select, func
 from app.crud.base import CRUDBase

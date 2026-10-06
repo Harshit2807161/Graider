@@ -1,6 +1,5 @@
 """Main grading pipeline service."""
 
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from uuid import UUID

@@ -1,4 +1,3 @@
-from uuid import UUID
 from typing import Optional
 from fastapi.encoders import jsonable_encoder
 from sqlmodel import Session, select

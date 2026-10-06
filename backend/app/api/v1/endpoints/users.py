@@ -1,11 +1,11 @@
 from typing import Any, List
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app import crud
 from app.api import deps
-from app.schemas.user import User, UserCreate, UserUpdate
+from app.schemas.user import User, UserCreate
 
 router = APIRouter()
 
