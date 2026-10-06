@@ -124,8 +124,16 @@ def trace_id_for(run_id: UUID) -> str:
 
 
 @contextmanager
-def run_trace(run_id: UUID, submission_id: UUID, trigger: str) -> Iterator[Optional[str]]:
-    """Open one trace for a grading run and yield its id (None when tracing is off)."""
+def _trace(
+    name: str,
+    *,
+    as_type: str,
+    session_id: str,
+    tags: list[str],
+    metadata: dict[str, str],
+    trace_id: Optional[str] = None,
+) -> Iterator[Optional[str]]:
+    """Open one trace whose root observation is `name`; yield its id (None when tracing is off)."""
     if not ensure_tracing():
         yield None
         return
@@ -136,29 +144,43 @@ def run_trace(run_id: UUID, submission_id: UUID, trigger: str) -> Iterator[Optio
         from langfuse.langchain import CallbackHandler
 
         client = get_client(public_key=settings.LANGFUSE_PUBLIC_KEY)
-        trace_id = trace_id_for(run_id)
-        ids = {"grading_run_id": str(run_id), "submission_id": str(submission_id)}
-        stack.enter_context(
+        root = stack.enter_context(
             client.start_as_current_observation(
-                as_type="agent", name="grading_run", trace_context={"trace_id": trace_id}, metadata=ids
+                as_type=as_type,
+                name=name,
+                trace_context={"trace_id": trace_id} if trace_id else None,
+                metadata=metadata,
             )
         )
-        # Trace-level attributes: a submission's runs (upload, regrades) form one session
         stack.enter_context(
-            propagate_attributes(
-                trace_name="grading_run", session_id=str(submission_id), tags=[trigger], metadata=ids
-            )
+            propagate_attributes(trace_name=name, session_id=session_id, tags=tags, metadata=metadata)
         )
         handler = CallbackHandler(public_key=settings.LANGFUSE_PUBLIC_KEY)
     except Exception:
         stack.close()
-        logger.warning("langfuse_trace_start_failed", run_id=str(run_id), exc_info=True)
+        logger.warning("langfuse_trace_start_failed", trace=name, exc_info=True)
         yield None
         return
 
     token = _handler.set(handler)
     with stack:
         try:
-            yield trace_id
+            yield root.trace_id
         finally:
             _handler.reset(token)
+
+
+def run_trace(run_id: UUID, submission_id: UUID, trigger: str):
+    """One trace per grading run, with an id derived from the run id. A submission's runs
+    (upload, regrades) form one session."""
+    ids = {"grading_run_id": str(run_id), "submission_id": str(submission_id)}
+    return _trace(
+        "grading_run", as_type="agent", session_id=str(submission_id), tags=[trigger], metadata=ids,
+        trace_id=trace_id_for(run_id) if ensure_tracing() else None,
+    )
+
+
+def rubric_trace(question_id: UUID, exam_id: UUID):
+    """One trace per background rubric parse; an exam's parses form one session."""
+    ids = {"question_id": str(question_id), "exam_id": str(exam_id)}
+    return _trace("rubric_parse", as_type="span", session_id=str(exam_id), tags=["rubric"], metadata=ids)
