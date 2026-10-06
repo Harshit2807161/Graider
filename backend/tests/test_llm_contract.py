@@ -29,6 +29,9 @@ class StubServer:
         stub = self
 
         class Handler(BaseHTTPRequestHandler):
+            # Keep-alive like real servers: pooled connections are what tie clients to an event loop
+            protocol_version = "HTTP/1.1"
+
             def do_POST(self):
                 length = int(self.headers.get("content-length", 0))
                 body = json.loads(self.rfile.read(length) or b"{}")
@@ -216,3 +219,28 @@ async def test_server_without_schema_support_uses_prompted_json(stub, qwen):
     assert "response_format" not in body
     assert '"value"' in body["messages"][0]["content"]  # schema is in the system prompt
     assert resp.degraded and resp.parsed == {"value": 7}
+
+
+# ===== Celery worker: tasks share one event loop per process =====
+
+def test_worker_tasks_reuse_one_event_loop(stub, monkeypatch):
+    """LangChain caches async HTTP clients per process, bound to the loop that created them.
+    The worker must run every task on the same loop (not asyncio.run per task), or the
+    second task fails with 'Event loop is closed' on kept-alive connections."""
+    from app.worker import run_in_worker_loop
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    stub.responses["/v1/messages"] = (200, anthropic_message([{"type": "text", "text": '{"value": 42}'}]), {})
+    stub.responses["/v1/chat/completions"] = (200, chat_completion('{"value": 42}'), {})
+    targets = [
+        ModelTarget(provider=Provider.ANTHROPIC, model="claude-sonnet-5-5", base_url=stub.url),
+        ModelTarget(provider=Provider.OPENWEIGHT, model="Qwen/Qwen3-32B", base_url=f"{stub.url}/v1"),
+    ]
+
+    async def one_task():
+        invoker = LangChainInvoker()  # a new invoker per grading run, as in the pipeline
+        return [await invoker.invoke(make_request(t, images=False)) for t in targets]
+
+    for _ in range(2):  # two tasks in the same worker process
+        responses = run_in_worker_loop(one_task())
+        assert [r.parsed for r in responses] == [{"value": 42}, {"value": 42}]
