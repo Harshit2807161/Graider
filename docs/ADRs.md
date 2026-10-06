@@ -17,6 +17,10 @@ This document contains all Architecture Decision Records (ADRs) for the Gr8r gra
 8. [ADR-008: Two-Step Processing Pipeline](#adr-008-two-step-processing-pipeline)
 9. [ADR-009: Agent Feedback Loop](#adr-009-agent-feedback-loop)
 10. [ADR-010: Error Handling Strategy](#adr-010-error-handling-strategy)
+11. [ADR-011: Model Router over LangChain Chat Models](#adr-011-model-router-over-langchain-chat-models)
+12. [ADR-012: Postgres Audit Store + MLflow](#adr-012-postgres-audit-store--mlflow)
+13. [ADR-013: Evaluator–Optimizer Loop with Human Escalation](#adr-013-evaluator-optimizer-loop-with-human-escalation)
+14. [ADR-014: LLM-Parsed, Versioned Rubrics](#adr-014-llm-parsed-versioned-rubrics)
 
 ---
 
@@ -449,7 +453,7 @@ class RubricProcessor:
 ## ADR-008: Two-Step Processing Pipeline
 
 ### Status
-**Accepted** (January 2026)
+**Superseded** (October 2026) by [Proposal 002](proposals/002-grading-v2-architecture.md): OCR now runs per page with stored, versioned transcriptions, and grading runs as one LangGraph graph per submission.
 
 ### Context
 We need to decide between:
@@ -497,7 +501,7 @@ Use **two-step processing**:
 ## ADR-009: Agent Feedback Loop
 
 ### Status
-**Accepted** (January 2026)
+**Superseded** (October 2026) by [ADR-013](#adr-013-evaluator-optimizer-loop-with-human-escalation): the loop is kept, but the evaluator first forms its own assessment, agreement is cross-checked in code, revisions are capped at 2, and unresolved disagreement escalates to a teacher instead of being approved.
 
 ### Context
 Grading quality may vary. We need a mechanism to ensure consistent, high-quality grades.
@@ -593,6 +597,81 @@ async def call_claude_api(prompt: str) -> Response:
 
 ---
 
+## ADR-011: Model Router over LangChain Chat Models
+
+### Status
+**Accepted** (October 2026). Details: [Proposal 002 §5](proposals/002-grading-v2-architecture.md#5-model-layer)
+
+### Context
+We need per-role model choice (vision, rubric_parser, grader, evaluator) across Claude, OpenAI and self-hosted open-weight models (vLLM/SGLang), with fallback in both directions, schema-enforced structured output, and a per-call audit record.
+
+### Decision
+Build our own **router** that owns roles, fallback chains, budget, code checks, repair and audit recording. Make the calls through **LangChain chat models**: `ChatAnthropic` for Claude (native json_schema structured output, effort, adaptive thinking) and `ChatOpenAI` for OpenAI and open-weight servers via `base_url`. LangGraph orchestrates.
+
+### Alternatives Considered
+- **Raw SDK adapters:** the best audit fidelity, but 2–3× more code and no production precedent under LangGraph.
+- **OpenHands SDK:** a coding-agent platform where the LLM decides control flow; tool-based structured output only; LiteLLM underneath.
+- **LiteLLM:** 2026 supply-chain compromise and a critical proxy CVE; Claude features are approximated.
+- **Pydantic AI:** capable, but overlaps with our router.
+
+### Consequences
+- **Positive:** follows the dominant production pattern; less code; MLflow LangChain autolog; switching models takes config only.
+- **Negative:** no Anthropic `request-id` header and no exact HTTP bytes (we record messages, params and the response id instead); a dependency on `langchain-anthropic` and `langchain-openai`.
+
+---
+
+## ADR-012: Postgres Audit Store + MLflow
+
+### Status
+**Accepted** (October 2026). Details: [Proposal 002 §8](proposals/002-grading-v2-architecture.md#8-audit-trail-and-observability)
+
+### Context
+Grades affect students, so every grade must be reconstructable for years: inputs, every model call, every evaluator round, every human change.
+
+### Decision
+Use **append-only Postgres tables** as the system of record (`grading_runs`, `llm_calls`, `transcriptions`, `answer_grades`, `grade_events`, `rubric_specs`). Model calls are committed as they happen; grade-bearing rows go in one final transaction. **Self-hosted MLflow 3.x** is optional, for traces and evals, linked by `mlflow_trace_id`.
+
+### Alternatives Considered
+Laminar, Langfuse and Phoenix. All of them, like MLflow, are observability tools rather than systems of record: traces can be sampled, deleted or dropped asynchronously, and can't share a transaction with grades. Laminar and Langfuse also need ClickHouse to run.
+
+### Consequences
+- **Positive:** grades are fully reconstructable; teacher timelines come from our own tables; low operational load.
+- **Negative:** we maintain the audit schema and a blob retention policy.
+
+---
+
+## ADR-013: Evaluator–Optimizer Loop with Human Escalation
+
+### Status
+**Accepted** (October 2026). Supersedes ADR-009. Details: [Proposal 002 §7](proposals/002-grading-v2-architecture.md#7-grading-and-the-evaluatoroptimizer-loop)
+
+### Decision
+1. The grader (one call per answer, criterion-level, with evidence and justification) is reviewed by an evaluator running on a different model.
+2. In a single call, the evaluator writes its own per-criterion assessment first, then reviews the grader's evidence and justification, returning an agreement score and feedback.
+3. Code computes effective agreement as the minimum of the LLM's agreement score and agreement based on the score gap.
+4. If agreement is below 0.8, the grader revises or pushes back. It is prompted not to change scores just to agree.
+5. After at most 2 revisions, remaining disagreement escalates to a teacher with both positions shown.
+
+### Consequences
+- **Positive:** catches grader mistakes; disagreements reach humans.
+- **Negative:** the evaluator runs on every answer (it is the biggest cost item, roughly $0.90 per typical script). Anchoring and sycophancy are measured in evals.
+
+---
+
+## ADR-014: LLM-Parsed, Versioned Rubrics
+
+### Status
+**Accepted** (October 2026). Supersedes the free-text handling in ADR-007. Details: [Proposal 002 §6](proposals/002-grading-v2-architecture.md#6-rubrics)
+
+### Decision
+Teachers write rubrics in natural language. A `rubric_parser` LLM converts each one into a versioned RubricSpec: `pass_fail` or `criteria`, subject, criteria with points. Code validates it (points sum to max, etc.). A valid spec is used automatically; an invalid one blocks only that question. No regex parsing.
+
+### Consequences
+- **Positive:** handles rubric formats that vary from teacher to teacher; every grade records the spec version it used.
+- **Negative:** a parse can be wrong yet still pass validation. It is shown to the teacher as "AI-parsed" and can be edited or re-parsed.
+
+---
+
 ## ADR Template
 
 For future decisions, use this template:
@@ -629,3 +708,4 @@ For future decisions, use this template:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | Jan 2026 | Gr8r Team | Initial ADRs for MVP |
+| 2.0 | Oct 2026 | Gr8r Team | ADR-008/009 superseded; ADR-011 to ADR-014 added for grading v2 (Proposal 002) |
