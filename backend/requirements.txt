@@ -11,6 +11,7 @@ email-validator>=2.2.0  # EmailStr
 # ===== DATABASE =====
 sqlmodel>=0.0.45  # 0.0.45+ stores timezone-aware UTC datetimes
 psycopg2-binary>=2.9.10
+alembic>=1.14.0  # schema migrations (backend/alembic)
 
 # ===== AUTH =====
 PyJWT>=2.10.0
