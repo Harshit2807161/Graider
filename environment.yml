@@ -6,9 +6,8 @@ dependencies:
   - python=3.12
   - pip
   - poppler  # pdf2image needs pdftoppm
-  # Development tools
+  # Development tools (ruff comes from requirements-dev.txt)
   - black
-  - ruff
   - pip:
-      # Single source of truth for Python deps (shared with the Docker image)
-      - -r backend/requirements.txt
+      # Runtime deps (shared with the Docker image) + test/lint tools
+      - -r backend/requirements-dev.txt
