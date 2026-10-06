@@ -22,11 +22,14 @@ celery[redis]>=5.4.0
 redis>=5.2.0
 
 # ===== LLM PROVIDERS =====
-anthropic>=0.70.0  # Claude (API key)
-openai>=1.60.0  # OpenAI API, and any OpenAI-compatible server (Ollama, vLLM, LM Studio)
+# Calls go through LangChain chat models (app/llm/), which use the official SDKs underneath
+langchain-anthropic>=1.7.5  # Claude: native structured outputs, effort, adaptive thinking
+langchain-openai>=1.6.7  # OpenAI, and self-hosted open-weight models via OpenAI-compatible servers (vLLM/SGLang)
+anthropic>=1.11.0
+openai>=2.45.0
 
 # ===== ORCHESTRATION =====
-langgraph>=0.4.0
+langgraph>=1.2.0
 
 # ===== DOCUMENT PROCESSING =====
 pypdf>=5.0.0  # PDF text extraction
