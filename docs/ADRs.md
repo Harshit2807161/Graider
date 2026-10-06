@@ -18,9 +18,10 @@ This document contains all Architecture Decision Records (ADRs) for the Gr8r gra
 9. [ADR-009: Agent Feedback Loop](#adr-009-agent-feedback-loop)
 10. [ADR-010: Error Handling Strategy](#adr-010-error-handling-strategy)
 11. [ADR-011: Model Router over LangChain Chat Models](#adr-011-model-router-over-langchain-chat-models)
-12. [ADR-012: Postgres Audit Store + MLflow](#adr-012-postgres-audit-store--mlflow)
+12. [ADR-012: Postgres Audit Store + MLflow](#adr-012-postgres-audit-store--mlflow) (observability part superseded by ADR-015)
 13. [ADR-013: Evaluator–Optimizer Loop with Human Escalation](#adr-013-evaluator-optimizer-loop-with-human-escalation)
 14. [ADR-014: LLM-Parsed, Versioned Rubrics](#adr-014-llm-parsed-versioned-rubrics)
+15. [ADR-015: Langfuse for LLM Observability](#adr-015-langfuse-for-llm-observability)
 
 ---
 
@@ -615,7 +616,7 @@ Build our own **router** that owns roles, fallback chains, budget, code checks, 
 - **Pydantic AI:** capable, but overlaps with our router.
 
 ### Consequences
-- **Positive:** follows the dominant production pattern; less code; MLflow LangChain autolog; switching models takes config only.
+- **Positive:** follows the dominant production pattern; less code; LangChain callbacks give tracing for free (Langfuse, ADR-015); switching models takes config only.
 - **Negative:** no Anthropic `request-id` header and no exact HTTP bytes (we record messages, params and the response id instead); a dependency on `langchain-anthropic` and `langchain-openai`.
 
 ---
@@ -623,7 +624,7 @@ Build our own **router** that owns roles, fallback chains, budget, code checks, 
 ## ADR-012: Postgres Audit Store + MLflow
 
 ### Status
-**Accepted** (October 2026). Details: [Proposal 002 §8](proposals/002-grading-v2-architecture.md#8-audit-trail-and-observability)
+**Accepted** (October 2026); the MLflow part is **superseded by [ADR-015](#adr-015-langfuse-for-llm-observability)**. Details: [Proposal 002 §8](proposals/002-grading-v2-architecture.md#8-audit-trail-and-observability)
 
 ### Context
 Grades affect students, so every grade must be reconstructable for years: inputs, every model call, every evaluator round, every human change.
@@ -703,9 +704,40 @@ For future decisions, use this template:
 
 ---
 
+## ADR-015: Langfuse for LLM Observability
+
+### Status
+**Accepted** (October 2026). Supersedes the MLflow part of ADR-012; the Postgres audit store is unchanged. Details: [observability.md](observability.md)
+
+### Context
+Engineers need an external service for reliable tracing, an agent-aware view of LangGraph runs, and dashboards for cumulative latency, cost and tokens by model, role and run, plus alerts. Student text is personal data (GDPR), so self-hosting or EU hosting matters.
+
+### Decision
+Use **Langfuse** (MIT core) through its LangChain callback handler, attached to every LangChain run inside a grading run with a configure hook. There is one trace per grading run, with an id derived from the run id. Self-host it from `docker-compose.langfuse.yml`, or use Langfuse Cloud EU. Images are never exported.
+
+### Alternatives Considered
+- **MLflow 3.16 (open source):** has an agent trace view and a fixed overview dashboard. But it can't group dashboards by our own tags, has no p95 latency or alerts, and shows no cost for self-hosted models.
+- **Opik:** its open-source self-host has no login, and telemetry is on by default.
+- **LangSmith:** proprietary, self-hosting needs Enterprise, and its new dashboards are US-only.
+- **Phoenix:** dashboards with group-by, and alerts, need the paid Arize AX.
+- **Others:** Laminar has no alerts; W&B Weave and Braintrust are proprietary; Datadog is hosted only; Helicone is in maintenance mode.
+
+### Consequences
+- **Positive:**
+  - custom dashboards (p50/p95/p99 latency, cost, tokens, errors by model, observation name, tag or metadata) and monitors;
+  - custom model prices for self-hosted models;
+  - datasets and experiments for M8 evals;
+  - no tracing code at call sites.
+- **Negative:**
+  - the self-hosted stack is heavy (Postgres, ClickHouse, Redis, S3; about 4 cores and 16 GB);
+  - automatic data retention and server-side masking are Enterprise features when self-hosted, so we mask client-side and need our own deletion job (backlog).
+
+---
+
 ## Document History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | Jan 2026 | Gr8r Team | Initial ADRs for MVP |
 | 2.0 | Oct 2026 | Gr8r Team | ADR-008/009 superseded; ADR-011 to ADR-014 added for grading v2 (Proposal 002) |
+| 2.1 | Oct 2026 | Gr8r Team | ADR-015: Langfuse replaces MLflow for observability |

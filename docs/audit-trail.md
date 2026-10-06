@@ -17,7 +17,7 @@ Grades affect students, which brings legal obligations as well as engineering on
 - **FERPA (US):** if the school's records policy treats AI grading records as education records, students and parents can inspect them.
 
 The design follows two principles from that research:
-- **Audit is separate from observability.** The audit record is our own Postgres tables, written as decisions happen. MLflow traces are "best-effort" by MLflow's own docs (dropped under load, sampleable, deletable), so they are never the record.
+- **Audit is separate from observability.** The audit record is our own Postgres tables, written as decisions happen. Tracing tools (Langfuse, MLflow, LangSmith alike) deliver traces best-effort: batched, sampleable, deletable and dropped if the server stays unreachable. So traces are never the record.
 - **Fail closed.** If an audit row can't be written, the run fails and no grade is stored.
 
 ## What is recorded
@@ -32,7 +32,7 @@ The design follows two principles from that research:
 | `config_snapshot`, `config_hash` | The models, fallbacks, budgets and egress setting **the worker actually used**, captured when the run starts |
 | `code_version` | Deployed code version (git SHA via `CODE_VERSION`). Prompts live in code, so this pins them. |
 | `llm_calls`, `cost_usd` | Totals over the run's calls |
-| `mlflow_trace_id` | Soft link to the engineering trace, if tracing was on and the trace was kept |
+| `trace_id` | Soft link to the run's Langfuse trace, if tracing was on and the trace was kept |
 
 ### `llm_calls`: one row per model call attempt, including failures
 
@@ -65,21 +65,11 @@ WHERE r.submission_id = '<submission id>'
 ORDER BY r.created_at, c.created_at;
 ```
 
-The matching MLflow trace, if tracing is on, has `client_request_id = <run id>`.
+The matching Langfuse trace, if tracing is on, has id `grading_runs.trace_id` (derived from the run id) and carries the run and submission ids as metadata.
 
-## MLflow (optional)
+## Observability (optional)
 
-MLflow is for engineers: a trace timeline, latency and token use, and later evals. Set it up as follows:
-- **Start it:** `docker compose --profile observability up -d`. This runs MLflow 3.16.1 with its own Postgres.
-- **Enable it:** set `MLFLOW_TRACKING_URI=http://mlflow:5000`, or `http://localhost:5001` from the host.
-- **UI:** http://localhost:5001.
-- **Client:** the worker uses the lightweight `mlflow-tracing` SDK. Don't install full `mlflow` alongside it.
-
-What happens per run:
-- Tracing starts once per worker process, after the fork.
-- Each grading run gets one trace (`grading_run`), and LangChain autolog nests every model call under it.
-- Images are kept out of traces (`MLFLOW_TRACE_MAX_ATTACHMENT_SIZE=1`).
-- If the server is unreachable, tracing turns itself off and grading continues.
+Engineers use **Langfuse** for traces, cost and latency dashboards, and alerts. It's separate from the audit record and never required for grading. Setup, what's traced and the privacy notes are in [observability.md](observability.md).
 
 ## Deliberately not done yet
 
@@ -107,4 +97,4 @@ These are recognised practices, deferred until there is a policy decision behind
 - Microsoft, fail-closed logging for compliance: [Azure OpenAI gateway monitoring](https://learn.microsoft.com/azure/architecture/ai-ml/guide/azure-openai-gateway-monitoring)
 - AWS Bedrock invocation logging (large payloads by reference): [docs](https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html)
 - PostgreSQL triggers (TRUNCATE needs a statement-level trigger): [CREATE TRIGGER](https://www.postgresql.org/docs/current/sql-createtrigger.html)
-- MLflow: [production tracing](https://mlflow.org/docs/latest/genai/tracing/prod-tracing/), [lightweight SDK](https://mlflow.org/docs/latest/genai/tracing/lightweight-sdk/), [FAQ](https://mlflow.org/docs/latest/genai/tracing/faq/), [self-hosting](https://mlflow.org/docs/latest/self-hosting/)
+- Trace delivery is best-effort: [MLflow production tracing](https://mlflow.org/docs/latest/genai/tracing/prod-tracing/), [Langfuse queuing and batching](https://langfuse.com/docs/observability/features/queuing-batching)

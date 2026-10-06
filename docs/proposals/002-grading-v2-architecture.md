@@ -16,7 +16,7 @@ Gr8r grades handwritten exam answers. Version 2 makes grading **auditable**, **r
 - **Pluggable models.** Every AI step (reading handwriting, parsing rubrics, grading, evaluating) can run on Claude (API key) or on a **self-hosted open-weight model** (vLLM / SGLang), with fallback in either direction.
 - **Criterion-level grading.** A teacher's natural-language rubric is parsed once into a structured rubric. Every awarded mark points to a rubric criterion, a quote from the student's answer and a justification. Code adds up the marks.
 - **Evaluator–optimizer loop.** A second model reviews each grade with fresh eyes. The grader can revise or push back, up to 2 rounds. Remaining disagreement goes to a teacher.
-- **Complete audit trail.** Every AI call, every grading round and every teacher change is stored append-only in Postgres. Engineering traces and evaluations go to MLflow.
+- **Complete audit trail.** Every AI call, every grading round and every teacher change is stored append-only in Postgres. Engineering traces, cost/latency dashboards and evaluations go to Langfuse.
 - **Teacher workflow.** A review queue, overrides with a reason, transcript corrections, approve, publish.
 
 Guiding principle: **LLMs turn natural language into structured data; code enforces the rules.** Code does no regex parsing of natural language, and LLMs do no arithmetic that decides a grade.
@@ -37,10 +37,10 @@ Guiding principle: **LLMs turn natural language into structured data; code enfor
 | 8 | Code checks | Schema; criterion ids match the spec; 0 ≤ score ≤ points; `pass_fail` ∈ {0, max}; total computed by code; evidence quote present in the transcript for every score > 0; non-empty justification; revisions consistent. A failure gets 1 repair retry, then escalates. |
 | 9 | OCR | Rasterize pages, transcribe each page with a vision model (segments with question label, text, confidence), and stitch pages in code. Transcriptions are stored and versioned. A teacher edit regrades only that question. A question with **no answer found escalates**; it is never auto-zeroed. |
 | 10 | Fallback and fairness | Per-role fallback chains, open-weight ⇄ API. Fallback is triggered by a transport error or timeout, a refusal, truncation after one retry, or invalid output after repair. A fallback grade is **accepted and recorded** with the model that answered. The grader's fallback never uses the evaluator's model. `ALLOW_EXTERNAL_FALLBACK=true` by default. Models, prompt versions and rubric spec versions are snapshotted per grading run. No Claude server-side refusal-fallback beta. |
-| 11 | Audit and observability | Custom append-only Postgres tables are the system of record. MLflow 3.x is self-hosted and optional, for traces and evals. One trace per grading run, linked from `grading_runs.mlflow_trace_id` (see [audit-trail.md](../audit-trail.md)). |
+| 11 | Audit and observability | Custom append-only Postgres tables are the system of record. **Langfuse** (MIT, self-hosted or EU cloud) is optional, for traces, cost/latency dashboards, alerts and evals; it replaced MLflow after a 9-tool comparison (ADR-015). One trace per grading run, linked from `grading_runs.trace_id` (see [observability.md](../observability.md)). |
 | 12 | Migrations | Alembic replaces `create_all`. New status columns are VARCHAR. `NEEDS_REVIEW` is added to the existing Postgres enum; this is irreversible. |
 | 13 | Workflow | `PENDING → PROCESSING → GRADED / NEEDS_REVIEW / FAILED → APPROVED → PUBLISHED`. Review queue, per-criterion override with a mandatory reason, transcript edit, approve, publish. The spot-check mechanism is built with a **default of 0%**. |
-| 14 | Evals | Golden set of teacher-graded scripts plus public datasets for middle school, high school and college. Metrics go to MLflow. |
+| 14 | Evals | Golden set of teacher-graded scripts plus public datasets for middle school, high school and college. Metrics go to Langfuse (datasets and experiments). |
 | 15 | Deferred | See [v2 backlog](../v2-backlog.md): stale grades after a rubric edit, spot-check rollout, refusal-fallback beta, per-org egress and budgets, bulk PDF splitting, and more. |
 
 ---
@@ -82,7 +82,7 @@ flowchart TB
 
     AGG --> DB[(Postgres<br/>grades + audit tables)]
     RV --> DB
-    Worker -. traces .-> ML[(MLflow, optional)]
+    Worker -. traces .-> LF[(Langfuse, optional)]
 ```
 
 ---
@@ -256,7 +256,7 @@ for round in 0..2:
 | Table | Purpose and key columns |
 |---|---|
 | `grading_runs` | One per grading attempt. `submission_id`, `trigger` (upload, regrade, transcript_edit), `status`, `config_snapshot` (resolved targets and pins, prompt versions, thresholds, spec ids, git sha), `config_hash`, heartbeat and timestamps, call/token/cost totals, `error` |
-| `llm_calls` | One per attempt. Run, role, purpose, question, round, attempt kind (initial, repair, truncation_retry, fallback). Model requested / model answered, provider, endpoint. The request (rendered messages and parameters; images by reference and sha256). Raw response, parsed output, stop reason, response id, request id when available. Tokens, cost, latency, fallback reason, error, schema hash, prompt version, `mlflow_trace_id` |
+| `llm_calls` | One per attempt. Run, role, purpose, question, round, attempt kind (initial, repair, truncation_retry, fallback). Model requested / model answered, provider, endpoint. The request (rendered messages and parameters; images by reference and sha256). Raw response, parsed output, stop reason, response id, request id when available. Tokens, cost, latency, fallback reason, error, schema hash, prompt version. The run holds the Langfuse `trace_id` |
 | `submission_pages` | Page images: storage key, sha256, size |
 | `transcriptions` | Versioned per (submission, question). Source (ai, teacher), text, segments with page and confidence, flags, `is_current` |
 | `answer_grades` | Versioned per (submission, question). Source (ai, teacher), spec and transcription ids, criteria results, total, every evaluator round (own assessment, agreement, effective agreement, feedback, accept/reject replies), flags, escalation reason, models used, fallback used, override reason, `is_current` |
@@ -268,17 +268,15 @@ for round in 0..2:
 - **Transaction boundaries:** `llm_calls` rows and run status are committed **as calls happen**, so a crashed run keeps its cost and debug record. Grade-bearing rows (transcriptions, answer_grades, projections, events, totals) are committed **together in one final transaction**.
 - **Reconstructing a grade:** follow `answer_grades` → `rubric_specs` + `transcriptions` + `llm_calls` (by run and question) + `grade_events`.
 
-### 8.3 MLflow
-- **Deployment:** self-hosted MLflow 3.x, behind the compose profile `observability`. It is enabled only when `MLFLOW_TRACKING_URI` is set.
-- **Tracing:** LangChain autolog in the worker, plus one root span per grading run. `mlflow_trace_id` is stored on `llm_calls`.
+### 8.3 Observability: Langfuse
+- **Deployment:** optional. Self-hosted from `docker-compose.langfuse.yml`, or Langfuse Cloud (EU region). Enabled only when `LANGFUSE_BASE_URL`, `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are all set.
+- **Tracing:** one trace per grading run, with an id derived from the run id. A LangChain configure hook nests every LangGraph node and model call under it. Model calls are named `role.purpose` and carry question, round and attempt metadata.
+- **Dashboards and alerts:** latency percentiles, cost and tokens by model, observation name, tag or metadata; threshold monitors.
+- **Privacy:** answer-sheet images are never exported. Transcribed text is, so Langfuse must be self-hosted or EU-hosted under a data processing agreement.
 - **Safety:** tracing failures never fail a grading run.
-- **Evals:** MLflow also stores the eval harness runs.
-- **Why MLflow:**
-  - It reuses our Postgres and object storage, so it is the lightest of the tools to run.
-  - It has the most complete open-source eval tooling.
-  - It is fully Apache-2.0.
-  - It can redact data on the client.
-- **What MLflow is not:** a system of record. Traces can be sampled, deleted or dropped under load.
+- **Evals:** Langfuse datasets and experiments store the eval harness runs (M8).
+- **Why Langfuse over MLflow** (full comparison in [observability.md](../observability.md)): MLflow's open-source dashboards can't group by our own tags, have no p95 or alerts, and show no cost for self-hosted models. Langfuse's free MIT edition has custom dashboards, monitors, custom model prices and a LangGraph graph view.
+- **What Langfuse is not:** a system of record. Traces can be sampled, deleted or dropped if the server stays unreachable.
 
 ---
 
@@ -375,12 +373,12 @@ Cheaper options, each to be measured before adoption: open-weight grader (hybrid
 | M0 | `docs/grading-v2-final` | This proposal, checklist, backlog, ADRs | – |
 | M1 | `chore/ci-and-migrations` | CI, Alembic baseline, startup changes | – |
 | M2 | `feat/llm-router` | Model router: roles, open-weight + API backends, fallback, structured output | M1 |
-| M3 | `feat/audit-and-tracing` | Audit tables, recorders, idempotent runs, MLflow | M2 |
+| M3 | `feat/audit-and-tracing` | Audit tables, recorders, idempotent runs, Langfuse tracing | M2 |
 | M4 | `feat/rubric-parser` | RubricSpec, parsing, validation, API | M3 |
 | M5 | `feat/grading-graph-v2` | New graph: OCR fan-out, grader/evaluator loop, escalation, persistence | M4 |
 | M6 | `feat/review-workflow-api` | State machine, review/override/approve/publish API | M5 |
 | M7 | `feat/review-ui` | Review UI (design skills: frontend-design, ui-ux-pro-max, design-system) | M6 |
-| M8 | `feat/eval-harness` | Golden-set harness, metrics, MLflow | M5 |
+| M8 | `feat/eval-harness` | Golden-set harness, metrics, Langfuse experiments | M5 |
 | M9 | `feat/eval-datasets` | Public eval suites: middle school, high school, college | M8 |
 | M10 | `chore/hardening` | Object storage, rate limits and circuit breaker, hash-locked dependencies, pre-commit | M3, M6 |
 
@@ -412,8 +410,10 @@ Details and acceptance criteria are in the [feature checklist](../grading-v2-che
   - [LiteLLM security update, March 2026](https://docs.litellm.ai/blog/security-update-march-2026)
   - [GHSA-r75f-5x8p-qvmc](https://github.com/advisories/GHSA-r75f-5x8p-qvmc)
 - **Observability:**
-  - [MLflow tracing](https://mlflow.org/docs/latest/genai/tracing/)
-  - [MLflow self-hosting](https://mlflow.org/docs/latest/self-hosting/)
+  - [Langfuse LangChain/LangGraph integration](https://langfuse.com/integrations/frameworks/langchain)
+  - [Langfuse custom dashboards](https://langfuse.com/docs/metrics/features/custom-dashboards)
+  - [Langfuse self-hosting](https://langfuse.com/self-hosting)
+  - [MLflow tracing](https://mlflow.org/docs/latest/genai/tracing/) (evaluated, replaced)
   - [Laminar](https://github.com/lmnr-ai/lmnr)
   - [OpenTelemetry GenAI conventions](https://github.com/open-telemetry/semantic-conventions-genai)
 - **Grading research:**

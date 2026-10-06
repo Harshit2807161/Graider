@@ -38,7 +38,7 @@ backend/
 │   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
 │   ├── core/                      # config, db (engine, upgrade_to_head), security, constants, langgraph_setup
 │   ├── audit/                     # grading runs (lifecycle) + DbCallRecorder → llm_calls (append-only)
-│   ├── observability/             # optional MLflow tracing (one trace per run)
+│   ├── observability/             # optional Langfuse tracing (one trace per run, images masked)
 │   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
 │   │                              # (LangChain chat models), router, budget, costs, recorder
 │   ├── crud/                      # data access (soft-delete aware)
@@ -108,7 +108,7 @@ cd frontend && npx tsc --noEmit && npm run lint && npm run build
 cd backend && ruff check app tests alembic    # same as CI
 ```
 
-Full stack in Docker: copy root `.env.example` to `.env`, `docker compose up -d --build` (the `migrate` service runs migrations first), then `docker compose run --rm backend python -m app.initial_data` for the superuser. CI: `.github/workflows/ci.yml`.
+Full stack in Docker: copy root `.env.example` to `.env`, `docker compose up -d --build` (the `migrate` service runs migrations first), then `docker compose run --rm backend python -m app.initial_data` for the superuser. Optional Langfuse (traces/dashboards, UI on :3001): add `-f docker-compose.langfuse.yml` — see docs/observability.md. CI: `.github/workflows/ci.yml`.
 
 ## Environment Variables
 See `backend/.env.example` (local) and `.env.example` (docker compose). Key ones:
