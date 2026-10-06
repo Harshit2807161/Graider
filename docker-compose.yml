@@ -88,46 +88,8 @@ services:
       redis:
         condition: service_started
 
-  # ---- Optional observability (MLflow tracing UI): docker compose --profile observability up -d
-  # Engineering traces only; the audit record is the grading_runs/llm_calls tables in `db`.
-  # Point the worker at it with MLFLOW_TRACKING_URI=http://mlflow:5000 in .env.
-  mlflow-db:
-    image: postgres:15-alpine
-    profiles: ["observability"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: mlflow
-      POSTGRES_PASSWORD: mlflow
-      POSTGRES_DB: mlflow
-    volumes:
-      - mlflow_db:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mlflow -d mlflow"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-  mlflow:
-    # Pinned; keep the server version >= the mlflow-tracing client version
-    image: ghcr.io/mlflow/mlflow:v3.16.1-full
-    profiles: ["observability"]
-    restart: unless-stopped
-    command: >
-      mlflow server
-      --backend-store-uri postgresql://mlflow:mlflow@mlflow-db:5432/mlflow
-      --artifacts-destination /mlartifacts --serve-artifacts
-      --host 0.0.0.0 --port 5000
-      --allowed-hosts mlflow:5000,localhost:5001,127.0.0.1:5001
-    ports:
-      - "5001:5000"  # 5000 is often taken on macOS (AirPlay)
-    volumes:
-      - mlartifacts:/mlartifacts
-    depends_on:
-      mlflow-db:
-        condition: service_healthy
+  # Optional: LLM observability (Langfuse) is in docker-compose.langfuse.yml
 
 volumes:
   postgres_data:
   minio_data:
-  mlflow_db:
-  mlartifacts:
