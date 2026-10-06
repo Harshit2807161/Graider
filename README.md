@@ -18,7 +18,6 @@ Teachers set up an organization, classes and exams (questions with rubrics), the
 
 ```bash
 conda env create -f environment.yml && conda activate gr8r     # Python 3.12 + backend deps
-brew install poppler                                           # PDF → image (macOS)
 cp backend/.env.example backend/.env                           # set SECRET_KEY, ANTHROPIC_API_KEY (or an open-weight profile)
 docker compose up -d db redis                                  # Postgres :5433, Redis :6379
 cd backend && python -m app.initial_data                       # tables + first superuser

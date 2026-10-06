@@ -52,3 +52,8 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
 - [M4] **macOS dev workers need `--pool=solo`.** Celery's prefork pool fails on macOS (spawned children); Linux/Docker is unaffected. Documented in STARTUP_GUIDE.
 - [Proposal 003] **Printable Gr8r answer booklets** (QR code + question-number box on every page) for deterministic page → student/question mapping, as Crowdmark and Gradescope do. Not now (owner, 2026-10-06).
 - [Proposal 003] **Class-batch scans** (many students in one file): cover sheets/QR, boundary detection in small page windows, roster matching, thumbnail review. After M5 (owner, 2026-10-06).
+- [M4b] **Ollama's default context is 4096 tokens** and it silently truncates longer prompts; one 200-DPI page is ~3,800 Qwen3-VL image tokens. Documented in docs/deploy/open-weight.md (`OLLAMA_CONTEXT_LENGTH`). Consider sending one page per OCR request for small-context servers.
+- [M4b] **Photos rotated by 90°/180° without EXIF** are not turned upright (only EXIF rotation and perspective are fixed). Detect orientation in M4c's page classification and re-render.
+- [M4b] **Converter cold start under memory pressure.** Gotenberg's first LibreOffice start timed out (20 s default) on a laptop low on memory; a retried conversion works. Consider `--libreoffice-start-timeout=60s` and retrying a 503 once.
+- [M4b] **Upload is all-or-nothing per request** and files are read into memory (per-file cap 50 MB, 30 files). Streaming to object storage (M10) would lift this.
+

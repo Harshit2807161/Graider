@@ -1,6 +1,6 @@
 # Proposal 003: Document ingestion (entry modes and file formats)
 
-- **Status:** Proposed (2026-10-06). The owner has decided the mode A source, class batches, choice questions and the office converter (§11). Awaiting approval to start M4b. Nothing is built yet.
+- **Status:** Accepted (2026-10-06); decisions in §11. M4b (document intake) is in review, M4c next.
 - **Extends:** [Proposal 002](002-grading-v2-architecture.md). Its rubric parser (M4) and grading graph (M5) stay as they are. This proposal adds how questions, answers and rubrics *arrive*.
 
 ## 1. Summary
