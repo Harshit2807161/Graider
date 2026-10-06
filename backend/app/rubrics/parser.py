@@ -16,7 +16,7 @@ from app.llm.types import CallContext, LLMRequest, Role, TextPart
 from app.rubrics.schema import ParsedRubric, RubricSpec
 from app.rubrics.validate import has_rubric_text, validate_spec
 
-PARSER_PROMPT_VERSION = "rubric-parser-v1"
+PARSER_PROMPT_VERSION = "rubric-parser-v2"
 
 
 def _example(question: str, question_type: str, max_score: float, rubric: Optional[str], output: dict) -> str:
@@ -68,6 +68,18 @@ EXAMPLES = "\n\n".join([
          "parser_warnings": ["The rubric gives no marks per point, so the 6 marks were split equally. Please check."]},
     ),
     _example(
+        "Explain why metals conduct electricity.", "descriptive", 6,
+        "Full marks for explaining that metals have delocalised electrons that move through the structure and "
+        "carry the charge. Give half marks if the student only says metals have free electrons, without saying "
+        "that they move or carry charge.",
+        {"kind": "criteria", "subject": "science", "criteria_count": 1, "criteria": [
+            {"description": "Explains that metals have delocalised electrons that move through the structure "
+                            "and carry the charge", "points": 6, "expected_answer": None,
+             "notes": "3 of 6 points (half marks) if the answer only says metals have free electrons, without "
+                      "saying that they move or carry charge"}],
+         "grading_notes": None, "parser_warnings": []},
+    ),
+    _example(
         "Define a renewable energy source and give one example.", "descriptive", 5,
         "Correct definition (2)\nValid example (2)",
         {"kind": "criteria", "subject": "science", "criteria_count": 2, "criteria": [
@@ -106,6 +118,10 @@ one-word fact): exactly one criterion worth the full maximum score.
 implies otherwise) and add a parser warning that the split was inferred.
    - If the rubric's marks don't add up to the maximum score, keep them as written and add a parser \
 warning. The teacher will fix it.
+   - Levels of credit for the same point ("full marks if…, half marks if only…", "1 mark if only…") \
+are ONE criterion worth the highest level. Write each lower level in its notes as exact points, \
+converting relative wording ("half marks" on a 4-point criterion is "2 of 4 points"). Never add the \
+levels together as separate criteria.
 4. description: what the answer must contain or do, specific enough to check against a student's answer. \
 Put an exact expected value or wording in expected_answer, and partial-credit rules in notes.
 5. If there is no rubric, derive the criteria from the question: what a complete, correct answer must \

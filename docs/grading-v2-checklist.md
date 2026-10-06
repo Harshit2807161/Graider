@@ -115,7 +115,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
   - Append-only `rubric_specs` (version, source ai/teacher, ready/invalid + reasons, spec, input hash + inputs, parser prompt version, model, producing `llm_call_id`, editor)
   - `questions.rubric_status` (missing/pending/ready/invalid/error), `rubric_input_hash`, `rubric_error`
   - `llm_calls.question_id`, with a check that every call belongs to a run or a question
-- [x] Parser prompt (`rubric-parser-v1`) with few-shot examples: pass/fail (MCQ), explicit marks, unmarked points, marks that don't add up (kept and flagged, never fudged), empty rubric (derived)
+- [x] Parser prompt (`rubric-parser-v2`) with few-shot examples: pass/fail (MCQ), explicit marks, unmarked points, levels of credit for one point (one criterion, lower levels as exact points in notes), marks that don't add up (kept and flagged, never fudged), empty rubric (derived)
 - [x] Triggers:
   - Question sync and Excel import queue `parse_rubric_task` (queue `rubric`) for questions whose text, rubric, max score or type changed; the task skips stale and already-parsed inputs, locks the question row and discards results whose inputs changed meanwhile
   - `ensure_rubric_specs()` parses missing specs when a grading run starts
@@ -123,7 +123,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [x] API: GET/PUT `…/questions/{qid}/rubric-spec`, POST `…/rubric-spec/reparse`, GET `/exams/{id}/rubric-status`; `QuestionRead` gains status, error, derived flag and summary
 - [x] Grading uses the spec's criteria (replacing the line-splitting of rubric text); an invalid or unparsed spec fails the run before OCR, with each question's reasons
 - [x] Tests: validation table; parse/store/link; invalid kept with reasons; failure keeps attempts; stale and redelivered tasks; mid-parse edits discarded; undo reuses spec; failed re-parse; changed questions queue a parse and unchanged don't; Excel import; teacher edit (valid and rejected) and re-parse; tenancy; invalid spec never reaches the grader; teacher fix lets the regrade through; append-only triggers (Postgres)
-- [x] Live (`pytest -m live`): five rubric shapes against Qwen3-4B via Ollama, 15/15 across three runs
+- [x] Live (`pytest -m live`): seven rubric shapes (incl. prose with full/half marks and terse shorthand) against Qwen3-4B via Ollama, 21/21 across three runs
 - [x] E2E: question save → Redis `rubric` queue → Celery worker (macOS solo pool, and the Linux Docker image's default prefork pool) → Ollama → `rubric_specs` + `llm_calls` + Langfuse trace
 - Changes from the plan:
   - No `questions.rubric_spec_id` pointer: the current spec is the newest version for the question's current inputs, so there's nothing to keep in sync

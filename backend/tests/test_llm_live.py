@@ -194,6 +194,16 @@ RUBRIC_CASES = [
     ("Define a renewable resource and give an example.", "descriptive", 5, "Definition (2)\nExample (2)",
      {"kind": "criteria", "points": [2, 2], "invalid": True}),
     ("What is the capital of France?", "descriptive", 1, None, {"derived": True}),
+    # Prose with levels of credit for one point: one criterion, lower level in its notes (not 4 + 2)
+    ("Explain how vaccines protect the body from disease.", "descriptive", 4,
+     "Full marks if the student explains that a vaccine exposes the immune system to a harmless form of the "
+     "pathogen and that memory cells allow a faster response later. Give half marks if they only say it 'makes "
+     "you immune' without explaining how.",
+     {"kind": "criteria", "points": [4], "notes": "2 of 4"}),
+    # Terse shorthand: method and answer marks in one line
+    ("Find the area of a circle with radius 3 cm.", "problem", 2,
+     "A = πr² = 9π ≈ 28.3 cm². Method 1, answer 1. Accept 28.27 or 9π.",
+     {"kind": "criteria", "points": [1, 1]}),
 ]
 
 
@@ -210,6 +220,8 @@ async def test_open_weight_rubric_parser(openweight_roles, question, qtype, max_
         assert spec.kind == expect["kind"], spec
     if "points" in expect:
         assert sorted(c.points for c in spec.criteria) == expect["points"], spec
+    if "notes" in expect:  # partial credit converted to exact points
+        assert expect["notes"] in " ".join(c.notes or "" for c in spec.criteria), spec
     if expect.get("invalid"):
         assert any("add up to 4" in e for e in result.errors), result.errors
     else:
