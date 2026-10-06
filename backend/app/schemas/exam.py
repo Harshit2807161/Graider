@@ -32,6 +32,11 @@ class QuestionRead(QuestionBase):
     id: UUID
     exam_id: UUID
     created_at: datetime
+    # Parsed rubric (details: GET /exams/{exam_id}/questions/{id}/rubric-spec)
+    rubric_status: str = "missing"
+    rubric_error: Optional[str] = None
+    rubric_derived: Optional[bool] = None  # criteria were derived because there was no rubric text
+    rubric_summary: Optional[str] = None  # e.g. "3 criteria (science)"
 
     class Config:
         from_attributes = True

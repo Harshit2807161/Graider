@@ -162,6 +162,16 @@ def fake_llm(monkeypatch) -> FakeInvoker:
 
 
 @pytest.fixture(autouse=True)
+def rubric_parses(monkeypatch) -> list[tuple]:
+    """Capture parse_rubric_task dispatches (question id, input hash, force) instead of using Redis."""
+    from app.worker import parse_rubric_task
+
+    calls: list[tuple] = []
+    monkeypatch.setattr(parse_rubric_task, "delay", lambda *args: calls.append(args))
+    return calls
+
+
+@pytest.fixture(autouse=True)
 def fresh_db():
     SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)

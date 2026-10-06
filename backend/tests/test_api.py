@@ -199,6 +199,97 @@ class TestQuestions:
         assert created["question_type"] == "descriptive"
 
 
+class TestRubricSpecs:
+    @staticmethod
+    def payload(questions: list[dict]) -> list[dict]:
+        keys = ("id", "question_text", "order_index", "max_score", "rubric_criteria", "question_type")
+        return [{k: q[k] for k in keys} for q in questions]
+
+    def test_question_changes_queue_rubric_parses(self, client, db, school, rubric_parses):
+        headers = login(client, "teacher@school.test")
+        exam_id = school["exam"].id
+        questions = client.get(f"{API}/exams/{exam_id}", headers=headers).json()["questions"]
+        assert [q["rubric_status"] for q in questions] == ["missing", "missing"]
+
+        # First save: neither question has been parsed yet
+        body = client.post(f"{API}/exams/{exam_id}/questions", json=self.payload(questions), headers=headers).json()
+        assert [q["rubric_status"] for q in body] == ["pending", "pending"]
+        assert {UUID(args[0]) for args in rubric_parses} == {UUID(q["id"]) for q in questions}
+
+        # Saving unchanged questions queues nothing
+        client.post(f"{API}/exams/{exam_id}/questions", json=self.payload(body), headers=headers)
+        assert len(rubric_parses) == 2
+
+        # Editing one rubric and adding a question queues exactly those two
+        body[0]["rubric_criteria"] = "Subtract 5 (2 marks)\nDivide by 2 (2 marks)"
+        new = {"id": None, "question_text": "Define speed", "order_index": 3, "max_score": 2,
+               "rubric_criteria": None, "question_type": "descriptive"}
+        after = client.post(f"{API}/exams/{exam_id}/questions", json=self.payload(body) + [new], headers=headers).json()
+        assert len(rubric_parses) == 4 and rubric_parses[2][0] == body[0]["id"]
+        assert rubric_parses[3][0] == after[2]["id"] and rubric_parses[3][2] is False
+
+    def test_excel_import_queues_a_parse_per_question(self, client, db, school, rubric_parses):
+        headers = login(client, "teacher@school.test")
+        rows = [{"question_text": "What is 2 + 2?", "max_score": 1, "rubric_criteria": "4"},
+                {"question_text": "Name a mammal", "max_score": 1}]
+        response = client.post(f"{API}/exams/{school['exam'].id}/questions/upload",
+                               files={"file": excel_file(rows)}, headers=headers)
+        assert response.status_code == 200, response.text
+        assert [q["rubric_status"] for q in response.json()] == ["pending", "pending"] and len(rubric_parses) == 2
+
+    def test_teacher_views_edits_and_reparses_a_spec(self, client, db, school, rubric_parses):
+        headers = login(client, "teacher@school.test")
+        exam_id = school["exam"].id
+        q1, q2 = client.get(f"{API}/exams/{exam_id}", headers=headers).json()["questions"]
+        url = f"{API}/exams/{exam_id}/questions/{q1['id']}/rubric-spec"
+
+        missing = client.get(url, headers=headers)
+        assert missing.status_code == 404 and missing.json()["detail"]["rubric_status"] == "missing"
+
+        criteria = [{"id": "c1", "description": "Subtracts 5", "points": 2},
+                    {"id": "c2", "description": "Divides by 2", "points": 1}]
+        bad = client.put(url, json={"kind": "criteria", "subject": "math", "criteria": criteria}, headers=headers)
+        assert bad.status_code == 422
+        assert "Criteria points add up to 3, but the question is worth 4." in bad.json()["detail"]["errors"]
+
+        criteria[1]["points"] = 2
+        good = client.put(url, json={"kind": "criteria", "subject": "math", "criteria": criteria}, headers=headers)
+        assert good.status_code == 200, good.text
+        spec = good.json()
+        assert spec["version"] == 1 and spec["source"] == "teacher" and spec["status"] == "ready"
+        assert spec["created_by_membership_id"] == str(school["teacher_m"].id)
+        assert client.get(url, headers=headers).json()["id"] == spec["id"]
+
+        read_q1 = client.get(f"{API}/exams/{exam_id}", headers=headers).json()["questions"][0]
+        assert read_q1["rubric_status"] == "ready" and read_q1["rubric_summary"] == "2 criteria (math)"
+        overview = client.get(f"{API}/exams/{exam_id}/rubric-status", headers=headers).json()
+        assert [(r["label"], r["rubric_status"], r["spec_version"]) for r in overview] == [
+            ("Q1", "ready", 1), ("Q2", "missing", None)]
+
+        reparse = client.post(f"{url}/reparse", headers=headers)
+        assert reparse.status_code == 202 and reparse.json()["rubric_status"] == "pending"
+        assert rubric_parses[-1][0] == q1["id"] and rubric_parses[-1][2] is True
+
+    def test_rubric_specs_are_staff_only_and_scoped_to_the_exam(self, client, db, school):
+        exam_id = school["exam"].id
+        question_id = db.exec(select(Question).where(Question.exam_id == exam_id)).first().id
+        url = f"{API}/exams/{exam_id}/questions/{question_id}/rubric-spec"
+
+        student = login(client, "student@school.test")
+        assert client.get(url, headers=student).status_code == 403
+        assert client.get(f"{API}/exams/{exam_id}/rubric-status", headers=student).status_code == 403
+
+        other = make_org(db, "other-school")
+        add_member(db, make_user(db, "teacher@other.test"), other, Role.TEACHER)
+        outsider = login(client, "teacher@other.test")
+        assert client.get(url, headers=outsider).status_code == 403
+        assert client.post(f"{url}/reparse", headers=outsider).status_code == 403
+
+        teacher = login(client, "teacher@school.test")
+        wrong_exam = client.get(f"{API}/exams/{exam_id}/questions/{UUID(int=1)}/rubric-spec", headers=teacher)
+        assert wrong_exam.status_code == 404
+
+
 class TestSubmissions:
     def upload(self, client, headers, exam_id, filename="sheet.png", data=None):
         content = data if data is not None else (FIXTURES / "test_answer.png").read_bytes()

@@ -21,6 +21,10 @@ from app.schemas.exam import (
 )
 from app.core.constants import QuestionType
 from app.models.base import utcnow
+from app.models.exam import Question
+from app.rubrics import service as rubric_service
+from app.rubrics.schema import RubricSpec
+from app.api.v1.endpoints.rubrics import enqueue_parses
 
 router = APIRouter()
 
@@ -55,15 +59,28 @@ def _validate_batch(db: Session, *, batch_id: Optional[UUID], org_id: UUID) -> N
         raise HTTPException(status_code=400, detail="Batch not found in this organization")
 
 
+def _question_reads(db: Session, questions: List[Question]) -> List[QuestionRead]:
+    """Questions with a summary of their current rubric spec."""
+    specs = rubric_service.current_specs(db, questions)
+    reads = []
+    for q in questions:
+        read = QuestionRead.model_validate(q)
+        record = specs.get(q.id)
+        if record is not None:
+            spec = RubricSpec.model_validate(record.spec)
+            label = "Pass/fail" if spec.kind == "pass_fail" else f"{len(spec.criteria)} criteria"
+            read.rubric_derived = spec.derived
+            read.rubric_summary = f"{label} ({spec.subject})"
+        reads.append(read)
+    return reads
+
+
 def _exam_with_questions(db: Session, exam: Exam) -> ExamWithQuestions:
     # exam.questions would include soft-deleted rows in arbitrary order
     questions = crud.question.get_by_exam(db, exam_id=exam.id)
     data = ExamRead.model_validate(exam).model_dump()
     data["question_count"] = len(questions)
-    return ExamWithQuestions(
-        **data,
-        questions=[QuestionRead.model_validate(q) for q in questions],
-    )
+    return ExamWithQuestions(**data, questions=_question_reads(db, questions))
 
 
 @router.post("/", response_model=ExamRead)
@@ -200,6 +217,7 @@ def sync_exam_questions(
 
     now = utcnow()
     kept_ids = set()
+    live = []
     for q_in in questions_in:
         fields = q_in.model_dump(exclude={"id"})
         if q_in.id is not None:
@@ -210,14 +228,18 @@ def sync_exam_questions(
         else:
             db_question = crud.question.model(**fields, exam_id=exam_id)
         db.add(db_question)
+        live.append(db_question)
 
     for q_id, db_question in existing.items():
         if q_id not in kept_ids:
             db_question.deleted_at = now
             db.add(db_question)
 
+    # Questions whose text, rubric, max score or type changed get their rubric re-parsed
+    to_parse = rubric_service.mark_changed(db, live)
     db.commit()
-    return crud.question.get_by_exam(db, exam_id=exam_id)
+    enqueue_parses(to_parse)
+    return _question_reads(db, crud.question.get_by_exam(db, exam_id=exam_id))
 
 @router.post("/{exam_id}/questions/upload", response_model=List[QuestionRead])
 async def upload_exam_questions_excel(
@@ -326,7 +348,9 @@ async def upload_exam_questions_excel(
         db_question = crud.question.model(**q_in.model_dump(), exam_id=exam_id)
         db.add(db_question)
         new_questions.append(db_question)
+    to_parse = rubric_service.mark_changed(db, new_questions)
     db.commit()
+    enqueue_parses(to_parse)
     for q in new_questions:
         db.refresh(q)
-    return new_questions
+    return _question_reads(db, new_questions)
