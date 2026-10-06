@@ -1,4 +1,4 @@
-"""Persist every model call attempt to `llm_calls`, linked to its grading run."""
+"""Persist every model call attempt to `llm_calls`, linked to its grading run and/or question."""
 
 from typing import Optional
 from uuid import UUID
@@ -11,11 +11,18 @@ from app.llm.types import AttemptRecord
 from app.models.audit import LLMCall
 
 
-def to_row(attempt: AttemptRecord, run_id: Optional[UUID], submission_id: Optional[UUID]) -> LLMCall:
+def to_row(
+    attempt: AttemptRecord,
+    run_id: Optional[UUID],
+    submission_id: Optional[UUID],
+    question_id: Optional[UUID] = None,
+) -> LLMCall:
     usage = attempt.usage
     return LLMCall(
+        id=attempt.id,
         run_id=run_id,
         submission_id=submission_id,
+        question_id=question_id,
         question_label=attempt.context.question_id,
         role=attempt.role.value,
         purpose=attempt.context.purpose,
@@ -61,13 +68,20 @@ class DbCallRecorder:
     guarantee, so the run fails instead (and can be regraded). Also logs each attempt.
     """
 
-    def __init__(self, run_id: Optional[UUID], submission_id: Optional[UUID]):
+    def __init__(
+        self, run_id: Optional[UUID], submission_id: Optional[UUID], question_id: Optional[UUID] = None
+    ):
         self.run_id = run_id
         self.submission_id = submission_id
+        self.question_id = question_id
         self._log = LogRecorder()
+
+    def for_question(self, question_id: UUID) -> "DbCallRecorder":
+        """Same run, calls attributed to one question (e.g. parsing its rubric during a run)."""
+        return DbCallRecorder(self.run_id, self.submission_id, question_id)
 
     def record(self, attempt: AttemptRecord) -> None:
         self._log.record(attempt)
         with Session(engine) as db:
-            db.add(to_row(attempt, self.run_id, self.submission_id))
+            db.add(to_row(attempt, self.run_id, self.submission_id, self.question_id))
             db.commit()

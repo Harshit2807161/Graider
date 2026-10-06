@@ -101,3 +101,12 @@ async def test_tracing_is_off_unless_configured(fake_llm, db, school, tmp_path):
     await run_grading(run.id)
     run, _, _, _ = reload(run.id)
     assert run.trace_id is None and run.status == RunStatus.SUCCEEDED
+
+
+def test_every_call_belongs_to_a_run_or_a_question(db):
+    from sqlalchemy.exc import IntegrityError
+
+    db.add(LLMCall(role="grader", purpose="grade", attempt_no=1, attempt_kind="initial", provider="anthropic",
+                   model_requested="m", external=True, request={}, schema_name="S", schema_hash="h"))
+    with pytest.raises(IntegrityError):
+        db.commit()

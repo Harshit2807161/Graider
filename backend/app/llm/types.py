@@ -6,7 +6,7 @@ import hashlib
 from datetime import datetime
 from enum import Enum
 from typing import Any, Generic, Literal, Optional, TypeVar
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -141,6 +141,7 @@ class Usage(BaseModel):
 class AttemptRecord(BaseModel):
     """One HTTP call to one model. Every attempt is recorded, including failures."""
 
+    id: UUID = Field(default_factory=uuid4)  # becomes the llm_calls row id, so results can cite it
     role: Role
     context: CallContext
     attempt_no: int
