@@ -23,10 +23,12 @@ def convert_to_pdf(data: bytes, filename: str) -> bytes:
         response = httpx.post(url, files={"files": (filename, data)}, timeout=settings.GOTENBERG_TIMEOUT_S)
     except httpx.HTTPError as e:
         raise DocumentError(f"The document converter is unavailable ({type(e).__name__}). Try again later.")
-    if response.status_code == 400:
-        raise DocumentError("The document is damaged or uses features the converter can't read.")
     if response.status_code == 503:
         raise DocumentError("Converting the document took too long. Try a smaller file or a PDF.")
+    # LibreOffice reports unreadable documents as 400 or 500 (seen in Gotenberg 8.37)
     if response.status_code != 200 or not response.content.startswith(b"%PDF-"):
-        raise DocumentError(f"The document converter failed (HTTP {response.status_code}).")
+        raise DocumentError(
+            "The document couldn't be converted (it may be damaged or use features the converter "
+            f"can't read; HTTP {response.status_code}). Try saving it as PDF."
+        )
     return response.content

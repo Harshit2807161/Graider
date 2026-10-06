@@ -306,3 +306,28 @@ def test_submission_from_before_documents_is_adopted(db, school, uploads):
     assert document.kind == "png" and document.stored_path == str(sheet) and page.kind == "photo"
     with Session(engine) as fresh:
         assert len(service.submission_documents(fresh, fresh.get(Submission, submission.id))) == 1
+
+
+# ===== real conversion (runs when a Gotenberg converter is configured, as in CI) =====
+
+import os  # noqa: E402
+
+from app.ingestion.office import convert_to_pdf  # noqa: E402
+
+CONVERTER = os.environ.get("GOTENBERG_URL")
+needs_converter = pytest.mark.skipif(not CONVERTER, reason="set GOTENBERG_URL to a running Gotenberg")
+
+
+@needs_converter
+@pytest.mark.parametrize("name, make", [("a.docx", fx.docx), ("a.odt", fx.odt), ("a.rtf", fx.rtf)])
+def test_office_documents_convert_to_readable_pages(monkeypatch, name, make):
+    monkeypatch.setattr(settings, "GOTENBERG_URL", CONVERTER)
+    (page,) = list(render_pdf(convert_to_pdf(make(), "document." + name.rsplit(".", 1)[1])))
+    assert page.kind == "digital" and "x = 5" in page.text
+
+
+@needs_converter
+def test_converter_refuses_damaged_documents(monkeypatch):
+    monkeypatch.setattr(settings, "GOTENBERG_URL", CONVERTER)
+    with pytest.raises(DocumentError, match="couldn't be converted"):
+        convert_to_pdf(b"PK\x03\x04 not really a document", "document.docx")

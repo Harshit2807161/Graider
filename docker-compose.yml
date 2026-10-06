@@ -13,6 +13,8 @@ x-backend: &backend
     - CELERY_RESULT_BACKEND=redis://redis:6379/0
     # Shared between API and worker through the ./backend/data volume
     - UPLOAD_DIR=/app/data/uploads
+    # Office documents are converted by the sandboxed `gotenberg` service (only the worker calls it)
+    - GOTENBERG_URL=http://gotenberg:3000
     - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
   volumes:
     - ./backend/data:/app/data
@@ -87,8 +89,43 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_started
+    networks: [default, converter]
+
+  # Converts Word/ODT/RTF/PowerPoint uploads to PDF with LibreOffice (Proposal 003). Untrusted office
+  # files are only ever opened here: on a private network the worker shares and that has no internet
+  # access, read-only, unprivileged, resource-limited, LibreOffice restarted every 10 conversions.
+  gotenberg:
+    image: gotenberg/gotenberg:8.37.0-libreoffice  # pinned; LibreOffice-only variant (no Chromium)
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --api-timeout=90s
+      - --api-body-limit=60MB
+      - --libreoffice-restart-after=10
+      - --webhook-deny-private-ips=true
+      - --api-download-from-deny-private-ips=true
+    networks: [converter]
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/gotenberg
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # Optional: LLM observability (Langfuse) is in docker-compose.langfuse.yml
+
+networks:
+  default: {}
+  converter:
+    internal: true  # no route to the internet
 
 volumes:
   postgres_data:

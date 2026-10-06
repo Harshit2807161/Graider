@@ -158,12 +158,27 @@ def macro_docx() -> bytes:
     return with_zip_member(docx(), "word/vbaProject.bin", b"\x00" * 64)
 
 
-def odt() -> bytes:
-    """A minimal OpenDocument text file (valid enough to identify; conversion tests use real DOCX)."""
+def odt(lines: list[str] = ANSWER_LINES) -> bytes:
+    """A minimal but valid OpenDocument text file (LibreOffice opens it)."""
+    paragraphs = "".join(f"<text:p>{line}</text:p>" for line in lines)
+    content = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
+        'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2">'
+        f"<office:body><office:text>{paragraphs}</office:text></office:body></office:document-content>"
+    )
+    manifest = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">'
+        '<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>'
+        '<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>'
+        "</manifest:manifest>"
+    )
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr(zipfile.ZipInfo("mimetype"), "application/vnd.oasis.opendocument.text")
-        archive.writestr("content.xml", "<office:document-content/>")
+        archive.writestr("content.xml", content)
+        archive.writestr("META-INF/manifest.xml", manifest)
     return buffer.getvalue()
 
 

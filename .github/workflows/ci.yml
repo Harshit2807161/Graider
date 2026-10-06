@@ -27,6 +27,16 @@ jobs:
 
   backend-tests-sqlite:
     runs-on: ubuntu-latest
+    services:
+      # Real office -> PDF conversions (Word, ODT, RTF) in tests/test_ingestion.py
+      gotenberg:
+        image: gotenberg/gotenberg:8.37.0-libreoffice
+        ports: ["3000:3000"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:3000/health"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      GOTENBERG_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,10 +44,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements*.txt
-      - name: System packages (pdf2image needs poppler)
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: pip install -r backend/requirements-dev.txt
-      - name: pytest (SQLite, fake LLM)
+      - name: pytest (SQLite, fake LLM, real document converter)
         working-directory: backend
         run: pytest -q
 
@@ -67,8 +75,6 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements*.txt
-      - name: System packages (pdf2image needs poppler)
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: pip install -r backend/requirements-dev.txt
       - name: Create a dedicated migrations database
         run: psql -h localhost -U ci -d graider_test -c "CREATE DATABASE graider_mig"
