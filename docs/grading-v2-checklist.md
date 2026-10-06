@@ -144,7 +144,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [x] Uploads: one or many files per submission (`files`, page order), every supported format; grading reads pages (image + typed text hint); pdf2image and poppler removed
 - [x] Frontend: answer upload takes several files in any supported format (minimal; M7 does the UI)
 - [x] Tests: every format generated in code (one small HEIC fixture), every refusal reason, pages per format, documents service, upload API; real Word/ODT/RTF conversion when `GOTENBERG_URL` is set (CI); SQLite tests now enforce foreign keys like Postgres
-- [ ] E2E with real handwriting (public dataset samples) as a mixed submission (HEIC photo + scanned PDF + Word document) through Gotenberg and local Qwen3-VL
+- [x] E2E with real student handwriting (DrawEduMath, CC BY-NC 4.0; AIED-Unplugged, CC BY 4.0; samples not committed): one submission of a HEIC whiteboard photo + a scanned PDF + a Word document with a pasted photo, uploaded through the API, converted by Gotenberg, transcribed by Qwen3-VL-4B. All three answers were transcribed exactly in one 6,176-token call (Ollama's default 4,096 would have truncated it). Grading by the 4B text model was too strict on two answers (backlog)
 
 **Acceptance:** any supported file, or several, can be uploaded as one student's answers and is graded from normalised pages; unsupported or unsafe files are refused with the reason.
 

@@ -56,4 +56,5 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
 - [M4b] **Photos rotated by 90°/180° without EXIF** are not turned upright (only EXIF rotation and perspective are fixed). Detect orientation in M4c's page classification and re-render.
 - [M4b] **Converter cold start under memory pressure.** Gotenberg's first LibreOffice start timed out (20 s default) on a laptop low on memory; a retried conversion works. Consider `--libreoffice-start-timeout=60s` and retrying a 503 once.
 - [M4b] **Upload is all-or-nothing per request** and files are read into memory (per-file cap 50 MB, 30 files). Streaming to object storage (M10) would lift this.
+- [M4b, evidence for M5/M8] **Real handwriting, small local grader.** With real student work (whiteboard photo, pencil scan, photo in Word) Qwen3-VL-4B transcribed every answer exactly, but Qwen3-4B graded two of three too strictly: it called "3y - 4 + 2y = 6 + 4" invalid algebra (1/2 instead of 2/2) and gave half a mark for correct rounding (0.5/2 instead of 1/2). Same pattern as the M2 findings; M5's evaluator push-back and M8's grader comparison are the fix, not the 4B model.
 
