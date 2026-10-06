@@ -2,6 +2,7 @@
 
 import pytest
 
+from app.core.constants import SubmissionStatus
 from tests.conftest import FakeInvoker
 
 from app.rubrics.schema import Criterion, RubricSpec
@@ -210,3 +211,48 @@ async def test_failed_reparse_keeps_the_current_spec_in_use(fake_llm, db, school
     question, specs, current = reload(q1.id)
     assert question.rubric_status == RubricStatus.READY and current.version == 1 and len(specs) == 1
     assert question.rubric_error.startswith("Re-parse failed")
+
+
+# ===== grading uses specs =====
+
+async def test_invalid_spec_never_reaches_the_grader(fake_llm, db, school, tmp_path):
+    from tests.test_audit import new_run, reload as reload_run
+
+    fake_llm.parse_rubric = lambda p: wrong_total(p) if "Subtract 5" in p else FakeInvoker._default_parse_rubric(p)
+    run = new_run(db, school["exam"], tmp_path)
+
+    await service_run(run.id)
+
+    run, _, submission, answers = reload_run(run.id)
+    assert run.status == "failed" and submission.status == SubmissionStatus.FAILED and answers == []
+    assert "Q1: Criteria points add up to 3, but the question is worth 4." in run.error
+    # Stopped before reading the sheet: nothing was graded against the broken rubric
+    assert fake_llm.calls_of("ocr") == [] and fake_llm.calls_of("grade") == []
+
+
+async def test_fixed_spec_lets_the_regrade_through(fake_llm, db, school, tmp_path):
+    from app.rubrics.schema import RubricSpecEdit
+    from tests.test_audit import new_run, reload as reload_run
+
+    fake_llm.parse_rubric = lambda p: wrong_total(p) if "Subtract 5" in p else FakeInvoker._default_parse_rubric(p)
+    await service_run(new_run(db, school["exam"], tmp_path).id)
+    q1 = questions(db, school["exam"])[0]
+    edit = RubricSpecEdit(kind="criteria", subject="math", criteria=[
+        Criterion(id="c1", description="Subtracts 5", points=2), Criterion(id="c2", description="Divides by 2", points=2),
+    ])
+    record, errors = service.store_teacher_spec(db, q1, edit, membership_id=school["teacher_m"].id)
+    assert errors == [] and record.source == "teacher" and record.version == 2
+
+    run = new_run(db, school["exam"], tmp_path)
+    await service_run(run.id)
+
+    run, _, submission, _ = reload_run(run.id)
+    assert run.status == "succeeded" and submission.status == SubmissionStatus.GRADED
+    q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade") if "2x + 5" in c["prompt"])
+    assert "[c1] Subtracts 5 (2 pts)" in q1_prompt
+
+
+async def service_run(run_id):
+    from app.services.grading_service import run_grading
+
+    await run_grading(run_id)

@@ -12,7 +12,7 @@ from app.core.db import engine
 from app.models.exam import Question, Submission, SubmissionAnswer
 from app.audit.runs import create_run
 from app.services.grading_service import run_grading
-from tests.conftest import FIXTURES
+from tests.conftest import FakeInvoker, FIXTURES
 
 
 def make_submission(db: Session, exam, tmp_path) -> Submission:
@@ -70,12 +70,24 @@ async def test_ocr_is_given_short_labels_not_database_ids(fake_llm, db, school, 
         assert str(question.id) not in ocr_prompt
 
 
-async def test_teacher_rubric_reaches_the_grader(fake_llm, db, school, tmp_path):
+async def test_teacher_rubric_reaches_the_grader_as_parsed_criteria(fake_llm, db, school, tmp_path):
+    def parse(prompt):
+        if "Subtract 5" not in prompt:
+            return FakeInvoker._default_parse_rubric(prompt)
+        return {"kind": "criteria", "subject": "math", "criteria_count": 2, "criteria": [
+            {"description": "Subtracts 5 from both sides", "points": 2, "expected_answer": "2x = 10", "notes": None},
+            {"description": "Divides by 2", "points": 2, "expected_answer": "x = 5", "notes": None},
+        ], "grading_notes": None, "parser_warnings": []}
+
+    fake_llm.parse_rubric = parse
     submission = make_submission(db, school["exam"], tmp_path)
     await grade(submission)
 
+    # The teacher's free text goes to the parser; the grader gets the checked criteria and points
+    assert any("Subtract 5\nDivide by 2" in c["prompt"] for c in fake_llm.calls_of("parse_rubric"))
     q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade") if "2x + 5" in c["prompt"])
-    assert "- Subtract 5" in q1_prompt and "- Divide by 2" in q1_prompt
+    assert "[c1] Subtracts 5 from both sides (2 pts). Expected: 2x = 10" in q1_prompt
+    assert "[c2] Divides by 2 (2 pts). Expected: x = 5" in q1_prompt
 
 
 async def test_answers_are_matched_by_label_even_if_returned_out_of_order(fake_llm, db, school, tmp_path):
@@ -146,11 +158,14 @@ async def test_regrading_the_same_question_does_not_leak_state_between_runs(fake
     first = make_submission(db, school["exam"], tmp_path)
     await grade(first)
     calls_first_run = len(fake_llm.calls)
+    rubric_parses = len(fake_llm.calls_of("parse_rubric"))
 
     second = make_submission(db, school["exam"], tmp_path)
     await grade(second)
 
-    assert len(fake_llm.calls) == 2 * calls_first_run
+    # Same work again, except the rubrics: parsed once, reused while the questions don't change
+    assert rubric_parses == 2 and len(fake_llm.calls_of("parse_rubric")) == rubric_parses
+    assert len(fake_llm.calls) - calls_first_run == calls_first_run - rubric_parses
     assert get_orchestrator().compiled_graph.checkpointer is None
 
 

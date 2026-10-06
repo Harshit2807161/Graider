@@ -16,6 +16,9 @@ from app.llm.router import run_router
 from app.audit.recorder import DbCallRecorder
 from app.audit.runs import finish_run, set_trace_id, start_run
 from app.models.audit import GradingRun, RunStatus
+from app.models.rubric import RubricSpecRecord, RubricStatus
+from app.rubrics.schema import RubricSpec
+from app.rubrics.service import ensure_rubric_specs
 from app.observability.tracing import run_trace
 from app.llm.types import CallContext
 from app import crud
@@ -40,13 +43,33 @@ def question_label(index: int) -> str:
     return f"Q{index + 1}"
 
 
-def rubric_from_text(label: str, rubric_text: Optional[str]) -> Optional[RubricCriteria]:
-    """Turn a teacher's free-text rubric into rubric criteria (one point per non-empty line)."""
-    if not rubric_text or not rubric_text.strip():
-        return None
-    points = [line.strip(" \t-•*") for line in rubric_text.splitlines()]
-    points = [p for p in points if p]
+class RubricNotReady(ValueError):
+    """A question's rubric spec can't be graded against (invalid, or parsing failed)."""
+
+
+def criteria_for_grader(label: str, spec: RubricSpec) -> RubricCriteria:
+    """Present a parsed rubric spec to the current graders as a list of rubric points."""
+    points = []
+    if spec.kind == "pass_fail":
+        points.append("All or nothing: award either 0 or the full marks.")
+    for c in spec.criteria:
+        line = f"[{c.id}] {c.description} ({c.points:g} pts)"
+        if c.expected_answer:
+            line += f". Expected: {c.expected_answer}"
+        if c.notes:
+            line += f". Notes: {c.notes}"
+        points.append(line)
+    if spec.grading_notes:
+        points.append(f"General: {spec.grading_notes}")
     return RubricCriteria(question_id=label, expected_points=points)
+
+
+def _rubric_problem(label: str, question: DBQuestion, record: Optional[RubricSpecRecord]) -> Optional[str]:
+    if record is None:
+        return f"{label}: the rubric could not be parsed ({question.rubric_error or 'unknown error'})"
+    if record.status != RubricStatus.READY:
+        return f"{label}: {' '.join(record.validation_errors)}"
+    return None
 
 
 def _to_grader_question(label: str, q: DBQuestion) -> GraderQuestion:
@@ -92,9 +115,9 @@ async def run_grading(run_id: UUID) -> None:
             # One router, one call/cost budget and one audit recorder per grading run
             with run_trace(run.id, submission.id, run.trigger) as trace_id, run_router(), budget(
                 llm_settings.max_calls_for(question_count), llm_settings.max_cost_usd_per_submission
-            ), recording_to(DbCallRecorder(run.id, submission.id)):
+            ), recording_to(DbCallRecorder(run.id, submission.id)) as recorder:
                 set_trace_id(db, run, trace_id)
-                await _grade(db, submission, Path(submission.original_file_url))
+                await _grade(db, submission, Path(submission.original_file_url), recorder)
         except Exception as e:
             error = str(e)
             logger.exception("pipeline_error", run_id=str(run_id), submission_id=str(submission.id), error=error)
@@ -117,7 +140,7 @@ async def run_grading(run_id: UUID) -> None:
         finish_run(db, run, error=error)
 
 
-async def _grade(db: Session, submission: Submission, answers_path: Path) -> None:
+async def _grade(db: Session, submission: Submission, answers_path: Path, recorder: DbCallRecorder) -> None:
     submission_id = str(submission.id)
     _set_progress(db, submission, "Loading questions...", status=SubmissionStatus.PROCESSING)
 
@@ -129,9 +152,21 @@ async def _grade(db: Session, submission: Submission, answers_path: Path) -> Non
     labels = [question_label(i) for i in range(len(db_questions))]
     db_question_by_label = dict(zip(labels, db_questions))
     questions = [_to_grader_question(label, q) for label, q in db_question_by_label.items()]
+
+    # ===== Step 0: Rubric specs (parsed now if missing; never grade against an unchecked one) =====
+    _set_progress(db, submission, "Checking rubrics...")
+    specs = await ensure_rubric_specs(db, db_questions, recorder)
+    problems = [
+        p for p in (_rubric_problem(label, q, specs.get(q.id)) for label, q in db_question_by_label.items()) if p
+    ]
+    if problems:
+        raise RubricNotReady(
+            "Rubric needs attention before grading. " + " | ".join(problems)
+            + " Fix the rubric spec (or re-parse it), then regrade."
+        )
     rubrics = [
-        r for r in (rubric_from_text(label, q.rubric_criteria) for label, q in db_question_by_label.items())
-        if r is not None
+        criteria_for_grader(label, RubricSpec.model_validate(specs[q.id].spec))
+        for label, q in db_question_by_label.items()
     ]
 
     # ===== Step 1: OCR =====
