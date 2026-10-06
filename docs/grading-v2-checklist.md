@@ -21,7 +21,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 |---|---|---|---|---|---|
 | M0 | Docs: proposal 002, checklist, backlog, ADRs | `docs/grading-v2-final` | – | [#5](https://github.com/Harshit2807161/Graider/pull/5) | Merged |
 | M1 | CI and migrations | `chore/ci-and-migrations` | – | [#6](https://github.com/Harshit2807161/Graider/pull/6) | Merged |
-| M2 | Model router | `feat/llm-router` | M1 | – | In review |
+| M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | In review |
 | M3 | Audit trail and MLflow | `feat/audit-and-tracing` | M2 | – | Not started |
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | – | Not started |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
