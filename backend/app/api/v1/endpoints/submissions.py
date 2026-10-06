@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, List, Optional
 from uuid import UUID, uuid4
 
@@ -13,41 +12,31 @@ from app.core.constants import Role, SubmissionStatus
 from app.models.user import User, Membership
 from app.schemas.exam import SubmissionAnswerRead, SubmissionRead, SubmissionWithAnswers
 from app.audit.runs import create_run
+from app.ingestion.formats import DOCUMENT_KINDS, OFFICE_KINDS, FileKind, UnsupportedFile, detect
+from app.ingestion.office import converter_available
+from app.ingestion.pages import DocumentError, open_pdf
+from app.ingestion.service import store_upload
+from app.models.document import DocumentRole
 from app.worker import grade_submission_task
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
 
-ALLOWED_SUBMISSION_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif"}
-
-
-def _submission_dir(exam_id: UUID, submission_id: UUID) -> Path:
-    # One directory per submission: PDF page images are written next to the upload,
-    # so sharing a directory let two uploads with the same file name overwrite each other.
-    return settings.UPLOAD_DIR / "submissions" / str(exam_id) / str(submission_id)
-
-
-async def _save_upload(file: UploadFile, destination_dir: Path) -> Path:
-    """Validate and store an uploaded answer sheet. Never trusts the client file name."""
-    extension = Path(file.filename or "").suffix.lower()
-    if extension not in ALLOWED_SUBMISSION_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type '{extension or 'unknown'}'. "
-                   f"Allowed: {', '.join(sorted(ALLOWED_SUBMISSION_EXTENSIONS))}",
-        )
-
-    contents = await file.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-    max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
-    if len(contents) > max_bytes:
-        raise HTTPException(status_code=413, detail=f"File exceeds {settings.MAX_UPLOAD_SIZE_MB} MB limit")
-
-    destination_dir.mkdir(parents=True, exist_ok=True)
-    file_path = destination_dir / f"answer_sheet{extension}"
-    file_path.write_bytes(contents)
-    return file_path
+async def _validated(upload: UploadFile) -> tuple[str, bytes, FileKind]:
+    """Read and check one uploaded answer file. Never trusts the client's file name or type."""
+    name = upload.filename or "upload"
+    data = await upload.read()
+    if len(data) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"{name}: file exceeds the {settings.MAX_UPLOAD_SIZE_MB} MB limit")
+    try:
+        kind = detect(data, name, DOCUMENT_KINDS)
+        if kind in OFFICE_KINDS and not converter_available():
+            raise UnsupportedFile("Word/office documents can't be converted on this server. Upload a PDF instead.")
+        if kind == FileKind.PDF:
+            open_pdf(data).close()  # password-protected, damaged or too long: say so now, not later
+    except (UnsupportedFile, DocumentError) as e:
+        raise HTTPException(status_code=400, detail=f"{name}: {e}")
+    return name, data, kind
 
 
 def _resolve_student(db: Session, *, student_id: Optional[UUID], org_id: UUID) -> Optional[UUID]:
@@ -70,12 +59,15 @@ async def create_submission(
     *,
     db: Session = Depends(deps.get_session),
     exam_id: UUID,
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),
     student_id: Optional[UUID] = Form(None),  # Student's membership id
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """
-    Upload a student answer sheet for grading.
+    Upload a student's answers for grading: one file (`file`), or several (`files`, in page order,
+    e.g. one photo per page). Accepts PDF, Word/ODT/RTF/PowerPoint, images (JPEG, PNG, WebP, HEIC,
+    TIFF, GIF, BMP) and plain text. Every file is checked before anything is stored.
     """
     exam = crud.exam.get(db, id=exam_id)
     if not exam:
@@ -87,20 +79,37 @@ async def create_submission(
     if not crud.question.get_by_exam(db, exam_id=exam_id):
         raise HTTPException(status_code=400, detail="Add questions to the exam before uploading answer sheets")
 
-    # TODO: Move to object storage (MinIO/S3) instead of the local upload dir
-    submission_id = uuid4()
-    file_path = await _save_upload(file, _submission_dir(exam_id, submission_id))
+    uploads = ([file] if file else []) + list(files or [])
+    if not uploads:
+        raise HTTPException(status_code=400, detail="Attach at least one answer file")
+    if len(uploads) > settings.MAX_FILES_PER_SUBMISSION:
+        raise HTTPException(status_code=400, detail=f"At most {settings.MAX_FILES_PER_SUBMISSION} files per submission")
+    validated = [await _validated(upload) for upload in uploads]
 
+    # TODO: Move to object storage (MinIO/S3) instead of the local upload dir
+    # The submission row goes in first: documents reference it (no ORM relationship orders the inserts)
     db_submission = crud.submission.create(
         db,
         obj_in={
-            "id": submission_id,
+            "id": uuid4(),
             "exam_id": exam_id,
-            "original_file_url": str(file_path),
+            "original_file_url": "",  # set to the first document below, for older readers
             "status": SubmissionStatus.PENDING,
             "student_membership_id": student_membership_id,
         },
     )
+    documents = [
+        store_upload(
+            db, data=data, filename=name, kind=kind, org_id=exam.org_id, exam_id=exam_id,
+            role=DocumentRole.ANSWERS, submission_id=db_submission.id, position=position,
+            membership_id=membership.id if membership else None,
+        )
+        for position, (name, data, kind) in enumerate(validated)
+    ]
+    db_submission.original_file_url = documents[0].stored_path
+    db.add(db_submission)
+    db.commit()
+    db.refresh(db_submission)
 
     # Each grading attempt is an audited run; the task only carries the run id
     run = create_run(
