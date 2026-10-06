@@ -81,7 +81,7 @@ services:
     <<: *backend
     pull_policy: never
     restart: always
-    command: celery -A app.worker.celery_app worker --loglevel=info
+    command: celery -A app.worker.celery_app worker -Q celery,rubric --loglevel=info
     depends_on:
       migrate:
         condition: service_completed_successfully

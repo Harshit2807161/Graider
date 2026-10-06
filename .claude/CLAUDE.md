@@ -38,6 +38,7 @@ backend/
 │   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
 │   ├── core/                      # config, db (engine, upgrade_to_head), security, constants, langgraph_setup
 │   ├── audit/                     # grading runs (lifecycle) + DbCallRecorder → llm_calls (append-only)
+│   ├── rubrics/                   # RubricSpec schema, validation, LLM parser, spec lifecycle
 │   ├── observability/             # optional Langfuse tracing (one trace per run, images masked)
 │   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
 │   │                              # (LangChain chat models), router, budget, costs, recorder
@@ -61,7 +62,7 @@ docs/                              # architecture, ADRs, proposals/
 ## Data Model
 `User` (global identity) → `Membership` (user + org + role) → `Organization`.
 `Batch` (class) ← `Enrollment` → student `Membership`.
-`Exam` (org, optional batch) → `Question` (text, `max_score`, free-text `rubric_criteria`, `order_index`, type).
+`Exam` (org, optional batch) → `Question` (text, `max_score`, free-text `rubric_criteria`, `order_index`, type, `rubric_status`) → `RubricSpecRecord` (`rubric_specs`: append-only versions of the parsed rubric; the current spec is the newest for the question's current inputs).
 `Submission` (exam, optional student membership, file path, status, `current_step`, totals) → `SubmissionAnswer` (question, transcribed answer text, score, feedback, reasoning).
 
 All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps are timezone-aware UTC — use `app.models.base.utcnow()`, never `datetime.utcnow()` (SQLModel ≥ 0.0.45 rejects naive datetimes).
@@ -71,10 +72,11 @@ Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / 
 ## Grading Pipeline (`services/grading_service.py`)
 Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload/regrade) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots the model config, records every model call to `llm_calls` (append-only; a failed audit write fails the run), and finishes the run as succeeded/failed. See [docs/audit-trail.md](../docs/audit-trail.md).
 1. Load the exam's live questions in order and label them `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
-2. **OCR**: rasterize PDF pages (poppler), send to the vision model in batches of 10 pages, get answers keyed by label.
-3. **Triplets**: pair each question with its answer and its rubric (rubric text → one expected point per line).
-4. **Grade**: per question, LangGraph tags the subject, routes to a subject grader, and an LLM evaluator may request up to 3 attempts.
-5. **Save**: all answers and totals in one transaction; status `GRADED`.
+2. **Rubric specs**: every question needs a *ready* spec for its current inputs. Missing ones are parsed now (`ensure_rubric_specs`); if any is invalid or couldn't be parsed, the run fails before OCR with the reasons (per-question escalation comes in M5). Specs are normally parsed in the background when questions are saved (`parse_rubric_task`, queue `rubric`); see `app/rubrics/`.
+3. **OCR**: rasterize PDF pages (poppler), send to the vision model in batches of 10 pages, get answers keyed by label.
+4. **Triplets**: pair each question with its answer and its spec's criteria (ids, points, expected answers, notes).
+5. **Grade**: per question, LangGraph tags the subject, routes to a subject grader, and an LLM evaluator may request up to 3 attempts.
+6. **Save**: all answers and totals in one transaction; status `GRADED`.
 
 Failure rules: unparseable model output is retried once, then the submission is marked `FAILED` with the error in `current_step` — never record a made-up score. Each run has a call + USD budget (`LLM__MAX_CALLS_BASE`, `LLM__MAX_CALLS_PER_QUESTION`, `LLM__MAX_COST_USD_PER_SUBMISSION`).
 
@@ -92,7 +94,7 @@ docker compose up -d db redis
 python -m app.initial_data                                  # migrations + first superuser
 alembic upgrade head / alembic check                        # migrations only / drift check
 uvicorn app.main:app --reload --port 8000
-celery -A app.worker.celery_app worker --loglevel=info
+celery -A app.worker.celery_app worker -Q celery,rubric --pool=solo --loglevel=info   # --pool=solo on macOS only
 
 # Frontend
 cd frontend && npm install && npm run dev                   # http://localhost:3000
@@ -141,8 +143,11 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | GET | /batches/{id}/students | staff |
 | GET, POST | /exams/?org_id=&batch_id= , /exams/ | member / staff |
 | GET, PATCH, DELETE | /exams/{id} | member / staff / owner+admin |
-| POST | /exams/{id}/questions | staff — full-list sync: send `id` for existing questions; missing ones are soft-deleted |
+| POST | /exams/{id}/questions | staff — full-list sync: send `id` for existing questions; missing ones are soft-deleted; changed questions get their rubric re-parsed |
 | POST | /exams/{id}/questions/upload | staff — Excel import, all-or-nothing |
+| GET | /exams/{id}/rubric-status | staff — rubric state of every question (Q1..Qn) |
+| GET, PUT | /exams/{id}/questions/{qid}/rubric-spec | staff — current parsed rubric; replace with a teacher's version (422 if it fails the checks) |
+| POST | /exams/{id}/questions/{qid}/rubric-spec/reparse | staff — queue a fresh parse |
 | GET, POST | /exams/{id}/submissions | staff — list / upload answer sheet (queues grading) |
 | GET | /submissions/{id} | member (students: own only) |
 | POST | /submissions/{id}/regrade | staff |
@@ -168,6 +173,8 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - `backend/tests/test_pipeline.py` — grading pipeline against a real DB with FakeLLM
 - `backend/tests/test_api.py` — auth, tenant isolation, question sync/import, uploads, submissions
 - `backend/tests/test_grading.py` — JSON extraction, grader retries, call budget
+- `backend/tests/test_rubrics.py` — rubric spec validation, parsing lifecycle, grading against specs
+- `backend/tests/test_audit.py`, `test_tracing.py` — audit rows, run lifecycle, Langfuse tracing
 
 ## Known Gaps
 - Frontend lint has existing `any` / hook warnings

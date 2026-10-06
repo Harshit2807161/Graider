@@ -22,7 +22,11 @@ class Question(Base, table=True):
     max_score: float
     rubric_criteria: Optional[str] = None
     question_type: QuestionType = Field(default=QuestionType.DESCRIPTIVE)
-    
+    # Parsed rubric state (app/rubrics): see RubricStatus in app/models/rubric.py
+    rubric_status: str = Field(default="missing", sa_column_kwargs={"server_default": "missing"})
+    rubric_input_hash: Optional[str] = None  # hash of the inputs the status refers to
+    rubric_error: Optional[str] = None  # why the last parse failed (status "error")
+
     created_at: datetime = Field(default_factory=utcnow)
 
     exam: "Exam" = Relationship(back_populates="questions")

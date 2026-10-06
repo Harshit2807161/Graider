@@ -23,7 +23,7 @@ cp backend/.env.example backend/.env                           # set SECRET_KEY,
 docker compose up -d db redis                                  # Postgres :5433, Redis :6379
 cd backend && python -m app.initial_data                       # tables + first superuser
 uvicorn app.main:app --reload --port 8000                      # API (docs at /docs)
-celery -A app.worker.celery_app worker --loglevel=info         # worker (second terminal)
+celery -A app.worker.celery_app worker -Q celery,rubric --pool=solo --loglevel=info   # worker (second terminal; --pool=solo on macOS)
 cd frontend && npm install && npm run dev                      # http://localhost:3000
 ```
 

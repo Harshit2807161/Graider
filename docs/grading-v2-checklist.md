@@ -22,8 +22,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M0 | Docs: proposal 002, checklist, backlog, ADRs | `docs/grading-v2-final` | – | [#5](https://github.com/Harshit2807161/Graider/pull/5) | Merged |
 | M1 | CI and migrations | `chore/ci-and-migrations` | – | [#6](https://github.com/Harshit2807161/Graider/pull/6) | Merged |
 | M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | Merged |
-| M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | In review |
-| M4 | Rubric parser | `feat/rubric-parser` | M3 | – | Not started |
+| M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | Merged |
+| M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | In review |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
 | M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
@@ -110,27 +110,27 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 **Acceptance:** every model call of every grading run is recorded, linked to its run and submission, and can't be changed; a grade is never stored without its audit record.
 
 ## M4: Rubric parser
-- [ ] `app/rubrics/schema.py` (RubricSpec v1) and `validate.py` (pure functions): sum equals max, unique ids, points > 0, `pass_fail` rules, subject enum, `derived` rule
-- [ ] Migration:
-  - Append-only `rubric_specs` table
-  - New `questions` columns: `rubric_spec_id`, `rubric_status`, `rubric_input_hash`
-- [ ] Parser prompt with few-shot examples for: pass/fail or MCQ, explicit marks, implicit marks, empty rubric (derived)
-- [ ] Triggers:
-  - After a question sync or Excel import commits, a changed hash runs `parse_rubric_task` on the `rubric` queue (locks the row, skips stale tasks)
-  - `ensure_rubric_specs()` parses lazily when a run starts
-- [ ] API:
-  - GET and PUT `…/questions/{qid}/rubric-spec`
-  - POST `…/rubric-spec/reparse`
-  - GET `/exams/{id}/rubric-status`
-  - `QuestionRead` gains status, derived flag and a summary
-- [ ] Tests:
-  - Validation table
-  - A hash change enqueues a parse; no change enqueues nothing
-  - An invalid spec blocks only its own question
-  - Teacher edit and re-parse
-  - Tenancy
+- [x] `app/rubrics/schema.py` (RubricSpec v1, model output `ParsedRubric`, teacher edit) and `validate.py` (pure): at least one criterion, count matches, unique non-empty ids and descriptions, points > 0 adding up to max score, `pass_fail` = one criterion worth everything, `derived` iff no rubric text; subject enum enforced by the schema
+- [x] Migrations:
+  - Append-only `rubric_specs` (version, source ai/teacher, ready/invalid + reasons, spec, input hash + inputs, parser prompt version, model, producing `llm_call_id`, editor)
+  - `questions.rubric_status` (missing/pending/ready/invalid/error), `rubric_input_hash`, `rubric_error`
+  - `llm_calls.question_id`, with a check that every call belongs to a run or a question
+- [x] Parser prompt (`rubric-parser-v2`) with few-shot examples: pass/fail (MCQ), explicit marks, unmarked points, levels of credit for one point (one criterion, lower levels as exact points in notes), marks that don't add up (kept and flagged, never fudged), empty rubric (derived)
+- [x] Triggers:
+  - Question sync and Excel import queue `parse_rubric_task` (queue `rubric`) for questions whose text, rubric, max score or type changed; the task skips stale and already-parsed inputs, locks the question row and discards results whose inputs changed meanwhile
+  - `ensure_rubric_specs()` parses missing specs when a grading run starts
+  - Undoing an edit reuses the earlier spec; a failed re-parse keeps the current spec in use
+- [x] API: GET/PUT `…/questions/{qid}/rubric-spec`, POST `…/rubric-spec/reparse`, GET `/exams/{id}/rubric-status`; `QuestionRead` gains status, error, derived flag and summary
+- [x] Grading uses the spec's criteria (replacing the line-splitting of rubric text); an invalid or unparsed spec fails the run before OCR, with each question's reasons
+- [x] Tests: validation table; parse/store/link; invalid kept with reasons; failure keeps attempts; stale and redelivered tasks; mid-parse edits discarded; undo reuses spec; failed re-parse; changed questions queue a parse and unchanged don't; Excel import; teacher edit (valid and rejected) and re-parse; tenancy; invalid spec never reaches the grader; teacher fix lets the regrade through; append-only triggers (Postgres)
+- [x] Live (`pytest -m live`): seven rubric shapes (incl. prose with full/half marks and terse shorthand) against Qwen3-4B via Ollama, 21/21 across three runs
+- [x] E2E: question save → Redis `rubric` queue → Celery worker (macOS solo pool, and the Linux Docker image's default prefork pool) → Ollama → `rubric_specs` + `llm_calls` + Langfuse trace
+- Changes from the plan:
+  - No `questions.rubric_spec_id` pointer: the current spec is the newest version for the question's current inputs, so there's nothing to keep in sync
+  - The parser prompt version is recorded on each spec but is not part of the input hash, so a prompt change doesn't discard teachers' edited specs (re-parse explicitly; see backlog)
+  - Until NEEDS_REVIEW exists (M5), an invalid spec fails the whole run instead of escalating its question
 
-**Acceptance:** an invalid spec never reaches the grader.
+**Acceptance:** an invalid spec never reaches the grader. ✔
 
 ## M5: Grading graph v2
 - [ ] `app/grading/` package:

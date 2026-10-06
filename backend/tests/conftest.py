@@ -39,6 +39,7 @@ SCHEMA_KINDS = {
     "GradeOutput": "grade",
     "TagOutput": "tag",
     "EvaluationOutput": "evaluate",
+    "ParsedRubric": "parse_rubric",
 }
 
 
@@ -47,7 +48,8 @@ class FakeInvoker:
     Scripted stand-in for the model invoker (the boundary below the router).
 
     Routes each call by output-schema title and records every request. Override a route by
-    assigning `fake.ocr` / `fake.grade` / `fake.evaluate` / `fake.tag` to a callable that takes
+    assigning `fake.ocr` / `fake.grade` / `fake.evaluate` / `fake.tag` / `fake.parse_rubric` to a
+    callable that takes
     the prompt text and returns either a dict (the structured output) or a string (raw model
     text, parsed as JSON if possible, e.g. to simulate invalid output). A handler may also
     return an InvokeResponse or raise/return an exception.
@@ -59,6 +61,7 @@ class FakeInvoker:
         self.grade: Optional[Callable[[str], Any]] = None
         self.evaluate: Optional[Callable[[str], Any]] = None
         self.tag: Optional[Callable[[str], Any]] = None
+        self.parse_rubric: Optional[Callable[[str], Any]] = None
 
     @staticmethod
     def prompt_of(req: InvokeRequest) -> str:
@@ -84,6 +87,20 @@ class FakeInvoker:
             "confidence": 0.9,
         }
 
+    @staticmethod
+    def _default_parse_rubric(prompt: str) -> dict:
+        """A valid spec: one criterion worth the question's full marks."""
+        max_score = float(re.search(r"Maximum score: ([\d.]+)", prompt).group(1))
+        return {
+            "kind": "criteria",
+            "subject": "math",
+            "criteria_count": 1,
+            "criteria": [{"description": "Gives a correct, complete answer", "points": max_score,
+                          "expected_answer": None, "notes": None}],
+            "grading_notes": None,
+            "parser_warnings": [],
+        }
+
     async def invoke(self, req: InvokeRequest) -> InvokeResponse:
         kind = SCHEMA_KINDS.get(req.json_schema.get("title"), "other")
         prompt = self.prompt_of(req)
@@ -95,6 +112,8 @@ class FakeInvoker:
             out = (self.grade or self._default_grade)(prompt)
         elif kind == "tag":
             out = self.tag(prompt) if self.tag else {"subject": "math", "question_type": "problem"}
+        elif kind == "parse_rubric":
+            out = (self.parse_rubric or self._default_parse_rubric)(prompt)
         elif kind == "evaluate":
             out = self.evaluate(prompt) if self.evaluate else {
                 "is_acceptable": True, "concerns": "", "improvement_suggestions": ""
@@ -140,6 +159,16 @@ def fake_llm(monkeypatch) -> FakeInvoker:
     import app.agents.orchestrator as orchestrator_module
     monkeypatch.setattr(orchestrator_module, "_orchestrator", None)
     return fake
+
+
+@pytest.fixture(autouse=True)
+def rubric_parses(monkeypatch) -> list[tuple]:
+    """Capture parse_rubric_task dispatches (question id, input hash, force) instead of using Redis."""
+    from app.worker import parse_rubric_task
+
+    calls: list[tuple] = []
+    monkeypatch.setattr(parse_rubric_task, "delay", lambda *args: calls.append(args))
+    return calls
 
 
 @pytest.fixture(autouse=True)

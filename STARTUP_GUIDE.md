@@ -120,12 +120,14 @@ uvicorn app.main:app --reload --port 8000
 - **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ### Terminal 2: Celery Worker (The "Brain")
-The worker handles all the heavy lifting (OCR & AI Grading).
+The worker handles all the heavy lifting (OCR & AI grading) and parses rubrics in the background.
 ```bash
 cd backend
 source .venv/bin/activate
-celery -A app.worker.celery_app worker --loglevel=info
+celery -A app.worker.celery_app worker -Q celery,rubric --pool=solo --loglevel=info
 ```
+- `-Q celery,rubric`: grading runs and rubric parses (rubric parses have their own queue, so a dedicated worker can serve them without waiting behind long grading runs).
+- `--pool=solo` is needed on macOS: Celery's default multi-process pool starts its child processes with "spawn" there, and every task fails with `ValueError: not enough values to unpack (expected 3, got 0)`. On Linux and in Docker, leave it out; the default pool works.
 
 ### Terminal 3: Next.js Frontend
 ```bash

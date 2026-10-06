@@ -43,7 +43,10 @@ async def test_successful_run_records_every_call_and_its_config(fake_llm, db, sc
     assert run.status == RunStatus.SUCCEEDED and run.started_at and run.finished_at and run.error is None
     assert run.config_snapshot["grader"]["model"] == "claude-sonnet-5-5" and run.config_hash
     assert run.llm_calls == len(calls) == len(fake_llm.calls)
-    assert {c.purpose for c in calls} == {"ocr_answers", "tag", "grade", "evaluate"}
+    assert {c.purpose for c in calls} == {"parse_rubric", "ocr_answers", "tag", "grade", "evaluate"}
+    # Rubrics parsed at run start are attributed to the run and to their question
+    exam_question_ids = {q.id for q in school["exam"].questions}
+    assert {c.question_id for c in calls if c.purpose == "parse_rubric"} == exam_question_ids
     assert all(c.submission_id == submission.id and c.model_answered for c in calls)
     assert run.cost_usd == pytest.approx(sum(c.cost_usd for c in calls))
 
@@ -101,3 +104,12 @@ async def test_tracing_is_off_unless_configured(fake_llm, db, school, tmp_path):
     await run_grading(run.id)
     run, _, _, _ = reload(run.id)
     assert run.trace_id is None and run.status == RunStatus.SUCCEEDED
+
+
+def test_every_call_belongs_to_a_run_or_a_question(db):
+    from sqlalchemy.exc import IntegrityError
+
+    db.add(LLMCall(role="grader", purpose="grade", attempt_no=1, attempt_kind="initial", provider="anthropic",
+                   model_requested="m", external=True, request={}, schema_name="S", schema_hash="h"))
+    with pytest.raises(IntegrityError):
+        db.commit()
