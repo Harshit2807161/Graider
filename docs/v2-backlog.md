@@ -50,4 +50,5 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
 - [M4] **Small open-weight parsers skip warnings and add detail.** Qwen3-4B kept marks correctly in all live runs, but sometimes omitted the "split was inferred" warning and filled `expected_answer` with examples not in the rubric. Compare parser models in the M8 evals before using a small model for this role.
 - [M4] **Students can read rubric text.** `GET /exams/{id}` (members) returns `rubric_criteria` to students. Pre-existing; restrict to staff with the student portal work.
 - [M4] **macOS dev workers need `--pool=solo`.** Celery's prefork pool fails on macOS (spawned children); Linux/Docker is unaffected. Documented in STARTUP_GUIDE.
-
+- [Proposal 003] **Printable Gr8r answer booklets** (QR code + question-number box on every page) for deterministic page → student/question mapping, as Crowdmark and Gradescope do. Not now (owner, 2026-10-06).
+- [Proposal 003] **Class-batch scans** (many students in one file): cover sheets/QR, boundary detection in small page windows, roster matching, thumbnail review. After M5 (owner, 2026-10-06).
