@@ -31,6 +31,10 @@ openai>=2.45.0
 # ===== ORCHESTRATION =====
 langgraph>=1.2.0
 
+# ===== OBSERVABILITY (optional, enabled by MLFLOW_TRACKING_URI) =====
+# Lightweight tracing SDK; never install together with the full `mlflow` package
+mlflow-tracing>=3.16.1
+
 # ===== DOCUMENT PROCESSING =====
 pypdf>=5.0.0  # PDF text extraction
 pdf2image>=1.17.0  # PDF to image conversion (requires poppler)
