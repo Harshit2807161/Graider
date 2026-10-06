@@ -16,12 +16,17 @@ These profiles are in `backend/.env.example`:
 | **A. API only** (default) | Claude Opus 5.5 | Claude Opus 5.5 | Claude Sonnet 5.5 | Claude Opus 5.5 | Yes |
 | **B. Hybrid** | Claude | Claude | **self-hosted** (e.g. Qwen3-32B), Claude fallback | Claude | Yes, for OCR, evaluation, and grader fallbacks |
 | **C. Fully local** | **self-hosted VLM** (e.g. Qwen3-VL) | self-hosted | self-hosted | self-hosted, from a different model family than the grader | Only if you configure an API fallback and `LLM__ALLOW_EXTERNAL_FALLBACK=true` |
-| **D. Local dev (Ollama)** | Claude | `qwen3:4b-instruct-2507-q4_K_M` | same | same | Yes, for OCR |
+| **D. Local dev (Ollama)** | `qwen3-vl:4b-instruct-q4_K_M` | `qwen3:4b-instruct-2507-q4_K_M` | same | same | No |
 
-**Profile D (local development)** runs the text roles (rubric parser, grader, evaluator) on a laptop with **Ollama** and `qwen3:4b-instruct-2507-q4_K_M` (Qwen3-4B-Instruct-2507, 4-bit). OCR stays on Claude because that model is text-only. Grader and evaluator share one small model, so this profile is for development, not real grading:
+**Profile D (local development)** runs every role on a laptop with **Ollama**, with no API key or GPU server:
+- OCR uses `qwen3-vl:4b-instruct-q4_K_M` (Qwen3-VL-4B-Instruct).
+- The text roles use `qwen3:4b-instruct-2507-q4_K_M` (Qwen3-4B-Instruct-2507). Both are 4-bit.
+
+Grader and evaluator share one small model, so this profile is for development, not real grading:
 
 ```bash
 brew install ollama && brew services start ollama
+ollama pull qwen3-vl:4b-instruct-q4_K_M
 ollama pull qwen3:4b-instruct-2507-q4_K_M
 # then uncomment "Profile D" in backend/.env.example (copied to backend/.env)
 ```
