@@ -31,12 +31,14 @@ Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2
 backend/
 ├── app/
 │   ├── main.py                    # FastAPI app, CORS, request logging
-│   ├── worker.py                  # Celery app + grade_exam_task
+│   ├── worker.py                  # Celery app + grade_submission_task(run_id); one event loop per process
 │   ├── initial_data.py            # alembic upgrade head + first superuser
 │   ├── api/
 │   │   ├── deps.py                # current user, get_membership, require_org_role
 │   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
 │   ├── core/                      # config, db (engine, upgrade_to_head), security, constants, langgraph_setup
+│   ├── audit/                     # grading runs (lifecycle) + DbCallRecorder → llm_calls (append-only)
+│   ├── observability/             # optional MLflow tracing (one trace per run)
 │   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
 │   │                              # (LangChain chat models), router, budget, costs, recorder
 │   ├── crud/                      # data access (soft-delete aware)
@@ -67,6 +69,7 @@ All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps a
 Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet.
 
 ## Grading Pipeline (`services/grading_service.py`)
+Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload/regrade) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots the model config, records every model call to `llm_calls` (append-only; a failed audit write fails the run), and finishes the run as succeeded/failed. See [docs/audit-trail.md](../docs/audit-trail.md).
 1. Load the exam's live questions in order and label them `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
 2. **OCR**: rasterize PDF pages (poppler), send to the vision model in batches of 10 pages, get answers keyed by label.
 3. **Triplets**: pair each question with its answer and its rubric (rubric text → one expected point per line).
@@ -168,9 +171,10 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 
 ## Known Gaps
 - Frontend lint has existing `any` / hook warnings
-- No persistent audit trail of LLM calls yet (attempts are logged; DB recorder in M3), no human review/approval flow — see the proposal
+- No human review/approval flow yet (M6); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
 
 ## Key Documents
+- [Audit trail](../docs/audit-trail.md)
 - [Grading v2 architecture (Proposal 002, accepted)](../docs/proposals/002-grading-v2-architecture.md)
 - [Grading v2 feature checklist](../docs/grading-v2-checklist.md)
 - [v2 backlog](../docs/v2-backlog.md)
