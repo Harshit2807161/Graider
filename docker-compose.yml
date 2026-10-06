@@ -1,3 +1,26 @@
+# Shared settings for the backend image (API, worker and one-shot migrate job)
+x-backend: &backend
+  build:
+    context: ./backend
+  image: graider-backend
+  environment:
+    - DATABASE_URL=postgresql://user:password@db:5432/graider
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    # Shared between API and worker through the ./backend/data volume
+    - UPLOAD_DIR=/app/data/uploads
+    - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+    - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+    - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gpt-5-nano-2025-08-07}
+    - LLM_GRADER_MODEL=${LLM_GRADER_MODEL:-gpt-5-nano-2025-08-07}
+    - LLM_ORCHESTRATOR_MODEL=${LLM_ORCHESTRATOR_MODEL:-gpt-5-nano-2025-08-07}
+    - FIRST_SUPERUSER_EMAIL=${FIRST_SUPERUSER_EMAIL:-}
+    - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-}
+  volumes:
+    - ./backend/data:/app/data
+
 services:
   db:
     image: postgres:15-alpine
@@ -10,6 +33,11 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d graider"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   redis:
     image: redis:7-alpine
@@ -30,58 +58,35 @@ services:
     volumes:
       - minio_data:/data
 
+  # Applies pending Alembic migrations, then exits. API and worker start after it succeeds.
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+
   backend:
-    build:
-      context: ./backend
+    <<: *backend
     restart: always
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/graider
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      # Shared with the worker through the ./backend/data volume
-      - UPLOAD_DIR=/app/data/uploads
-      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
-      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gpt-5-nano-2025-08-07}
-      - LLM_GRADER_MODEL=${LLM_GRADER_MODEL:-gpt-5-nano-2025-08-07}
-      - LLM_ORCHESTRATOR_MODEL=${LLM_ORCHESTRATOR_MODEL:-gpt-5-nano-2025-08-07}
-      - FIRST_SUPERUSER_EMAIL=${FIRST_SUPERUSER_EMAIL:-}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-}
     depends_on:
-      - db
-      - redis
-    volumes:
-      - ./backend/data:/app/data
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
   worker:
-    build:
-      context: ./backend
+    <<: *backend
     restart: always
     command: celery -A app.worker.celery_app worker --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/graider
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      # Shared with the worker through the ./backend/data volume
-      - UPLOAD_DIR=/app/data/uploads
-      - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
-      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gpt-5-nano-2025-08-07}
-      - LLM_GRADER_MODEL=${LLM_GRADER_MODEL:-gpt-5-nano-2025-08-07}
-      - LLM_ORCHESTRATOR_MODEL=${LLM_ORCHESTRATOR_MODEL:-gpt-5-nano-2025-08-07}
-      - FIRST_SUPERUSER_EMAIL=${FIRST_SUPERUSER_EMAIL:-}
-      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-}
     depends_on:
-      - db
-      - redis
-    volumes:
-      - ./backend/data:/app/data
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
 
 volumes:
   postgres_data:
