@@ -21,3 +21,7 @@ These items are deliberately out of scope for grading v1 ([Proposal 002](proposa
 ## Found during implementation
 
 _(Append entries as `- [M#, PR #] description: proposed handling`.)_
+
+- [M2] **Budget sizing by pages:** the call budget is sized from the question count, because the page count is only known after the PDF is rasterized. Proposed: in M5, top up the budget per page once the context node knows the page count.
+- [M2] **Grader and evaluator on the same model:** nothing prevents configuring the same primary model for both roles, which removes the "fresh eyes" independence. Proposed: a config warning (or validation error) when they match; fallback exclusion already covers fallbacks.
+- [M2] **Router state per worker process:** chat-model clients are rebuilt for every grading run (required by Celery's fresh event loop per task). Proposed: measure the overhead; if it matters, run the worker on a persistent event loop (e.g. a long-lived asyncio worker pool) and reuse clients.
