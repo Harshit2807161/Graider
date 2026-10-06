@@ -204,8 +204,24 @@ class ModelRouter:
             degraded=not target.supports_json_schema,
             fallback_reason=fallback_reason,
         )
+        context = request.context
+        trace_metadata = {
+            "role": request.role.value,
+            "purpose": context.purpose,
+            "question": context.question_id or "",
+            "round": "" if context.round is None else str(context.round),
+            "attempt_kind": kind,
+            "model_requested": target.model,
+            "fallback_reason": fallback_reason or "",
+        }
         invoke_request = InvokeRequest(
-            target=target, system=request.system, parts=parts, json_schema=json_schema, max_tokens=max_tokens
+            target=target,
+            system=request.system,
+            parts=parts,
+            json_schema=json_schema,
+            max_tokens=max_tokens,
+            trace_name=f"{request.role.value}.{context.purpose}",
+            trace_metadata={k: v for k, v in trace_metadata.items() if v},
         )
         try:
             resp = await self.invoker.invoke(invoke_request)
