@@ -38,8 +38,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [x] Proposal 001 marked superseded
 - [x] This checklist
 - [x] `docs/v2-backlog.md`
-- [ ] ADRs: 008 and 009 superseded; new ADR-011 to ADR-014
-- [ ] `CLAUDE.md` and `README.md` point to 002 and this checklist; retired model ids removed
+- [x] ADRs: 008 and 009 superseded; new ADR-011 to ADR-014
+- [x] `CLAUDE.md` and `README.md` point to 002 and this checklist; retired model ids removed from README (historical docs and ADRs keep them as written)
 
 ## M1: CI and migrations
 *Alembic versions the Postgres schema. The baseline is today's tables, and each later PR ships a numbered migration. `alembic upgrade head` applies whatever a database is missing, without losing data. It is unrelated to MLflow.*
