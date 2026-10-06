@@ -12,14 +12,14 @@ Teachers set up an organization, classes and exams (questions with rubrics), the
 | API | FastAPI (`backend/app`), JWT auth, org-scoped roles |
 | Data | PostgreSQL 15 via SQLModel |
 | Jobs | Celery worker with Redis broker; one task grades one submission |
-| AI | Vision OCR + LangGraph grading agents. Today: OpenAI or Anthropic via `LLM_PROVIDER`. Grading v2: per-role Claude / OpenAI / self-hosted vLLM-SGLang models with fallback. |
+| AI | Vision OCR + LangGraph grading agents, called through a model router: per role, Claude, OpenAI or **self-hosted open-weight models (vLLM/SGLang)**, with fallback in both directions ([open-weight guide](docs/deploy/open-weight.md)) |
 
 ## Quick start
 
 ```bash
 conda env create -f environment.yml && conda activate gr8r     # Python 3.12 + backend deps
 brew install poppler                                           # PDF → image (macOS)
-cp backend/.env.example backend/.env                           # set SECRET_KEY, LLM keys/models
+cp backend/.env.example backend/.env                           # set SECRET_KEY, ANTHROPIC_API_KEY (or an open-weight profile)
 docker compose up -d db redis                                  # Postgres :5433, Redis :6379
 cd backend && python -m app.initial_data                       # tables + first superuser
 uvicorn app.main:app --reload --port 8000                      # API (docs at /docs)

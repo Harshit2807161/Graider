@@ -1,0 +1,43 @@
+# Optional self-hosted open-weight model server (vLLM, OpenAI-compatible API).
+# Needs an NVIDIA GPU with the NVIDIA container toolkit. See docs/deploy/open-weight.md.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.openweight.yml up -d
+#
+# Then point a role at it in .env, e.g.:
+#   LLM__GRADER__PROVIDER=openweight
+#   LLM__GRADER__BASE_URL=http://vllm:8000/v1
+#   LLM__GRADER__MODEL=<same as VLLM_MODEL>
+#   LLM__GRADER__MODEL_REVISION=<same as VLLM_MODEL_REVISION>
+
+services:
+  vllm:
+    # Pin an exact release tag (never :latest), e.g. vllm/vllm-openai:vX.Y.Z
+    image: ${VLLM_IMAGE:?Set VLLM_IMAGE to a pinned vllm/vllm-openai tag}
+    restart: unless-stopped
+    command: >
+      --model ${VLLM_MODEL:?Set VLLM_MODEL, e.g. Qwen/Qwen3-32B}
+      --revision ${VLLM_MODEL_REVISION:?Pin VLLM_MODEL_REVISION to a Hugging Face commit sha}
+      --served-model-name ${VLLM_MODEL}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-32768}
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+    ports:
+      - "8001:8000"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    ipc: host
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  hf_cache:

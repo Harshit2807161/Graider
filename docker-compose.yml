@@ -3,6 +3,10 @@
 # from several services races).
 x-backend: &backend
   image: graider-backend
+  # API keys and LLM__* model settings (per-role models/fallbacks) come from the root .env
+  env_file:
+    - path: .env
+      required: false
   environment:
     - DATABASE_URL=postgresql://user:password@db:5432/graider
     - CELERY_BROKER_URL=redis://redis:6379/0
@@ -10,14 +14,6 @@ x-backend: &backend
     # Shared between API and worker through the ./backend/data volume
     - UPLOAD_DIR=/app/data/uploads
     - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
-    - LLM_PROVIDER=${LLM_PROVIDER:-openai}
-    - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-    - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-    - LLM_VISION_MODEL=${LLM_VISION_MODEL:-gpt-5-nano-2025-08-07}
-    - LLM_GRADER_MODEL=${LLM_GRADER_MODEL:-gpt-5-nano-2025-08-07}
-    - LLM_ORCHESTRATOR_MODEL=${LLM_ORCHESTRATOR_MODEL:-gpt-5-nano-2025-08-07}
-    - FIRST_SUPERUSER_EMAIL=${FIRST_SUPERUSER_EMAIL:-}
-    - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-}
   volumes:
     - ./backend/data:/app/data
 

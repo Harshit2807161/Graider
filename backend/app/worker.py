@@ -24,10 +24,25 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
 )
 
+# One event loop per worker process, reused by every task (like uvicorn's single loop).
+# Async HTTP clients (e.g. the ones LangChain caches per process) are bound to the loop that
+# created them, so a fresh asyncio.run() per task breaks them on the next task
+# ("Event loop is closed").
+_loop: asyncio.AbstractEventLoop | None = None
+
+
+def run_in_worker_loop(coro):
+    global _loop
+    if _loop is None or _loop.is_closed():
+        _loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_loop)
+    return _loop.run_until_complete(coro)
+
+
 @celery_app.task(name="grade_exam_task", soft_time_limit=30 * 60, time_limit=35 * 60)
 def grade_exam_task(submission_id: str, answers_path: str):
     """Celery background task to grade an exam submission asynchronously."""
-    asyncio.run(run_grading_pipeline(
+    run_in_worker_loop(run_grading_pipeline(
         submission_id=UUID(submission_id),
         answers_path=answers_path,
     ))

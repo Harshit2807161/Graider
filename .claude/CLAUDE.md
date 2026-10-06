@@ -16,8 +16,7 @@ Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2
 - **Logging**: structlog
 
 ### AI/ML
-- **Provider layer**: `app/core/llm_provider.py`, provider-agnostic. `LLM_PROVIDER=openai|anthropic` for the whole app
-- **Models per role**: `LLM_VISION_MODEL` (OCR), `LLM_GRADER_MODEL` (tagging + grading), `LLM_ORCHESTRATOR_MODEL` (evaluator). Defaults are `gpt-5-nano-2025-08-07`; model names must belong to the chosen provider
+- **Model router** (`app/llm/`): every LLM call goes through `get_router().call(LLMRequest[Schema](...))`. Roles `vision`, `rubric_parser`, `grader`, `evaluator`, each with a primary target + fallbacks (`LLM__<ROLE>__...` env). Providers: `anthropic` (ChatAnthropic, native structured outputs), `openai`, `openweight` (self-hosted vLLM/SGLang via ChatOpenAI + `base_url`). Defaults: Claude Opus 5.5 (vision, rubric_parser, evaluator), Sonnet 5.5 (grader). See [docs/deploy/open-weight.md](../docs/deploy/open-weight.md)
 - **Orchestration**: LangGraph, one graph run per question (no checkpointer)
 - AGNTCY / observability SDKs are not integrated yet
 
@@ -37,8 +36,9 @@ backend/
 │   ├── api/
 │   │   ├── deps.py                # current user, get_membership, require_org_role
 │   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
-│   ├── core/                      # config, db, security, constants, llm_provider,
-│   │                              # llm_protection (per-run call budget), langgraph_setup
+│   ├── core/                      # config, db (engine, upgrade_to_head), security, constants, langgraph_setup
+│   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
+│   │                              # (LangChain chat models), router, budget, costs, recorder
 │   ├── crud/                      # data access (soft-delete aware)
 │   ├── models/                    # SQLModel tables (user, org, exam)
 │   ├── schemas/                   # Pydantic request/response + grading pipeline schemas
@@ -73,7 +73,7 @@ Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / 
 4. **Grade**: per question, LangGraph tags the subject, routes to a subject grader, and an LLM evaluator may request up to 3 attempts.
 5. **Save**: all answers and totals in one transaction; status `GRADED`.
 
-Failure rules: unparseable model output is retried once, then the submission is marked `FAILED` with the error in `current_step` — never record a made-up score. Each run is capped at `LLM_MAX_CALLS_PER_SUBMISSION` LLM calls.
+Failure rules: unparseable model output is retried once, then the submission is marked `FAILED` with the error in `current_step` — never record a made-up score. Each run has a call + USD budget (`LLM__MAX_CALLS_BASE`, `LLM__MAX_CALLS_PER_QUESTION`, `LLM__MAX_COST_USD_PER_SUBMISSION`).
 
 ## Development Commands
 
@@ -114,10 +114,9 @@ See `backend/.env.example` (local) and `.env.example` (docker compose). Key ones
 SECRET_KEY=...                       # required
 DATABASE_URL=postgresql://user:password@localhost:5433/graider
 CELERY_BROKER_URL=redis://localhost:6379/0
-LLM_PROVIDER=openai                  # or anthropic
-OPENAI_API_KEY=... / ANTHROPIC_API_KEY=...
-LLM_VISION_MODEL / LLM_GRADER_MODEL / LLM_ORCHESTRATOR_MODEL
-LLM_MAX_CALLS_PER_SUBMISSION=200
+ANTHROPIC_API_KEY=... / OPENAI_API_KEY=... / OPENWEIGHT_API_KEY=...
+LLM__GRADER__PROVIDER / __MODEL / __BASE_URL / __EFFORT / __FALLBACKS=[...]   # per role; profiles in backend/.env.example
+LLM__ALLOW_EXTERNAL_FALLBACK=true    LLM__MAX_COST_USD_PER_SUBMISSION=10
 UPLOAD_DIR=./data/uploads            MAX_UPLOAD_SIZE_MB=50
 FIRST_SUPERUSER_EMAIL / FIRST_SUPERUSER_PASSWORD
 BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
@@ -152,10 +151,10 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 1. Type hints on all function signatures; Pydantic schemas for request/response
 2. Every org-scoped endpoint checks membership/role via `deps.require_org_role`; validate that referenced ids (batch, student, question) belong to the same org/exam
 3. Never trust client file names; store uploads under `UPLOAD_DIR` with generated names
-4. LLM output: parse with `extract_json_object`, validate, retry once, then raise — never default to a score
-5. Every LLM call goes through `protector.check_and_increment()` and the async `achat` / `achat_vision` helpers
+4. LLM output: define a Pydantic output schema (no defaults, `extra="forbid"`, validators for domain rules) and call the router; it enforces the schema natively, repairs once, falls back, and raises `LLMAllTargetsFailed` — never default to a score
+5. Never import provider SDKs or LangChain chat models outside `app/llm/`; the router records every attempt and enforces the per-run budget
 6. Structured logging with structlog
-7. Mock LLMs in tests with the `fake_llm` fixture (`tests/conftest.py`); tests must not need API keys
+7. Mock LLMs in tests with the `fake_llm` fixture (a `FakeInvoker` below the router, routed by output-schema title); tests must not need API keys. Live tests are opt-in (`pytest -m live`)
 
 ## Git Workflow
 - Feature branches + PRs; don't commit directly to `master`
@@ -169,7 +168,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 
 ## Known Gaps
 - Frontend lint has existing `any` / hook warnings
-- No audit trail of prompts/LLM calls, no human review/approval flow, single provider per deployment — see the proposal
+- No persistent audit trail of LLM calls yet (attempts are logged; DB recorder in M3), no human review/approval flow — see the proposal
 
 ## Key Documents
 - [Grading v2 architecture (Proposal 002, accepted)](../docs/proposals/002-grading-v2-architecture.md)

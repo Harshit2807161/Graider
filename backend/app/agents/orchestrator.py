@@ -7,15 +7,18 @@ This module implements a supervisor-worker pattern using LangGraph:
 4. Provides feedback loop for rejected grades
 """
 
-from typing import Optional
+from typing import Literal, Optional
 import json
 
 import structlog
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command
 
-from app.core.llm_protection import protector
-from app.core.llm_provider import LLMResponseError, extract_json_object, get_llm_provider
+from pydantic import BaseModel, ConfigDict
+
+from app.llm.config import get_llm_settings
+from app.llm.router import get_router
+from app.llm.types import CallContext, LLMAllTargetsFailed, LLMRequest, Role, TextPart
 from app.schemas.grading import GradingResult, Triplet
 from app.core.langgraph_setup import (
     GradingState,
@@ -30,17 +33,33 @@ from .graders.general_grader import GeneralGrader
 logger = structlog.get_logger(__name__)
 
 
+class TagOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    subject: Literal["math", "english", "science", "history", "general"]
+    question_type: Literal[
+        "mcq", "short_answer", "descriptive", "problem", "essay",
+        "assertion_reasoning", "differentiate", "elucidate",
+    ]
+
+
+class EvaluationOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    is_acceptable: bool
+    concerns: str
+    improvement_suggestions: str
+
+
 class LangGraphOrchestrator:
     """
     LangGraph-based orchestrator that coordinates the grading pipeline.
 
-    Uses the configured LLM provider for tagging and evaluation decisions.
+    Tagging uses the `grader` model role and evaluation the `evaluator` role, via the model router.
     Delegates to specialized graders for actual grading.
     """
 
     def __init__(self):
-        self.tagger_provider = get_llm_provider(role="grader")  # Use grader model for tagging (faster)
-        self.evaluator_provider = get_llm_provider(role="orchestrator")
 
         # Initialize graders
         self.graders = {
@@ -131,20 +150,23 @@ Consider:
 
 Return ONLY the JSON object."""
 
-        protector.check_and_increment()
-
         try:
-            response_text = await self.tagger_provider.achat(
-                system_prompt="You are a question classifier. Respond only with valid JSON.",
-                user_prompt=prompt,
-                max_tokens=256,
+            result = await get_router().call(
+                LLMRequest[TagOutput](
+                    role=Role.GRADER,  # cheap classification: the grader model is enough
+                    system="You are a question classifier.",
+                    parts=[TextPart(text=prompt)],
+                    output_schema=TagOutput,
+                    context=CallContext(purpose="tag", question_id=triplet_data.get("question_id")),
+                    exclude_models=frozenset({get_llm_settings().evaluator.model}),
+                    max_tokens=1024,
+                )
             )
-            tags = extract_json_object(response_text)
-            subject_tag = str(tags.get("subject", "general")).lower()
-            question_type_tag = str(tags.get("question_type", "descriptive")).lower()
-        except LLMResponseError as e:
+            subject_tag = result.parsed.subject
+            question_type_tag = result.parsed.question_type
+        except LLMAllTargetsFailed as e:
             # Tagging only picks a grader persona; fall back to the general grader
-            logger.warning("tag_parse_error", error=str(e))
+            logger.warning("tag_failed", error=str(e)[:300])
             subject_tag = "general"
             question_type_tag = "descriptive"
 
@@ -264,19 +286,26 @@ Respond with JSON:
   "improvement_suggestions": "Specific suggestions if not acceptable"
 }}"""
 
-        protector.check_and_increment()
-
         try:
-            response_text = await self.evaluator_provider.achat(
-                system_prompt="You are a grading quality evaluator. Respond only with valid JSON.",
-                user_prompt=prompt,
-                max_tokens=512,
+            evaluation = await get_router().call(
+                LLMRequest[EvaluationOutput](
+                    role=Role.EVALUATOR,
+                    system="You are a grading quality evaluator.",
+                    parts=[TextPart(text=prompt)],
+                    output_schema=EvaluationOutput,
+                    context=CallContext(
+                        purpose="evaluate",
+                        question_id=triplet_data.get("question_id"),
+                        round=state["current_attempt"],
+                    ),
+                    max_tokens=2048,
+                )
             )
-            evaluation = extract_json_object(response_text)
-            is_acceptable = evaluation.get("is_acceptable", True) is not False
-            feedback = str(evaluation.get("improvement_suggestions") or "")
-        except LLMResponseError as e:
-            logger.warning("evaluation_parse_error", error=str(e))
+            is_acceptable = evaluation.parsed.is_acceptable
+            feedback = evaluation.parsed.improvement_suggestions
+        except LLMAllTargetsFailed as e:
+            # The evaluator is a quality check; if every evaluator model fails, keep the grade
+            logger.warning("evaluation_failed", error=str(e)[:300])
             is_acceptable = True
             feedback = ""
 

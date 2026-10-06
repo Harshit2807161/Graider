@@ -19,9 +19,9 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 
 | M | Milestone | Branch | Depends on | PR | Status |
 |---|---|---|---|---|---|
-| M0 | Docs: proposal 002, checklist, backlog, ADRs | `docs/grading-v2-final` | – | – | In review |
-| M1 | CI and migrations | `chore/ci-and-migrations` | – | – | In progress (2 commits) |
-| M2 | Model router | `feat/llm-router` | M1 | – | Not started |
+| M0 | Docs: proposal 002, checklist, backlog, ADRs | `docs/grading-v2-final` | – | [#5](https://github.com/Harshit2807161/Graider/pull/5) | Merged |
+| M1 | CI and migrations | `chore/ci-and-migrations` | – | [#6](https://github.com/Harshit2807161/Graider/pull/6) | Merged |
+| M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | In review |
 | M3 | Audit trail and MLflow | `feat/audit-and-tracing` | M2 | – | Not started |
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | – | Not started |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
@@ -45,53 +45,54 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 *Alembic versions the Postgres schema. The baseline is today's tables, and each later PR ships a numbered migration. `alembic upgrade head` applies whatever a database is missing, without losing data. It is unrelated to MLflow.*
 - [x] fix(ocr): missing `QuestionType` import
 - [x] chore(lint): ruff config, unused imports removed
-- [ ] Alembic: `alembic.ini` and `alembic/env.py` (app settings, SQLModel metadata, SQLite batch mode); baseline migration that drops enums on downgrade; upgrade → downgrade → upgrade works; `alembic check` clean
-- [ ] Startup: no `create_all` in `app/main.py` or `app/core/db.py`; `app/initial_data.py` runs `alembic upgrade head`; docker-compose gets a db healthcheck and a one-shot `migrate` service
-- [ ] `requirements.txt` gains alembic; new `requirements-dev.txt` (ruff, pytest, pytest-asyncio, httpx)
-- [ ] `.github/workflows/ci.yml`: ruff · pytest on SQLite · Postgres service running `alembic upgrade head`, `alembic check` and pytest · frontend `tsc --noEmit` and `next build`
-- [ ] `tests/test_migrations.py` (Postgres only): upgrade/downgrade/upgrade with no drift
-- [ ] Remove the ad-hoc `add_*_column.py` and `migrate_exams.py` scripts; STARTUP_GUIDE documents migrations and the `alembic stamp head` procedure for existing databases
+- [x] Alembic: `alembic.ini` and `alembic/env.py` (app settings, SQLModel metadata, SQLite batch mode); baseline migration that drops enums on downgrade; upgrade → downgrade → upgrade works; `alembic check` clean
+- [x] Startup: no `create_all` in `app/main.py` or `app/core/db.py`; `app/initial_data.py` runs `alembic upgrade head`; docker-compose gets a db healthcheck and a one-shot `migrate` service
+- [x] `requirements.txt` gains alembic; new `requirements-dev.txt` (ruff, pytest, pytest-asyncio, httpx)
+- [x] `.github/workflows/ci.yml`: ruff · pytest on SQLite · Postgres service running `alembic upgrade head`, `alembic check` and pytest · frontend `tsc --noEmit` and `next build`
+- [x] `tests/test_migrations.py` (Postgres only): upgrade/downgrade/upgrade with no drift
+- [x] Remove the ad-hoc `add_*_column.py` and `migrate_exams.py` scripts; STARTUP_GUIDE documents migrations and the `alembic stamp head` procedure for existing databases
 
 **Acceptance:** CI is green on the PR; a fresh `docker compose up` migrates and boots; nothing outside the tests calls `create_all`.
 
 ## M2: Model router (open-weight + API)
-- [ ] `app/llm/types.py`:
+- [x] `app/llm/types.py`:
   - `Role` (vision, rubric_parser, grader, evaluator)
   - `ModelTarget`: provider `anthropic` | `openai` | `openweight`; model; base_url; api_key_env; effort; max_tokens; timeout; `external`; `supports_vision`; `supports_json_schema`; `model_revision`; `quantization`
   - `CallContext`, `AttemptRecord`, `LLMResult[T]`
   - Errors: refusal, truncated, output invalid, all targets failed
-- [ ] `app/llm/config.py`:
+- [x] `app/llm/config.py`:
   - Per-role primary target plus fallbacks, set through nested env vars
   - API defaults: vision, rubric_parser and evaluator on `claude-opus-5-5`; grader on `claude-sonnet-5-5`
-  - `ALLOW_EXTERNAL_FALLBACK`
+  - `LLM__ALLOW_EXTERNAL_FALLBACK`
   - Validation: the vision role must use a vision-capable model
   - Remove the old `LLM_PROVIDER` / `LLM_*_MODEL` settings
-- [ ] `app/llm/models.py`:
+- [x] `app/llm/invoker.py` (named `models.py` in the plan):
   - Build a `ChatAnthropic` or `ChatOpenAI` client per target, once per grading run
   - Structured output via `method="json_schema"`, with `include_raw=True`
   - Open-weight servers use guided decoding; a server without schema support gets a degraded path (schema in the prompt, then Pydantic validation)
   - Image content blocks
-- [ ] `app/llm/router.py`:
-  - Chain = pinned primary + fallbacks, minus excluded models, minus external targets when external fallback is disallowed
+- [x] `app/llm/router.py`:
+  - Chain = pinned primary + fallbacks, minus excluded models (applied to fallbacks only, so a misconfiguration can't empty the chain), minus external targets when external fallback is disallowed
   - Before each call: budget check; then call with a timeout
   - Stop reasons: refusal goes to the next target; truncation gets one retry, then the next target
   - Invalid output: one repair request, then the next target
   - Transport error or timeout: next target
   - Every attempt is recorded
   - The grader's fallback never lands on the evaluator's model
-- [ ] `app/llm/budget.py`: per-run call cap and USD cap, sized from pages × questions. Replaces `core/llm_protection.py`.
-- [ ] `app/llm/costs.py`: price table; self-hosted targets cost 0
-- [ ] `app/llm/recorder.py`: `CallRecorder` protocol (Null and Log versions now; DB version in M3); images recorded as reference plus sha256
-- [ ] Open-weight setup:
+- [x] `app/llm/budget.py`: per-run call cap and USD cap. Call cap = `LLM__MAX_CALLS_BASE` + `LLM__MAX_CALLS_PER_QUESTION` × questions (the page count isn't known until OCR runs). Replaces `core/llm_protection.py`.
+- [x] `app/llm/costs.py`: price table; self-hosted targets cost 0
+- [x] `app/llm/recorder.py`: `CallRecorder` protocol (Null and Log versions now; DB version in M3); images recorded as reference plus sha256
+- [x] Open-weight setup:
   - `docs/deploy/open-weight.md`: vLLM/SGLang serving; pinned image, HF revision and quantization; health checks; structured-output backend; vision models; Ollama is for development only
   - `.env.example` profiles: API-only, hybrid, fully local
-  - Optional compose profile `openweight` (needs a GPU; not run in CI)
-- [ ] Migrate the call sites (OCR answer extraction, graders, orchestrator) and delete the old provider classes
-- [ ] Tests:
+  - Optional `docker-compose.openweight.yml` with a vLLM server (needs a GPU; not run in CI). A compose profile didn't work: Compose resolves the required `${VLLM_*:?}` variables even when the profile is inactive.
+- [x] Migrate the call sites (OCR answer extraction, graders, orchestrator) and delete the old provider classes. Also removed the dead OCR methods (question/rubric extraction), which had no callers and depended on the old provider; they are no longer on M5's list.
+- [x] Tests:
   - `FakeInvoker` replaces the prompt-sniffing `FakeLLM`; port the existing tests
   - Router unit tests: repair, truncation, refusal → fallback, transport → fallback, **open-weight → Claude** and **Claude → open-weight**, all targets failed, budget, exclusions, external disallowed, attempt records
   - Contract tests against stub HTTP servers shaped like the Anthropic API and the OpenAI/vLLM API: schema present; no temperature, forced tool choice or prefill; image blocks; response mapping
-  - Live smoke tests (`@pytest.mark.live`) for Claude and for a running vLLM/Ollama endpoint, skipped when unavailable
+  - Live smoke tests (`@pytest.mark.live`) for Claude and for a running vLLM/Ollama endpoint, skipped when unavailable. **Open-weight: passing**, fully local on Ollama: OCR with `qwen3-vl:4b-instruct-q4_K_M`; structured output, grading (correct > wrong) and the full graph with `qwen3:4b-instruct-2507-q4_K_M`. Claude: not run yet (needs `ANTHROPIC_API_KEY`).
+- [x] Local dev profile (D): Ollama with Qwen3-VL-4B-Instruct (OCR) and Qwen3-4B-Instruct-2507 (text roles), no API key needed. The worker reuses one event loop per process (bug found by the live test).
 
 **Acceptance:** provider classes exist only under `app/llm/`; every call yields an `AttemptRecord`; switching any role between Claude and a self-hosted open-weight model takes config only.
 
@@ -163,7 +164,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
   6. Revise or push back, at most 2 times ⇒ finalize or escalate
 - [ ] Final transaction: transcriptions, answer grades, projections, events, totals; status GRADED or NEEDS_REVIEW. FAILED only for OCR failure, exhausted budget or no questions.
 - [ ] Spot-check sampler: seeded by run id; default 0%
-- [ ] Delete the replaced code: `app/agents/`, `core/langgraph_setup.py`, `services/triplet_service.py`, `rubric_from_text`, unused OCR methods, legacy schemas
+- [ ] Delete the replaced code: `app/agents/`, `core/langgraph_setup.py`, `services/triplet_service.py`, `rubric_from_text`, legacy schemas
 - [ ] Tests:
   - Agree in round 1 (2 calls per answer)
   - Revise once, then agree

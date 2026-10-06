@@ -56,8 +56,10 @@ Copy the template and fill in your values:
 ```bash
 cp .env.example .env   # inside backend/
 ```
-At minimum set `SECRET_KEY` (`openssl rand -hex 32`), `LLM_PROVIDER` with its API key, and the
-three `LLM_*_MODEL` values for that provider. See `backend/.env.example` for every setting.
+At minimum set `SECRET_KEY` (`openssl rand -hex 32`) and `ANTHROPIC_API_KEY`: by default every
+model role uses Claude. To use self-hosted open-weight models (vLLM/SGLang) or OpenAI for some or
+all roles, use the `LLM__*` profiles in `backend/.env.example` and see
+[docs/deploy/open-weight.md](docs/deploy/open-weight.md).
 
 ---
 
@@ -156,8 +158,9 @@ rubric, one point per line), then upload an answer sheet on the exam page. Progr
 results appear on the same page.
 
 ### 4. LLM Cost Guard
-Each submission may make at most `LLM_MAX_CALLS_PER_SUBMISSION` LLM calls (default 200);
-a run that exceeds it fails with a clear error instead of running up costs.
+Each submission has a call budget (`LLM__MAX_CALLS_BASE` + `LLM__MAX_CALLS_PER_QUESTION` × questions)
+and a USD budget (`LLM__MAX_COST_USD_PER_SUBMISSION`, default $10). A run that exceeds either fails
+with a clear error instead of running up costs.
 
 ---
 
@@ -166,7 +169,7 @@ a run that exceeds it fails with a clear error instead of running up costs.
 - **CORS errors in Frontend**: Ensure `BACKEND_CORS_ORIGINS` in `backend/.env` includes the frontend URL.
 - **Frontend can't reach the API**: Set `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
 - **OCR failing on PDFs**: Ensure `pdftoppm` (part of Poppler) is in your PATH.
-- **Grader returning empty responses**: Check your LLM API balance and ensure you are using a model that supports the `developer` role if configured.
+- **Model calls failing**: check the `llm_call` / `llm_target_failed` log lines in the worker; they show each attempt's model, stop reason and error (e.g. a missing `ANTHROPIC_API_KEY` or an unreachable `BASE_URL`).
 - **Celery Task Not Found**: Ensure you are running the worker from the `backend/` directory.
 
 ---

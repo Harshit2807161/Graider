@@ -7,10 +7,12 @@ from uuid import UUID
 import structlog
 from sqlmodel import Session
 
-from app.core.config import get_settings
 from app.core.constants import SubmissionStatus
 from app.core.db import engine
-from app.core.llm_protection import protector
+from app.llm.budget import budget
+from app.llm.config import get_llm_settings
+from app.llm.router import run_router
+from app.llm.types import CallContext
 from app import crud
 from app.models.exam import Question as DBQuestion, Submission, SubmissionAnswer
 from app.schemas.grading import (
@@ -62,7 +64,7 @@ async def run_grading_pipeline(submission_id: UUID, answers_path: str) -> None:
     Steps: OCR the answer sheet -> pair answers with questions + rubrics -> grade each
     pair with the agent graph -> save per-question results and totals.
     """
-    settings = get_settings()
+    llm_settings = get_llm_settings()
     with Session(engine) as db:
         submission = crud.submission.get(db, id=submission_id)
         if not submission:
@@ -70,7 +72,11 @@ async def run_grading_pipeline(submission_id: UUID, answers_path: str) -> None:
             return
 
         try:
-            with protector.budget(settings.LLM_MAX_CALLS_PER_SUBMISSION):
+            question_count = len(crud.question.get_by_exam(db, exam_id=submission.exam_id))
+            # One router (and set of model clients) and one cost/call budget per grading run
+            with run_router(), budget(
+                llm_settings.max_calls_for(question_count), llm_settings.max_cost_usd_per_submission
+            ):
                 await _grade(db, submission, Path(answers_path))
         except Exception as e:
             logger.exception("pipeline_error", submission_id=str(submission_id), error=str(e))
@@ -110,7 +116,9 @@ async def _grade(db: Session, submission: Submission, answers_path: Path) -> Non
     # ===== Step 1: OCR =====
     logger.info("pipeline_step", step="ocr", submission_id=submission_id)
     _set_progress(db, submission, f"Reading answer sheet for {len(questions)} questions...")
-    answers: list[Answer] = await get_ocr_service().extract_answers(answers_path, questions)
+    answers: list[Answer] = await get_ocr_service().extract_answers(
+        answers_path, questions, context=CallContext(purpose="ocr_answers", submission_id=submission.id)
+    )
     if not answers:
         # The model read the sheet but matched nothing; grading would award all zeros.
         raise ValueError(
