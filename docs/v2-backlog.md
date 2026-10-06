@@ -24,4 +24,9 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
 
 - [M2] **Budget sizing by pages:** the call budget is sized from the question count, because the page count is only known after the PDF is rasterized. Proposed: in M5, top up the budget per page once the context node knows the page count.
 - [M2] **Grader and evaluator on the same model:** nothing prevents configuring the same primary model for both roles, which removes the "fresh eyes" independence. Proposed: a config warning (or validation error) when they match; fallback exclusion already covers fallbacks.
-- [M2] **Router state per worker process:** chat-model clients are rebuilt for every grading run (required by Celery's fresh event loop per task). Proposed: measure the overhead; if it matters, run the worker on a persistent event loop (e.g. a long-lived asyncio worker pool) and reuse clients.
+- [M2, resolved] **Event loop per Celery task:** found by the live Ollama test. LangChain caches async HTTP clients per process, bound to the event loop that created them, and the worker ran each task with `asyncio.run()`, so the second task in a worker failed with "Event loop is closed". Fixed by running every task on one event loop per worker process (`app/worker.py: run_in_worker_loop`), with no changes to the router.
+- [M2, evidence for M5/M8] **Local Qwen3-4B (Ollama, laptop CPU/GPU) through the current graph:**
+  - Structured output worked first time on every call (no repairs or truncation).
+  - Each call took 26–64s, so a question costs about 3 minutes with one evaluator round.
+  - The evaluator rejected round 1 in 2/2 runs. The grader then *lowered* its score (3.0 → 0.5 in one run, → 2.0 in the other) for the same answer.
+  - Takeaways: same-answer inconsistency plus the grader caving to the evaluator is exactly what M5's push-back rule and M8's flip-rate/variance metrics target; a 4B model is only a development profile.

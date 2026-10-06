@@ -91,7 +91,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
   - `FakeInvoker` replaces the prompt-sniffing `FakeLLM`; port the existing tests
   - Router unit tests: repair, truncation, refusal → fallback, transport → fallback, **open-weight → Claude** and **Claude → open-weight**, all targets failed, budget, exclusions, external disallowed, attempt records
   - Contract tests against stub HTTP servers shaped like the Anthropic API and the OpenAI/vLLM API: schema present; no temperature, forced tool choice or prefill; image blocks; response mapping
-  - Live smoke tests (`@pytest.mark.live`) for Claude and for a running vLLM/Ollama endpoint, skipped when unavailable. Written but **not run yet**: needs an API key or an open-weight server (owner inputs).
+  - Live smoke tests (`@pytest.mark.live`) for Claude and for a running vLLM/Ollama endpoint, skipped when unavailable. **Open-weight: passing** against Ollama `qwen3:4b-instruct-2507-q4_K_M` (structured output, grader correct > wrong, full graph). Claude: not run yet (needs `ANTHROPIC_API_KEY`).
+- [x] Local dev profile (D): Ollama + Qwen3-4B-Instruct-2507 for the text roles; worker reuses one event loop per process (bug found by the live test)
 
 **Acceptance:** provider classes exist only under `app/llm/`; every call yields an `AttemptRecord`; switching any role between Claude and a self-hosted open-weight model takes config only.
 
