@@ -1,9 +1,7 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.db import init_db
 from app.api.v1.router import api_router
 import time
 import structlog
@@ -12,17 +10,11 @@ from fastapi import Request
 logger = structlog.get_logger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    init_db()
-    yield
-    # Shutdown
-
+# The schema is managed by Alembic (`alembic upgrade head`, run by `python -m app.initial_data`
+# or the compose `migrate` service), not created at startup.
 app = FastAPI(
     title=settings.PROJECT_NAME, 
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
 )
 
 # CORS

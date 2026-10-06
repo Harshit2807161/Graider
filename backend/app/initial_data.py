@@ -1,4 +1,4 @@
-"""Bootstrap the database and first superuser.
+"""Migrate the database to the latest schema and create the first superuser.
 
 Run with: python -m app.initial_data
 Credentials come from FIRST_SUPERUSER_EMAIL / FIRST_SUPERUSER_PASSWORD (env or .env).
@@ -11,14 +11,14 @@ from sqlmodel import Session
 
 from app import crud
 from app.core.config import settings
-from app.core.db import engine, init_db
+from app.core.db import engine, upgrade_to_head
 from app.schemas.user import UserCreate
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def init() -> None:
-    init_db()
+    upgrade_to_head()
 
     email = settings.FIRST_SUPERUSER_EMAIL
     password = settings.FIRST_SUPERUSER_PASSWORD
