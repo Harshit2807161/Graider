@@ -90,7 +90,7 @@ async def run_grading(run_id: UUID) -> None:
         try:
             question_count = len(crud.question.get_by_exam(db, exam_id=submission.exam_id))
             # One router, one call/cost budget and one audit recorder per grading run
-            with run_trace(run.id, submission.id) as trace_id, run_router(), budget(
+            with run_trace(run.id, submission.id, run.trigger) as trace_id, run_router(), budget(
                 llm_settings.max_calls_for(question_count), llm_settings.max_cost_usd_per_submission
             ), recording_to(DbCallRecorder(run.id, submission.id)):
                 set_trace_id(db, run, trace_id)

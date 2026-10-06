@@ -64,7 +64,7 @@ def start_run(db: Session, run: GradingRun) -> None:
 
 def set_trace_id(db: Session, run: GradingRun, trace_id: Optional[str]) -> None:
     if trace_id:
-        run.mlflow_trace_id = trace_id
+        run.trace_id = trace_id
         db.add(run)
         db.commit()
 

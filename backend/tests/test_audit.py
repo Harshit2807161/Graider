@@ -96,8 +96,8 @@ def test_run_status_only_moves_forward(db, school, tmp_path):
         start_run(db, run)
 
 
-async def test_tracing_is_off_without_a_tracking_uri(fake_llm, db, school, tmp_path):
+async def test_tracing_is_off_unless_configured(fake_llm, db, school, tmp_path):
     run = new_run(db, school["exam"], tmp_path)
     await run_grading(run.id)
     run, _, _, _ = reload(run.id)
-    assert run.mlflow_trace_id is None and run.status == RunStatus.SUCCEEDED
+    assert run.trace_id is None and run.status == RunStatus.SUCCEEDED

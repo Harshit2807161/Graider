@@ -44,7 +44,7 @@ def upgrade() -> None:
     sa.Column('error', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('llm_calls', sa.Integer(), nullable=False),
     sa.Column('cost_usd', sa.Float(), nullable=False),
-    sa.Column('mlflow_trace_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('trace_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('created_by_membership_id', sa.Uuid(), nullable=True),
     sa.Column('created_at', sqlmodel.sql.sqltypes.UTCDateTime(), nullable=False),
     sa.Column('started_at', sqlmodel.sql.sqltypes.UTCDateTime(), nullable=True),

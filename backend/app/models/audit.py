@@ -47,7 +47,7 @@ class GradingRun(SQLModel, table=True):
     error: Optional[str] = None
     llm_calls: int = 0
     cost_usd: float = 0.0
-    mlflow_trace_id: Optional[str] = None
+    trace_id: Optional[str] = None  # Langfuse trace (soft link; observability, not audit)
     created_by_membership_id: Optional[UUID] = Field(default=None, foreign_key="memberships.id")
     created_at: datetime = Field(default_factory=utcnow)
     started_at: Optional[datetime] = None

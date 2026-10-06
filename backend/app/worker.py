@@ -47,7 +47,7 @@ def run_in_worker_loop(coro):
 @celery_app.task(name="grade_submission_task", soft_time_limit=30 * 60, time_limit=35 * 60)
 def grade_submission_task(run_id: str):
     """Execute one grading run. Safe to redeliver: finished runs are skipped."""
-    ensure_tracing()  # per worker process, after fork; no-op unless MLFLOW_TRACKING_URI is set
+    ensure_tracing()  # per worker process, after fork; no-op unless Langfuse is configured
     run_in_worker_loop(run_grading(UUID(run_id)))
 
 
