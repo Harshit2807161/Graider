@@ -174,3 +174,135 @@ def test_oversized_image_is_refused(tmp_path, monkeypatch):
 def test_text_file_is_one_text_page(tmp_path):
     (page,) = list(render_text(write(tmp_path, "answers.txt", fx.text())))
     assert page.kind == PageKind.TEXT and page.image is None and page.text.startswith("Ans 1)")
+
+
+# ===== storing documents and making pages =====
+
+from sqlmodel import Session  # noqa: E402
+
+from app.core.db import engine  # noqa: E402
+from app.ingestion import service  # noqa: E402
+from app.models.document import DocumentRole, DocumentStatus  # noqa: E402
+from app.models.exam import Submission  # noqa: E402
+
+
+@pytest.fixture
+def uploads(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "UPLOAD_DIR", tmp_path)
+    return tmp_path
+
+
+def stored(db, school, name, data, *, submission=None, position=0):
+    kind = detect(data, name, DOCUMENT_KINDS)
+    document = service.store_upload(
+        db, data=data, filename=name, kind=kind, org_id=school["org"].id, exam_id=school["exam"].id,
+        role=DocumentRole.ANSWERS, submission_id=submission.id if submission else None, position=position,
+    )
+    db.commit()
+    db.refresh(document)
+    return document
+
+
+@pytest.mark.parametrize(
+    "name, make, kinds",
+    [
+        ("typed.pdf", fx.typed_pdf, ["digital"]),
+        ("scan.pdf", lambda: fx.scanned_pdf(pages=2), ["scanned", "scanned"]),
+        ("mixed.pdf", fx.mixed_pdf, ["digital", "mixed"]),
+        ("IMG_1.HEIC", lambda: fx.HEIC_PHOTO.read_bytes(), ["photo"]),
+        ("scan.tiff", fx.multipage_tiff, ["photo", "photo", "photo"]),
+        ("answers.txt", fx.text, ["text"]),
+    ],
+)
+def test_documents_become_stored_pages(db, school, uploads, name, make, kinds):
+    document = stored(db, school, name, make())
+
+    pages = service.ensure_pages(db, document)
+
+    assert [p.kind for p in pages] == kinds and document.status == DocumentStatus.READY
+    assert document.page_count == len(kinds) and document.original_filename == name
+    assert str(uploads) in document.stored_path and name not in document.stored_path  # generated name
+    for page in pages:
+        if page.kind == "text":
+            assert page.image_path is None and page.text_layer
+        else:
+            assert page.image_path.endswith(".jpg") and page.image_sha256 and page.width and page.height
+
+
+def test_pages_are_made_once(db, school, uploads, monkeypatch):
+    document = stored(db, school, "typed.pdf", fx.typed_pdf())
+    first = service.ensure_pages(db, document)
+    monkeypatch.setattr(service, "_render", lambda d: pytest.fail("pages were rendered again"))
+
+    assert [p.id for p in service.ensure_pages(db, document)] == [p.id for p in first]
+
+
+def test_unreadable_document_is_marked_failed_with_the_reason(db, school, uploads):
+    document = stored(db, school, "locked.pdf", fx.encrypted_pdf())
+
+    with pytest.raises(DocumentError, match="password-protected"):
+        service.ensure_pages(db, document)
+
+    assert document.status == DocumentStatus.FAILED and "password-protected" in document.error
+
+
+def test_office_documents_need_the_converter(db, school, uploads, monkeypatch):
+    monkeypatch.setattr(settings, "GOTENBERG_URL", None)
+    document = stored(db, school, "answers.docx", fx.docx())
+
+    with pytest.raises(DocumentError, match="can't be converted on this server"):
+        service.ensure_pages(db, document)
+
+
+def test_office_documents_are_converted_then_rendered(db, school, uploads, monkeypatch):
+    sent = []
+
+    def fake_convert(data, filename):
+        sent.append(filename)
+        return fx.typed_pdf([["Converted from Word: x = 5"]])
+
+    monkeypatch.setattr(service, "convert_to_pdf", fake_convert)
+    document = stored(db, school, "Answers (final).docx", fx.docx())
+
+    (page,) = service.ensure_pages(db, document)
+
+    assert sent == ["document.docx"]  # the user's file name never reaches the converter
+    assert page.kind == "digital" and "x = 5" in page.text_layer
+
+
+def test_submission_pages_follow_upload_order(db, school, uploads):
+    submission = Submission(exam_id=school["exam"].id, original_file_url="(documents)")
+    db.add(submission)
+    db.commit()
+    stored(db, school, "page2.png", fx.image_bytes("PNG"), submission=submission, position=1)
+    stored(db, school, "page1.pdf", fx.typed_pdf(), submission=submission, position=0)
+
+    pages = service.submission_pages(db, submission)
+
+    assert [p.kind for p in pages] == ["digital", "photo"]
+
+
+def test_submission_page_cap(db, school, uploads, monkeypatch):
+    monkeypatch.setattr(settings, "MAX_PAGES_PER_SUBMISSION", 2)
+    submission = Submission(exam_id=school["exam"].id, original_file_url="(documents)")
+    db.add(submission)
+    db.commit()
+    stored(db, school, "scan.tiff", fx.multipage_tiff(3), submission=submission)
+
+    with pytest.raises(DocumentError, match="has 3 pages; the limit is 2"):
+        service.submission_pages(db, submission)
+
+
+def test_submission_from_before_documents_is_adopted(db, school, uploads):
+    sheet = uploads / "legacy_answer.png"
+    sheet.write_bytes(fx.image_bytes("PNG"))
+    submission = Submission(exam_id=school["exam"].id, original_file_url=str(sheet))
+    db.add(submission)
+    db.commit()
+
+    (document,) = service.submission_documents(db, submission)
+    (page,) = service.submission_pages(db, submission)
+
+    assert document.kind == "png" and document.stored_path == str(sheet) and page.kind == "photo"
+    with Session(engine) as fresh:
+        assert len(service.submission_documents(fresh, fresh.get(Submission, submission.id))) == 1

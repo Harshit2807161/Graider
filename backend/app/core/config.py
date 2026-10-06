@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     INGEST_DPI: int = 200  # ~ the most detail Claude uses for an A4 page
     INGEST_MAX_LONG_EDGE: int = 2576  # px; Claude's high-resolution cap
     MAX_PAGES_PER_DOCUMENT: int = 100
+    MAX_PAGES_PER_SUBMISSION: int = 150
     MAX_FILES_PER_SUBMISSION: int = 30
     MAX_IMAGE_PIXELS: int = 100_000_000  # larger images are rejected (decompression-bomb guard)
     # Sandboxed LibreOffice converter for DOCX/DOC/ODT/RTF/PPTX; office uploads are refused without it
