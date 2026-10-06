@@ -3,7 +3,7 @@
 ## Project Overview
 Gr8r grades handwritten exam answers. Teachers set up organizations, classes (batches) and exams with questions and rubrics, then upload a student's answer sheet (PDF or image). A background worker transcribes the sheet with a vision LLM and grades each answer with LangGraph agents.
 
-Status: multi-tenant web app working end to end (branch `v1-full`). The next stage is the production-grade grading design in [docs/proposals/001-production-grading-architecture.md](../docs/proposals/001-production-grading-architecture.md) — a draft awaiting approval; nothing in it is implemented yet.
+Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2 is accepted** in [docs/proposals/002-grading-v2-architecture.md](../docs/proposals/002-grading-v2-architecture.md) and is being built milestone by milestone; progress is tracked in [docs/grading-v2-checklist.md](../docs/grading-v2-checklist.md). Deferred items and edge cases go in [docs/v2-backlog.md](../docs/v2-backlog.md). Sections below describe the code as it is today; update them as milestones land.
 
 ## Tech Stack
 
@@ -172,7 +172,9 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - No audit trail of prompts/LLM calls, no human review/approval flow, single provider per deployment — see the proposal
 
 ## Key Documents
-- [Production grading proposal](../docs/proposals/001-production-grading-architecture.md)
+- [Grading v2 architecture (Proposal 002, accepted)](../docs/proposals/002-grading-v2-architecture.md)
+- [Grading v2 feature checklist](../docs/grading-v2-checklist.md)
+- [v2 backlog](../docs/v2-backlog.md)
 - [Startup Guide](../STARTUP_GUIDE.md)
 - [Architecture](../docs/architecture.md), [ADRs](../docs/ADRs.md)
 - [System flow](../docs/system-flow.md), [User flow](../docs/user-flow.md)

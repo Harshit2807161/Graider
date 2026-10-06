@@ -2,10 +2,8 @@
 
 | | |
 |---|---|
-| **Status** | Draft, awaiting approval. Nothing in this document is implemented yet. |
+| **Status** | **Superseded** by [Proposal 002](002-grading-v2-architecture.md) (2026-10-05). Kept as the original draft for history; several recommendations here (e.g. dropping the evaluator loop, raw-SDK adapters) were changed in 002. |
 | **Branch** | `v1-full` (based on `added-exams`, plus the bug-fix commits) |
-| **Supersedes** | Parts of ADR-008 (two-step pipeline) and ADR-009 (agent feedback loop) |
-| **Asks for** | A decision on each item in [Section 10](#10-decisions-needed). After that I build the POC (Section 9). |
 
 ---
 
