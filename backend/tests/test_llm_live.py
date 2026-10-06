@@ -177,3 +177,40 @@ async def test_open_weight_ocr_reads_answer_sheet(monkeypatch, tmp_path):
 def _plain(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)).lower()
 
+
+
+# ===== rubric parser =====
+
+RUBRIC_CASES = [
+    # (question, type, max score, rubric, expectations)
+    ("Which planet is the largest? (A) Earth (B) Jupiter (C) Mars (D) Venus", "mcq", 1, "B",
+     {"kind": "pass_fail", "points": [1]}),
+    ("Calculate the area of a rectangle that is 4 cm by 6 cm.", "problem", 3,
+     "Uses length x width (1 mark)\nCorrect working 4 x 6 (1 mark)\nAnswer 24 cm² (1 mark)",
+     {"kind": "criteria", "points": [1, 1, 1]}),
+    ("Describe two causes of World War I.", "descriptive", 4, "Militarism\nThe alliance system",
+     {"kind": "criteria", "points": [2, 2]}),
+    # The rubric's marks add up to 4, not 5: keep them and let the checks flag it (never fudge)
+    ("Define a renewable resource and give an example.", "descriptive", 5, "Definition (2)\nExample (2)",
+     {"kind": "criteria", "points": [2, 2], "invalid": True}),
+    ("What is the capital of France?", "descriptive", 1, None, {"derived": True}),
+]
+
+
+@needs_openweight
+@pytest.mark.parametrize("question, qtype, max_score, rubric, expect", RUBRIC_CASES)
+async def test_open_weight_rubric_parser(openweight_roles, question, qtype, max_score, rubric, expect):
+    from app.rubrics.parser import parse_rubric
+
+    result = await parse_rubric(question_text=question, rubric_text=rubric, max_score=max_score, question_type=qtype)
+
+    spec = result.spec
+    assert spec.derived is expect.get("derived", False)
+    if "kind" in expect:
+        assert spec.kind == expect["kind"], spec
+    if "points" in expect:
+        assert sorted(c.points for c in spec.criteria) == expect["points"], spec
+    if expect.get("invalid"):
+        assert any("add up to 4" in e for e in result.errors), result.errors
+    else:
+        assert result.errors == [], (result.errors, spec)
