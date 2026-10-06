@@ -1,6 +1,6 @@
 # Proposal 003: Document ingestion (entry modes and file formats)
 
-- **Status:** Proposed (2026-10-06). Awaiting the owner's approval. Nothing is built yet.
+- **Status:** Proposed (2026-10-06). The owner has decided the mode A source, class batches and choice questions (§11). Awaiting approval to start M4b. Nothing is built yet.
 - **Extends:** [Proposal 002](002-grading-v2-architecture.md). Its rubric parser (M4) and grading graph (M5) stay as they are. This proposal adds how questions, answers and rubrics *arrive*.
 
 ## 1. Summary
@@ -57,7 +57,7 @@ Your three modes are combinations of the two (§3.3). Each part of each axis is 
 | E4 | **Question paper + separate rubric document** | Extract questions from the paper. Split the rubric document by question label and link the pieces to questions (§5.4). The teacher confirms both |
 | E5 | **One document with both questions and rubric** (a marking scheme that repeats the questions) | Extract questions and rubric from the same pages, linked by position and label |
 | E6 | **Rubric document only**, questions already typed or imported | Split the rubric by label and link to the existing questions. Mismatches go to the teacher |
-| E7 | **No exam documents**: questions and rubric are printed on the students' own documents (modes A and B) | Extract the exam from a **blank copy** if the teacher has one, otherwise from the **first student's document**. The teacher confirms; later students reuse the confirmed exam |
+| E7 | **Questions (and rubric) printed on the students' own sheets** (modes A and B) | The teacher uploads a **blank copy** first (decided). The exam is extracted from it and confirmed; every student sheet is then matched against it. The exam is never extracted from a student's sheet |
 | E8 | No rubric anywhere | M4 derives criteria from the question and flags them |
 
 ### 3.2 Student side: how each student's answers arrive
@@ -75,7 +75,7 @@ Your three modes are combinations of the two (§3.3). Each part of each axis is 
 
 | Your mode | Exam side | Student side | The hard part |
 |---|---|---|---|
-| **A**: questions, answers and rubric all in one document (typed PDF, appended scans, DOCX, or photos of typed questions and rubric with typed or handwritten answers underneath) | E7, or E5 if a teacher copy exists | S3 | Don't transcribe printed question or rubric text as the student's answer. Don't re-extract the exam per student |
+| **A**: questions, answers and rubric all in one document (typed PDF, appended scans, DOCX, or photos of typed questions and rubric with typed or handwritten answers underneath) | E7 (blank copy) | S3 | Don't transcribe printed question or rubric text as the student's answer. Don't re-extract the exam per student |
 | **B**: questions and answers in one document, rubric in a separate document keyed by question number | E7 (or E1–E3) for questions, E6 for the rubric | S2 | Linking rubric labels to the printed numbering ("3" vs "3(a)"); finding answers under the printed questions |
 | **C**: question paper, separate answer booklet ("Ans 1, 2, 3…"), rubric as a third file | E4 | S1 | Free-order answers, answers continuing across pages, sub-parts, crossed-out work, unlabelled answers |
 
@@ -186,7 +186,7 @@ Names and IDs are then fuzzy-matched to the class roster. The teacher confirms t
 ## 6. Mode-by-mode walkthrough
 
 **Mode A: questions, answers and rubric in one document per student**
-1. The teacher sets up the exam by uploading a blank copy (E5), or lets the first student's document define it (E7). Extraction (§5.4) separates questions, marks and rubric, and the teacher confirms.
+1. The teacher sets up the exam by uploading a blank copy (E7). Extraction (§5.4) separates questions, marks and rubric, and the teacher confirms.
 2. Each student's document goes through page classification: pages are mixed or answer pages.
 3. Segmentation transcribes only the student's writing under each printed question, excluding printed question and rubric text.
 4. Assembly → presence check → grading.
@@ -194,7 +194,7 @@ Names and IDs are then fuzzy-matched to the class roster. The teacher confirms t
 The same flow covers each form mode A can take: all typed (S4), appended scans, DOCX, or photos (S5).
 
 **Mode B: questions and answers in one document, rubric separate**
-1. The exam's questions come from a blank copy or the first student (E7), or are typed or imported.
+1. The exam's questions come from a blank copy (E7), or are typed or imported.
 2. The rubric document is split by label and linked (E6). Numbering mismatches go to the teacher.
 3. Students: pages are mixed (S2) → segmentation under the printed questions → assembly.
 
@@ -288,14 +288,17 @@ Measured:
 | **M7** (already planned) | Adds screens to review exam drafts and segments (unassigned parts, page map) | M6 |
 | **Later: class batches** (S6) | Cover sheets / QR codes, boundary detection, roster matching, split review | M5 |
 
-## 11. Open questions for the owner
+## 11. Decisions and open items
 
-1. **Mode A, exam source:** does each student get the same printed sheet (questions and rubric printed, answers handwritten)? If so, should the teacher upload a blank copy first (recommended), or should the first student's document define the exam?
-2. **Class batches (S6):** in scope now, or later as proposed?
-3. **Choice questions** ("attempt either / any k of n", e.g. CBSE internal choice): needed now?
-4. **Printable Gr8r answer booklets** with a QR code and a question-number box on every page: the most reliable mapping in production (Crowdmark, Gradescope). Want them as an option?
-5. **Real handwriting for tests:** can you provide a few consented scans or photos per mode? Public handwriting datasets such as IAM are mostly non-commercial-only.
-6. **Gotenberg** adds one container (LibreOffice inside) to the stack. OK?
+**Decided (2026-10-06):**
+1. **Mode A exam source:** the teacher uploads a **blank copy** first. The exam is never extracted from a student's sheet.
+2. **Class batches (S6):** a later phase, after M5.
+3. **Choice questions** ("attempt either / any k of n"): supported **now**. Choice groups are part of M4c's question tree; M5 grades the attempted option and flags both-attempted cases.
+4. **Printable Gr8r QR booklets:** not now (backlog).
+
+**Still open:**
+5. **Gotenberg:** a sidecar container with LibreOffice inside, needed for DOCX, DOC, ODT, RTF and PPTX. Without it, those formats can't be converted safely.
+6. **Real handwriting for live tests:** a few consented scans or photos per mode from the owner. Public datasets such as IAM are mostly non-commercial-only.
 
 ## 12. Sources
 
