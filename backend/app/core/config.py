@@ -45,7 +45,17 @@ class Settings(BaseSettings):
     # Storage
     UPLOAD_DIR: Path = Path("./data/uploads")
     OUTPUT_DIR: Path = Path("./data/outputs")
-    MAX_UPLOAD_SIZE_MB: int = 50
+    MAX_UPLOAD_SIZE_MB: int = 50  # per file
+
+    # Document intake (app/ingestion): every file becomes page images (+ text layer when digital)
+    INGEST_DPI: int = 200  # ~ the most detail Claude uses for an A4 page
+    INGEST_MAX_LONG_EDGE: int = 2576  # px; Claude's high-resolution cap
+    MAX_PAGES_PER_DOCUMENT: int = 100
+    MAX_FILES_PER_SUBMISSION: int = 30
+    MAX_IMAGE_PIXELS: int = 100_000_000  # larger images are rejected (decompression-bomb guard)
+    # Sandboxed LibreOffice converter for DOCX/DOC/ODT/RTF/PPTX; office uploads are refused without it
+    GOTENBERG_URL: Optional[str] = None
+    GOTENBERG_TIMEOUT_S: float = 90.0
 
     def ensure_directories(self) -> None:
         """Create necessary directories if they don't exist."""
