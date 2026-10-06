@@ -203,7 +203,7 @@ Schemas omit numeric bounds (Claude's structured outputs don't support them); bo
 - `derived` is true exactly when the rubric text is empty.
 
 ### 6.3 Lifecycle
-1. **Parsing.** Specs are stored append-only in `rubric_specs`, with an `input_hash` of the question text, rubric text, max score and parser prompt version. When a question is created or edited, `parse_rubric_task` runs on a dedicated queue. Grading also parses lazily any spec that is missing or stale.
+1. **Parsing.** Specs are stored append-only in `rubric_specs`, with an `input_hash` of the question text, rubric text, max score and question type (the parser prompt version is recorded on the spec but not hashed, so prompt changes don't discard teachers' edits). The current spec is the newest version for the question's current inputs. When a question is created or edited, `parse_rubric_task` runs on a dedicated queue. Grading also parses lazily any spec that is missing.
 2. **Statuses:** `missing → pending → ready | invalid | error`.
 3. **Teacher edits.** A teacher can edit the parsed spec (`source=teacher`) or trigger a re-parse.
 4. **Grading.** Grading uses the current *ready* spec, and every grade records the spec version it used.
