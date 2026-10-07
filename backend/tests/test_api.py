@@ -416,3 +416,11 @@ class TestSubmissions:
 
         response = client.post(f"{API}/submissions/{created['id']}/regrade", headers=headers)
         assert response.status_code == 409
+
+
+def test_question_labels_must_be_unique(client, school):
+    headers = login(client, "teacher@school.test")
+    questions = [{"question_text": "a", "order_index": 1, "max_score": 1, "label": "1"},
+                 {"question_text": "b", "order_index": 2, "max_score": 1, "label": "1"}]
+    response = client.post(f"{API}/exams/{school['exam'].id}/questions", json=questions, headers=headers)
+    assert response.status_code == 400 and "labels must be unique: 1" in response.json()["detail"]

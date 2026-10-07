@@ -22,6 +22,11 @@ class Question(Base, table=True):
     max_score: float
     rubric_criteria: Optional[str] = None
     question_type: QuestionType = Field(default=QuestionType.DESCRIPTIVE)
+    # Labels from the question paper ("1", "2(b)", "2(b)(ii)"); grading uses them when every live
+    # question of the exam has a unique one, else Q1..Qn (see app/services/labels.py)
+    label: Optional[str] = None
+    printed_label: Optional[str] = None  # exactly as printed, e.g. "Q.2 (b)"
+    choice_group: Optional[str] = None  # id of one of the exam's choice groups (exam.config)
     # Parsed rubric state (app/rubrics): see RubricStatus in app/models/rubric.py
     rubric_status: str = Field(default="missing", sa_column_kwargs={"server_default": "missing"})
     rubric_input_hash: Optional[str] = None  # hash of the inputs the status refers to

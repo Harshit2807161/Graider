@@ -25,6 +25,7 @@ from app.models.exam import Question
 from app.rubrics import service as rubric_service
 from app.rubrics.schema import RubricSpec
 from app.api.v1.endpoints.rubrics import enqueue_parses
+from app.services.labels import duplicate_labels
 
 router = APIRouter()
 
@@ -214,6 +215,9 @@ def sync_exam_questions(
             status_code=400,
             detail=f"Questions not found in this exam: {', '.join(unknown_ids)}",
         )
+    duplicates = duplicate_labels([q.label for q in questions_in])
+    if duplicates:
+        raise HTTPException(status_code=400, detail=f"Question labels must be unique: {', '.join(duplicates)}")
 
     now = utcnow()
     kept_ids = set()
