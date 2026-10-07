@@ -9,8 +9,9 @@ pydantic-settings>=2.7.0
 email-validator>=2.2.0  # EmailStr
 
 # ===== DATABASE =====
-sqlmodel>=0.0.45  # 0.0.45+ stores timezone-aware UTC datetimes
-psycopg2-binary>=2.9.10
+sqlmodel>=0.0.48  # timezone-aware UTC datetimes (0.0.45+); SQLAlchemy 2.1 support (0.0.48+)
+SQLAlchemy>=2.1.0  # 2.1 connects postgresql:// URLs with psycopg 3
+psycopg[binary]>=3.2.0  # PostgreSQL driver (psycopg 3)
 alembic>=1.14.0  # schema migrations (backend/alembic)
 
 # ===== AUTH =====
