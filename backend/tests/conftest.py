@@ -42,7 +42,28 @@ SCHEMA_KINDS = {
     "ParsedRubric": "parse_rubric",
     "PageExtraction": "extract_page",
     "RubricLinks": "link_rubric",
+    # grading v2
+    "PageAnswers": "transcribe",
+    "GradeResult": "grade_answer",
+    "EvaluatorReview": "review",
+    "GradeRevision": "revise",
 }
+
+
+def answer_of(prompt: str) -> str:
+    """The transcribed answer in a grading prompt."""
+    return prompt.split("Student's answer (transcribed):\n", 1)[1].split("\n\n", 1)[0]
+
+
+def criteria_of(prompt: str) -> list[tuple[str, float]]:
+    """(id, points) of the rubric criteria listed in a grading prompt."""
+    return [(cid, float(pts)) for cid, pts in re.findall(r"\[(c\d+)\][^\n]*?\(([\d.]+) pts\)", prompt)]
+
+
+def grading_in(prompt: str, heading: str) -> list[dict]:
+    """The criteria JSON shown under a heading (e.g. "The grader's grading:")."""
+    start = prompt.index(heading) + len(heading)
+    return json.JSONDecoder().raw_decode(prompt[start:].lstrip())[0]["criteria"]
 
 
 class FakeInvoker:
@@ -66,6 +87,11 @@ class FakeInvoker:
         self.parse_rubric: Optional[Callable[[str], Any]] = None
         self.extract_page: Optional[Callable[[str], Any]] = None  # exam document pages
         self.link_rubric: Optional[Callable[[str], Any]] = None
+        # grading v2: page transcription, grade, evaluator review, revision
+        self.transcribe: Optional[Callable[[str], Any]] = None
+        self.grade_answer: Optional[Callable[[str], Any]] = None
+        self.review: Optional[Callable[[str], Any]] = None
+        self.revise: Optional[Callable[[str], Any]] = None
 
     @staticmethod
     def prompt_of(req: InvokeRequest) -> str:
@@ -105,6 +131,37 @@ class FakeInvoker:
             "parser_warnings": [],
         }
 
+    @staticmethod
+    def _default_transcribe(req: InvokeRequest) -> dict:
+        """Every question answered on the first page."""
+        props = req.json_schema["properties"]["segments"]["items"]["properties"]
+        labels = [label for label in props["label"]["enum"] if label != "unassigned"]
+        first_page = "This is page 1 of" in FakeInvoker.prompt_of(req)
+        return {"page_kind": "answers", "has_handwriting": True, "segments": [
+            {"label": label, "label_as_written": label, "text": f"student answer for {label}", "starts_answer": True,
+             "crossed_out": False, "confidence": 0.9} for label in labels] if first_page else []}
+
+    @staticmethod
+    def _default_grade_answer(prompt: str) -> dict:
+        """Full marks on every criterion, quoting the answer."""
+        quote = answer_of(prompt).splitlines()[0]
+        return {"criteria": [{"id": cid, "score": pts, "evidence": quote, "justification": "Meets the criterion."}
+                             for cid, pts in criteria_of(prompt)], "feedback": "Well done.", "flags": []}
+
+    @staticmethod
+    def _default_review(prompt: str) -> dict:
+        """Agrees with the grader."""
+        grader = grading_in(prompt, "The grader's grading:")
+        return {"own_assessment": [{"id": c["id"], "score": c["score"], "reason": "Agree."} for c in grader],
+                "agreement": 0.95, "feedback": [], "summary": "Agree."}
+
+    @staticmethod
+    def _default_revise(prompt: str) -> dict:
+        """Accepts every point and keeps its grading (tests script real revisions)."""
+        count = len(re.findall(r"^\d+\. \[c\d+\]", prompt.split("The second examiner's feedback:")[1], re.M))
+        return {"replies": [{"feedback_index": i, "decision": "accept", "rationale": "Agreed."} for i in range(count)],
+                "criteria": grading_in(prompt, "Your grading:"), "feedback": "Revised.", "flags": []}
+
     async def invoke(self, req: InvokeRequest) -> InvokeResponse:
         kind = SCHEMA_KINDS.get(req.json_schema.get("title"), "other")
         prompt = self.prompt_of(req)
@@ -116,6 +173,14 @@ class FakeInvoker:
             out = (self.grade or self._default_grade)(prompt)
         elif kind == "tag":
             out = self.tag(prompt) if self.tag else {"subject": "math", "question_type": "problem"}
+        elif kind == "transcribe":
+            out = self.transcribe(prompt) if self.transcribe else self._default_transcribe(req)
+        elif kind == "grade_answer":
+            out = (self.grade_answer or self._default_grade_answer)(prompt)
+        elif kind == "review":
+            out = (self.review or self._default_review)(prompt)
+        elif kind == "revise":
+            out = (self.revise or self._default_revise)(prompt)
         elif kind == "extract_page":
             out = (self.extract_page or (lambda p: {
                 "page_kind": "other", "has_handwriting": False, "instructions": None, "total_marks": None,

@@ -127,3 +127,149 @@ def test_spot_checks_are_reproducible():
     run, question = UUID(int=1), UUID(int=2)
     assert spot_check(run, question, 0.0) is False and spot_check(run, question, 1.0) is True
     assert spot_check(run, question, 0.5) == spot_check(run, question, 0.5)
+
+
+# ===== the per-question loop (fake models) =====
+
+from uuid import uuid4  # noqa: E402
+
+from app.grading.question import QuestionInput, grade_question  # noqa: E402
+from app.grading.stitch import StitchedAnswer  # noqa: E402
+from app.llm.budget import LLMBudgetExceeded, budget  # noqa: E402
+from tests.conftest import FakeInvoker  # noqa: E402
+
+FULL = [("c1", 1.0, "2x = 10"), ("c2", 1.0, "x = 5"), ("c3", 2.0, "x = 5")]
+
+
+def question(spec=SPEC, text=ANSWER, confidence=0.9, starts=1):
+    answer = StitchedAnswer("1", parts=[text], starts=starts,
+                            segments=[{"confidence": confidence, "crossed_out": False, "page": 1}])
+    return QuestionInput(uuid4(), "1", "Solve 2x + 5 = 15.", 4.0, spec, answer if text else None)
+
+
+def grading(scores, flags=()):
+    return {"criteria": [crit(cid, score, evidence if score else "") for (cid, _, evidence), score in zip(FULL, scores)],
+            "feedback": "fb", "flags": list(flags)}
+
+
+def review(own, agreement, points=()):
+    return {"own_assessment": [{"id": cid, "score": s, "reason": "r"} for (cid, _, _), s in zip(FULL, own)],
+            "agreement": agreement, "feedback": [{"criterion_id": c, "point": p} for c, p in points], "summary": "s"}
+
+
+def revision(scores, decisions):
+    return {"replies": [{"feedback_index": i, "decision": d, "rationale": "because"} for i, d in enumerate(decisions)],
+            **grading(scores)}
+
+
+async def test_agreement_in_round_one_takes_two_calls(fake_llm):
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.status == "graded" and outcome.score == 4 and len(outcome.rounds) == 1
+    assert [c["kind"] for c in fake_llm.calls] == ["grade_answer", "review"]
+    assert outcome.grader_model == "claude-sonnet-5-5" and outcome.evaluator_model == "claude-opus-5-5"
+
+
+async def test_grader_revises_once_then_the_evaluator_agrees(fake_llm):
+    reviews = iter([review([1, 1, 0], 0.5, [("c3", "x = 5 is stated but unjustified")]), review([1, 1, 0], 0.95)])
+    fake_llm.review = lambda p: next(reviews)
+    fake_llm.revise = lambda p: revision([1, 1, 0], ["accept"])
+
+    outcome = await grade_question(question(), uuid4())
+
+    assert outcome.status == "graded" and outcome.score == 2 and len(outcome.rounds) == 2
+    assert outcome.rounds[0]["replies"][0]["decision"] == "accept" and outcome.rounds[0]["effective_agreement"] < 0.8
+    assert [c["kind"] for c in fake_llm.calls] == ["grade_answer", "review", "revise", "review"]
+
+
+async def test_the_grader_can_push_back_and_be_accepted(fake_llm):
+    reviews = iter([review([1, 1, 0], 0.5, [("c3", "x = 5 is wrong")]), review([1, 1, 2], 0.9)])
+    fake_llm.review = lambda p: next(reviews)
+    fake_llm.revise = lambda p: revision([1, 1, 2], ["reject"])
+
+    outcome = await grade_question(question(), uuid4())
+
+    assert outcome.status == "graded" and outcome.score == 4  # the grader kept its score, with reasons
+    assert outcome.rounds[0]["replies"] == [{"feedback_index": 0, "decision": "reject", "rationale": "because"}]
+
+
+async def test_two_revisions_without_agreement_escalate_with_both_positions(fake_llm):
+    fake_llm.review = lambda p: review([1, 1, 0], 0.4, [("c3", "x = 5 is wrong")])
+    fake_llm.revise = lambda p: revision([1, 1, 2], ["reject"])
+
+    outcome = await grade_question(question(), uuid4())
+
+    assert outcome.status == "escalated" and outcome.escalation_reason == "evaluator_disagreement"
+    assert outcome.score == 4 and len(outcome.rounds) == 3  # the grader's proposal is kept for the teacher
+    assert all(r["grader_total"] == 4 and r["evaluator_total"] == 2 for r in outcome.rounds)
+    assert [c["kind"] for c in fake_llm.calls].count("revise") == 2
+
+
+async def test_stated_agreement_with_a_large_score_gap_still_triggers_revision(fake_llm):
+    reviews = iter([review([1, 1, 0], 0.99, [("c3", "x = 5 missing")]), review([1, 1, 2], 0.99)])
+    fake_llm.review = lambda p: next(reviews)
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.rounds[0]["criteria_apart"] == ["c3"] and len(outcome.rounds) == 2
+
+
+async def test_a_grading_that_fails_the_checks_is_repaired_once(fake_llm):
+    attempts = iter([grading([2, 1, 2]), grading([1, 1, 2])])  # first: c1 above its 1 point
+    fake_llm.grade_answer = lambda p: next(attempts)
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.status == "graded" and outcome.score == 4
+    assert [c["request"].trace_metadata["purpose"] for c in fake_llm.calls_of("grade_answer")] == ["grade", "grade_fix"]
+    assert "outside 0..1" in fake_llm.calls_of("grade_answer")[1]["prompt"]
+
+
+async def test_a_grading_that_fails_the_checks_twice_escalates(fake_llm):
+    fake_llm.grade_answer = lambda p: grading([2, 1, 2])
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.escalation_reason == "check_failed" and outcome.score is None and fake_llm.calls_of("review") == []
+
+
+async def test_an_illegible_flag_skips_the_evaluator(fake_llm):
+    fake_llm.grade_answer = lambda p: grading([0, 0, 0], flags=["illegible"])
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.escalation_reason == "grader_flag:illegible" and outcome.score is None
+    assert fake_llm.calls_of("review") == []
+
+
+async def test_a_blank_answer_or_a_broken_rubric_escalates_without_any_call(fake_llm):
+    blank = await grade_question(question(text=""), uuid4())
+    no_rubric = await grade_question(question(spec=None), uuid4())
+    assert blank.escalation_reason == "no_answer_found" and no_rubric.escalation_reason == "rubric_invalid"
+    assert blank.score is None and fake_llm.calls == []
+
+
+async def test_low_confidence_repeated_attempts_and_spot_checks_keep_the_proposed_score(fake_llm, monkeypatch):
+    from app.core.config import settings
+
+    low = await grade_question(question(confidence=0.3), uuid4())
+    twice = await grade_question(question(starts=2), uuid4())
+    monkeypatch.setattr(settings, "GRADING_SPOT_CHECK_RATE", 1.0)
+    spot = await grade_question(question(), uuid4())
+    assert [(o.escalation_reason, o.score) for o in (low, twice, spot)] == [
+        ("low_ocr_confidence", 4), ("multiple_attempts", 4), ("spot_check", 4)]
+
+
+async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, monkeypatch):
+    from app.llm.config import get_llm_settings
+    from app.llm.types import LLMTransportError
+
+    monkeypatch.setenv("LLM__GRADER__PROVIDER", "anthropic")
+    monkeypatch.setenv("LLM__GRADER__MODEL", "claude-sonnet-5-5")
+    monkeypatch.setenv("LLM__GRADER__FALLBACKS",
+                       '[{"provider": "anthropic", "model": "claude-opus-5-5"}, {"provider": "anthropic", "model": "claude-haiku-4-5"}]')
+    get_llm_settings.cache_clear()
+    attempts = iter([LLMTransportError("primary down"), None])
+    fake_llm.grade_answer = lambda p: next(attempts) or FakeInvoker._default_grade_answer(p)
+    try:
+        outcome = await grade_question(question(), uuid4())
+    finally:
+        get_llm_settings.cache_clear()
+    assert outcome.grader_model == "claude-haiku-4-5" and outcome.fallback_used  # opus skipped
+    assert outcome.evaluator_model == "claude-opus-5-5"
+
+
+async def test_an_exhausted_budget_stops_the_run(fake_llm):
+    with budget(1), pytest.raises(LLMBudgetExceeded):
+        await grade_question(question(), uuid4())
