@@ -15,15 +15,15 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageDraw, ImageFont
 
-from app.agents.graders.math_grader import MathGrader
-from app.agents.orchestrator import LangGraphOrchestrator
+from app.grading.question import QuestionInput, grade_question
+from app.grading.stitch import StitchedAnswer
+from app.grading.transcribe import SheetPage, transcribe_page
 from app.llm.config import LLMSettings, RoleConfig, get_llm_settings
 from app.llm.invoker import LangChainInvoker
 from app.llm.recorder import recording_to
 from app.llm.router import ModelRouter
 from app.llm.types import CallContext, LLMRequest, Role, TextPart
-from app.schemas.grading import Question, QuestionType, RubricCriteria, Subject, Triplet
-from app.services.ocr_service import OCRService, SheetPage
+from app.rubrics.schema import Criterion, RubricSpec
 from tests.test_llm_router import Answer
 
 # One event loop for the whole module, like a worker process (cached HTTP clients are loop-bound)
@@ -49,19 +49,18 @@ def _request() -> LLMRequest[Answer]:
     )
 
 
-def _triplet(answer: str) -> Triplet:
-    return Triplet(
-        question_id="Q1",
-        question_text="Solve for x: 2x + 5 = 15. Show your steps.",
-        question_type=QuestionType.PROBLEM,
-        subject=Subject.MATH,
-        candidate_answer=answer,
-        expected_answer=RubricCriteria(
-            question_id="Q1",
-            expected_points=["Subtracts 5 from both sides (2x = 10)", "Divides by 2", "Final answer x = 5"],
-        ),
-        max_score=5,
-    )
+LINEAR_SPEC = RubricSpec(kind="criteria", subject="math", criteria_count=3, derived=False, criteria=[
+    Criterion(id="c1", description="Subtracts 5 from both sides", points=2, expected_answer="2x = 10"),
+    Criterion(id="c2", description="Divides both sides by 2", points=1),
+    Criterion(id="c3", description="States the final answer x = 5", points=2, expected_answer="x = 5"),
+])
+
+
+def _question(answer: str) -> QuestionInput:
+    from uuid import uuid4
+
+    stitched = StitchedAnswer("1", parts=[answer], starts=1, segments=[{"confidence": 0.95, "crossed_out": False}])
+    return QuestionInput(uuid4(), "1", "Solve for x: 2x + 5 = 15. Show your steps.", 5, LINEAR_SPEC, stitched)
 
 
 class AttemptList:
@@ -112,28 +111,21 @@ async def test_open_weight_structured_output():
 
 @needs_openweight
 async def test_open_weight_grader_scores_correct_above_wrong(openweight_roles):
+    """Grade + evaluator loop on the local model. A disagreement may escalate; the proposed score
+    still has to rank the correct answer above the wrong one."""
+    from uuid import uuid4
+
     seen = AttemptList()
     with recording_to(seen):
-        correct = await MathGrader().grade(_triplet("2x + 5 = 15\n2x = 10\nx = 5"))
-        wrong = await MathGrader().grade(_triplet("2x = 15 + 5\n2x = 20\nx = 10"))
+        correct = await grade_question(_question("2x + 5 = 15\n2x = 10\nx = 5"), uuid4())
+        wrong = await grade_question(_question("2x = 15 + 5\n2x = 20\nx = 10"), uuid4())
 
-    for result in (correct, wrong):
-        assert 0 <= result.score <= 5 and result.reasoning
+    for outcome in (correct, wrong):
+        assert outcome.score is not None and 0 <= outcome.score <= 5, outcome
+        assert all(c["justification"] for c in outcome.criteria) and outcome.rounds
     assert correct.score > wrong.score, (correct, wrong)
-    assert all(a.model_answered for a in seen.attempts)
+    assert {"grade", "evaluate"} <= {a.context.purpose for a in seen.attempts}
     assert {a.model_requested for a in seen.attempts} == {OPENWEIGHT_MODEL}
-
-
-@needs_openweight
-async def test_open_weight_full_grading_graph(openweight_roles):
-    """Tagger → subject grader → evaluator, all on the local model."""
-    seen = AttemptList()
-    with recording_to(seen):
-        result = await LangGraphOrchestrator().grade_triplet(_triplet("2x = 10, so x = 5"))
-
-    assert 0 <= result.score <= 5 and result.reasoning and result.feedback
-    purposes = {a.context.purpose for a in seen.attempts}
-    assert {"tag", "grade", "evaluate"} <= purposes
 
 
 def _answer_sheet(path: Path) -> Path:
@@ -157,19 +149,19 @@ async def test_open_weight_ocr_reads_answer_sheet(monkeypatch, tmp_path):
     monkeypatch.setenv("LLM__VISION__MODEL", OPENWEIGHT_VISION_MODEL)
     monkeypatch.setenv("LLM__VISION__BASE_URL", OPENWEIGHT_URL)
     get_llm_settings.cache_clear()
-    questions = [
-        Question(id="Q1", text="Solve for x: 2x + 5 = 15", max_score=4),
-        Question(id="Q2", text="Which gas do plants take in for photosynthesis?", max_score=2),
-    ]
+    questions = [("Q1", "Solve for x: 2x + 5 = 15"), ("Q2", "Which gas do plants take in for photosynthesis?")]
     try:
         sheet = SheetPage(number=1, image_path=_answer_sheet(tmp_path / "sheet.png"), text_layer=None)
-        answers = await OCRService().extract_answers([sheet], questions)
+        result = await transcribe_page(sheet, ["Q1", "Q2"], questions, 1)
     finally:
         get_llm_settings.cache_clear()
 
     # Smoke check: answers read and placed under the right question. Small VLMs add diacritics
     # to handwriting-style letters (e.g. "díoxído"), so compare without accents.
-    by_id = {a.question_id: _plain(a.text) for a in answers}
+    by_id: dict[str, str] = {}
+    for seg in result["segments"]:
+        by_id[seg["label"]] = (by_id.get(seg["label"], "") + " " + _plain(seg["text"])).strip()
+    answers = result["segments"]
     assert set(by_id) == {"Q1", "Q2"}, answers
     assert "x = 5" in by_id["Q1"].replace("x=5", "x = 5"), answers
     assert "carbon dioxide" in by_id["Q2"], answers

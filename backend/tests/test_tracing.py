@@ -125,9 +125,9 @@ async def test_grading_run_is_one_trace_linked_from_the_run(fake_llm, db, school
             span = by_id[span.parent.span_id]
         return span is root
 
-    assert len(spans) > 10 and all(descends_from_root(s) for s in spans)
+    assert len(spans) > 5 and all(descends_from_root(s) for s in spans)
     # (fake models bypass LangChain, so here only the graph's spans appear)
-    assert {"LangGraph", "tag_triplet", "math_grader", "evaluate_result"} <= {s.name for s in spans}
+    assert {"grade_submission", "read_page", "stitch", "grade"} <= {s.name for s in spans}
 
 
 def test_tracing_problems_never_fail_grading(monkeypatch):

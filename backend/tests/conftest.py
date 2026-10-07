@@ -35,10 +35,6 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 # Output schema title → short kind name used by tests
 SCHEMA_KINDS = {
-    "AnswerTranscription": "ocr",
-    "GradeOutput": "grade",
-    "TagOutput": "tag",
-    "EvaluationOutput": "evaluate",
     "ParsedRubric": "parse_rubric",
     "PageExtraction": "extract_page",
     "RubricLinks": "link_rubric",
@@ -71,19 +67,15 @@ class FakeInvoker:
     Scripted stand-in for the model invoker (the boundary below the router).
 
     Routes each call by output-schema title and records every request. Override a route by
-    assigning `fake.ocr` / `fake.grade` / `fake.evaluate` / `fake.tag` / `fake.parse_rubric` to a
-    callable that takes
-    the prompt text and returns either a dict (the structured output) or a string (raw model
-    text, parsed as JSON if possible, e.g. to simulate invalid output). A handler may also
-    return an InvokeResponse or raise/return an exception.
+    assigning `fake.transcribe` / `fake.grade_answer` / `fake.review` / `fake.revise` /
+    `fake.parse_rubric` / `fake.extract_page` / `fake.link_rubric` to a callable that takes the
+    prompt text and returns either a dict (the structured output) or a string (raw model text,
+    parsed as JSON if possible, e.g. to simulate invalid output). A handler may also return an
+    InvokeResponse or raise/return an exception.
     """
 
     def __init__(self):
         self.calls: list[dict[str, Any]] = []
-        self.ocr: Optional[Callable[[str], Any]] = None
-        self.grade: Optional[Callable[[str], Any]] = None
-        self.evaluate: Optional[Callable[[str], Any]] = None
-        self.tag: Optional[Callable[[str], Any]] = None
         self.parse_rubric: Optional[Callable[[str], Any]] = None
         self.extract_page: Optional[Callable[[str], Any]] = None  # exam document pages
         self.link_rubric: Optional[Callable[[str], Any]] = None
@@ -98,25 +90,6 @@ class FakeInvoker:
         return "\n".join(p.text for p in req.parts if isinstance(p, TextPart))
 
     # --- default behaviours ---
-    @staticmethod
-    def _default_ocr(req: InvokeRequest) -> dict:
-        labels = req.json_schema["properties"]["answers"]["items"]["properties"]["question_id"]["enum"]
-        return {
-            "answers": [
-                {"question_id": qid, "text": f"student answer for {qid}", "confidence": 0.9} for qid in labels
-            ]
-        }
-
-    @staticmethod
-    def _default_grade(prompt: str) -> dict:
-        max_score = float(re.search(r"Maximum Score: ([\d.]+)", prompt).group(1))
-        return {
-            "score": max_score / 2,
-            "reasoning": "Half the rubric points are covered.",
-            "feedback": "Cover the remaining points.",
-            "confidence": 0.9,
-        }
-
     @staticmethod
     def _default_parse_rubric(prompt: str) -> dict:
         """A valid spec: one criterion worth the question's full marks."""
@@ -167,13 +140,7 @@ class FakeInvoker:
         prompt = self.prompt_of(req)
         self.calls.append({"kind": kind, "system": req.system, "prompt": prompt, "request": req})
 
-        if kind == "ocr":
-            out = self.ocr(prompt) if self.ocr else self._default_ocr(req)
-        elif kind == "grade":
-            out = (self.grade or self._default_grade)(prompt)
-        elif kind == "tag":
-            out = self.tag(prompt) if self.tag else {"subject": "math", "question_type": "problem"}
-        elif kind == "transcribe":
+        if kind == "transcribe":
             out = self.transcribe(prompt) if self.transcribe else self._default_transcribe(req)
         elif kind == "grade_answer":
             out = (self.grade_answer or self._default_grade_answer)(prompt)
@@ -190,10 +157,6 @@ class FakeInvoker:
             out = (self.link_rubric or (lambda p: {"links": []}))(prompt)
         elif kind == "parse_rubric":
             out = (self.parse_rubric or self._default_parse_rubric)(prompt)
-        elif kind == "evaluate":
-            out = self.evaluate(prompt) if self.evaluate else {
-                "is_acceptable": True, "concerns": "", "improvement_suggestions": ""
-            }
         else:
             raise AssertionError(f"unexpected schema {req.json_schema.get('title')}")
 
@@ -232,8 +195,6 @@ def fake_llm(monkeypatch) -> FakeInvoker:
     fake = FakeInvoker()
     monkeypatch.setattr(router_module, "_invoker_factory", lambda: fake)
 
-    import app.agents.orchestrator as orchestrator_module
-    monkeypatch.setattr(orchestrator_module, "_orchestrator", None)
     return fake
 
 

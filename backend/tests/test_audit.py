@@ -43,7 +43,7 @@ async def test_successful_run_records_every_call_and_its_config(fake_llm, db, sc
     assert run.status == RunStatus.SUCCEEDED and run.started_at and run.finished_at and run.error is None
     assert run.config_snapshot["grader"]["model"] == "claude-sonnet-5-5" and run.config_hash
     assert run.llm_calls == len(calls) == len(fake_llm.calls)
-    assert {c.purpose for c in calls} == {"parse_rubric", "ocr_answers", "tag", "grade", "evaluate"}
+    assert {c.purpose for c in calls} == {"parse_rubric", "transcribe_page", "grade", "evaluate"}
     # Rubrics parsed at run start are attributed to the run and to their question
     exam_question_ids = {q.id for q in school["exam"].questions}
     assert {c.question_id for c in calls if c.purpose == "parse_rubric"} == exam_question_ids
@@ -52,18 +52,18 @@ async def test_successful_run_records_every_call_and_its_config(fake_llm, db, sc
 
 
 async def test_failed_run_keeps_its_calls_and_reason(fake_llm, db, school, tmp_path):
-    fake_llm.grade = lambda p: "garbage"
+    fake_llm.transcribe = lambda p: "garbage"  # the pages can't be read: the run fails
     run = new_run(db, school["exam"], tmp_path)
 
     await run_grading(run.id)
 
     run, calls, submission, answers = reload(run.id)
-    assert run.status == RunStatus.FAILED and "could not grade" in run.error
+    assert run.status == RunStatus.FAILED and "couldn't be read" in run.error
     assert submission.status == SubmissionStatus.FAILED and answers == []
     # Both the initial attempt and the repair attempt are on record, with their errors
-    grade_calls = [c for c in calls if c.purpose == "grade"]
-    assert [c.attempt_kind for c in grade_calls] == ["initial", "repair"]
-    assert all(c.error_type == "OutputInvalid" for c in grade_calls)
+    read_calls = [c for c in calls if c.purpose == "transcribe_page"]
+    assert [c.attempt_kind for c in read_calls] == ["initial", "repair"]
+    assert all(c.error_type == "OutputInvalid" for c in read_calls)
 
 
 async def test_redelivered_task_for_a_finished_run_does_nothing(fake_llm, db, school, tmp_path):
