@@ -178,6 +178,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - Feature branches + PRs; don't commit directly to `master`
 - Small commits, one concern each, conventional messages (`fix(scope): ...`, `feat`, `refactor`, `test`, `docs`, `build`)
 - Run `pytest` and the frontend checks before pushing
+- Each milestone PR adds its entry to `CHANGELOG.md`
 
 ## Testing
 - `backend/tests/test_pipeline.py` — grading pipeline end to end against a real DB with fake models (versions, escalations, choice groups, scoped regrades)
@@ -193,6 +194,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - No human review/approval flow yet (M6); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
 
 ## Key Documents
+- [Changelog](../CHANGELOG.md)
 - [Audit trail](../docs/audit-trail.md)
 - [Grading v2 architecture (Proposal 002, accepted)](../docs/proposals/002-grading-v2-architecture.md)
 - [Grading v2 feature checklist](../docs/grading-v2-checklist.md)
