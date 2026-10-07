@@ -12,6 +12,9 @@ class QuestionBase(BaseModel):
     max_score: float
     rubric_criteria: Optional[str] = None
     question_type: QuestionType = QuestionType.DESCRIPTIVE
+    label: Optional[str] = None  # e.g. "2(b)"; unique within the exam
+    printed_label: Optional[str] = None
+    choice_group: Optional[str] = None
 
 class QuestionCreate(QuestionBase):
     pass
@@ -27,6 +30,9 @@ class QuestionUpdate(BaseModel):
     max_score: Optional[float] = None
     rubric_criteria: Optional[str] = None
     question_type: Optional[QuestionType] = None
+    label: Optional[str] = None
+    printed_label: Optional[str] = None
+    choice_group: Optional[str] = None
 
 class QuestionRead(QuestionBase):
     id: UUID

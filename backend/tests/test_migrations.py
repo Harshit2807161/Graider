@@ -116,7 +116,7 @@ def test_llm_calls_are_append_only(alembic_config, engine):
 def test_llm_calls_need_a_run_or_a_question(alembic_config, engine):
     command.downgrade(alembic_config, "base")
     command.upgrade(alembic_config, "head")
-    with pytest.raises(Exception, match="ck_llm_calls_run_or_question"):
+    with pytest.raises(Exception, match="ck_llm_calls_belongs_to_something"):
         with engine.begin() as conn:
             conn.execute(text(
                 "INSERT INTO llm_calls (id, role, purpose, attempt_no, attempt_kind, provider, model_requested, "

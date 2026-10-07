@@ -30,6 +30,7 @@ from app.schemas.grading import (
     QuestionType as GraderQuestionType,
     RubricCriteria,
 )
+from .labels import exam_labels
 from .ocr_service import SheetPage, get_ocr_service
 from app.ingestion.pages import DocumentError
 from app.ingestion.service import submission_pages
@@ -38,11 +39,6 @@ from app.agents.orchestrator import get_orchestrator
 from app.models.base import utcnow
 
 logger = structlog.get_logger(__name__)
-
-
-def question_label(index: int) -> str:
-    """Short, stable id ("Q1", "Q2", ...) that the OCR model can echo back reliably."""
-    return f"Q{index + 1}"
 
 
 class RubricNotReady(ValueError):
@@ -151,7 +147,7 @@ async def _grade(db: Session, submission: Submission, recorder: DbCallRecorder) 
     if not db_questions:
         raise ValueError("This exam has no questions configured.")
 
-    labels = [question_label(i) for i in range(len(db_questions))]
+    labels = exam_labels(db_questions)
     db_question_by_label = dict(zip(labels, db_questions))
     questions = [_to_grader_question(label, q) for label, q in db_question_by_label.items()]
 

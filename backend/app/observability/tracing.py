@@ -180,6 +180,12 @@ def run_trace(run_id: UUID, submission_id: UUID, trigger: str):
     )
 
 
+def exam_trace(draft_id: UUID, exam_id: UUID):
+    """One trace per exam extraction (pages of question papers / rubrics); an exam's work forms one session."""
+    ids = {"exam_draft_id": str(draft_id), "exam_id": str(exam_id)}
+    return _trace("exam_extraction", as_type="span", session_id=str(exam_id), tags=["exam"], metadata=ids)
+
+
 def rubric_trace(question_id: UUID, exam_id: UUID):
     """One trace per background rubric parse; an exam's parses form one session."""
     ids = {"question_id": str(question_id), "exam_id": str(exam_id)}

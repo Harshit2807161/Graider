@@ -67,4 +67,8 @@ class DocumentPage(SQLModel, table=True):
     height: Optional[int] = None
     dpi: Optional[int] = None
     text_layer: Optional[str] = None  # trustworthy typed text (digital/mixed PDF pages, text files)
+    # What the vision model saw on the page (question_paper / rubric / answers / mixed / cover / blank /
+    # other) and whether it has handwriting; set by exam extraction (M4c) and answer reading (M5)
+    page_role: Optional[str] = None
+    has_handwriting: Optional[bool] = None
     created_at: datetime = Field(default_factory=utcnow)

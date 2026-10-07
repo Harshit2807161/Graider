@@ -40,6 +40,8 @@ SCHEMA_KINDS = {
     "TagOutput": "tag",
     "EvaluationOutput": "evaluate",
     "ParsedRubric": "parse_rubric",
+    "PageExtraction": "extract_page",
+    "RubricLinks": "link_rubric",
 }
 
 
@@ -62,6 +64,8 @@ class FakeInvoker:
         self.evaluate: Optional[Callable[[str], Any]] = None
         self.tag: Optional[Callable[[str], Any]] = None
         self.parse_rubric: Optional[Callable[[str], Any]] = None
+        self.extract_page: Optional[Callable[[str], Any]] = None  # exam document pages
+        self.link_rubric: Optional[Callable[[str], Any]] = None
 
     @staticmethod
     def prompt_of(req: InvokeRequest) -> str:
@@ -112,6 +116,13 @@ class FakeInvoker:
             out = (self.grade or self._default_grade)(prompt)
         elif kind == "tag":
             out = self.tag(prompt) if self.tag else {"subject": "math", "question_type": "problem"}
+        elif kind == "extract_page":
+            out = (self.extract_page or (lambda p: {
+                "page_kind": "other", "has_handwriting": False, "instructions": None, "total_marks": None,
+                "questions": [], "rubric_items": [], "choice_groups": [],
+            }))(prompt)
+        elif kind == "link_rubric":
+            out = (self.link_rubric or (lambda p: {"links": []}))(prompt)
         elif kind == "parse_rubric":
             out = (self.parse_rubric or self._default_parse_rubric)(prompt)
         elif kind == "evaluate":

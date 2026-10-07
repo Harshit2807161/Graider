@@ -16,6 +16,7 @@ def to_row(
     run_id: Optional[UUID],
     submission_id: Optional[UUID],
     question_id: Optional[UUID] = None,
+    exam_draft_id: Optional[UUID] = None,
 ) -> LLMCall:
     usage = attempt.usage
     return LLMCall(
@@ -23,6 +24,7 @@ def to_row(
         run_id=run_id,
         submission_id=submission_id,
         question_id=question_id,
+        exam_draft_id=exam_draft_id,
         question_label=attempt.context.question_id,
         role=attempt.role.value,
         purpose=attempt.context.purpose,
@@ -69,11 +71,16 @@ class DbCallRecorder:
     """
 
     def __init__(
-        self, run_id: Optional[UUID], submission_id: Optional[UUID], question_id: Optional[UUID] = None
+        self,
+        run_id: Optional[UUID],
+        submission_id: Optional[UUID],
+        question_id: Optional[UUID] = None,
+        exam_draft_id: Optional[UUID] = None,
     ):
         self.run_id = run_id
         self.submission_id = submission_id
         self.question_id = question_id
+        self.exam_draft_id = exam_draft_id
         self._log = LogRecorder()
 
     def for_question(self, question_id: UUID) -> "DbCallRecorder":
@@ -83,5 +90,5 @@ class DbCallRecorder:
     def record(self, attempt: AttemptRecord) -> None:
         self._log.record(attempt)
         with Session(engine) as db:
-            db.add(to_row(attempt, self.run_id, self.submission_id, self.question_id))
+            db.add(to_row(attempt, self.run_id, self.submission_id, self.question_id, self.exam_draft_id))
             db.commit()

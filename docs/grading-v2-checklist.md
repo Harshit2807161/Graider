@@ -24,8 +24,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | Merged |
 | M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | Merged |
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | Merged |
-| M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | In review |
-| M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | – | Not started |
+| M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | Merged |
+| M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | [#12](https://github.com/Harshit2807161/Graider/pull/12) | In review |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
 | M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
@@ -147,6 +147,22 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [x] E2E with real student handwriting (DrawEduMath, CC BY-NC 4.0; AIED-Unplugged, CC BY 4.0; samples not committed): one submission of a HEIC whiteboard photo + a scanned PDF + a Word document with a pasted photo, uploaded through the API, converted by Gotenberg, transcribed by Qwen3-VL-4B. All three answers were transcribed exactly in one 6,176-token call (Ollama's default 4,096 would have truncated it). Grading by the 4B text model was too strict on two answers (backlog)
 
 **Acceptance:** any supported file, or several, can be uploaded as one student's answers and is graded from normalised pages; unsupported or unsafe files are refused with the reason.
+
+## M4c: Exam documents
+*From [Proposal 003](proposals/003-document-ingestion.md) §5.3–5.4, modes E3–E7.*
+- [x] Question labels from the paper (`label` e.g. `2(b)`, `printed_label`, `choice_group`); grading uses them when every question has a unique one (else Q1..Qn); choice groups ("attempt either 5 or 6") stored in `exams.config`
+- [x] Exam document upload with a declared role (question paper, rubric, question paper with rubric, blank copy), same checks as answer uploads
+- [x] Extraction: one vision call per page (page kind, questions with canonical labels / context / marks / type, rubric items, choice groups, instructions, total marks); prompt `exam-page-v2` with a worked example
+- [x] Merge in code (roles decide what each page gives, continuation across pages joined, a scheme's repeated questions ignored); rubric linked by exact label, leftovers by one text call limited to real labels or `none`; marks taken from the rubric when not printed (flagged)
+- [x] Checks: blocking (no questions, missing label/text/marks, duplicate labels, bad choice groups) and warnings (total mismatch with choice groups counted once, no rubric, unmatched rubric, page role mismatch, handwriting on a blank copy, answer pages)
+- [x] Versioned `exam_drafts`: teacher edits are new versions; confirm is refused while blocking issues remain, updates questions in place by label, replaces the rest, stores choice groups, queues M4 rubric parsing; a rubric alone adds rubrics to existing questions (`rubric_only`)
+- [x] Calls recorded against the draft (`llm_calls.exam_draft_id`), one trace per extraction, page roles saved for M5, readable failure reasons
+- [x] API: `POST/GET /exams/{id}/documents`, `POST/GET /exams/{id}/drafts`, `GET/PUT /exams/{id}/drafts/{draft_id}`, `POST …/confirm`
+- [x] Tests: labels, merge and checks (pure), extraction → draft → confirm with fake models, teacher edit clearing a blocking issue, in-place update keeping graded answers, rubric-only, failures, redelivery, tenancy; SQLite + Postgres
+- [x] Live: generated paper + marking scheme with Qwen3-VL-4B, 3/3 runs; real CBSE Class X Science 2025–26 sample paper + marking scheme (Section A, 7 pages, local only): 15 questions with marks and linked answers, and the model's two real mistakes (a duplicated label, a choice group naming parts it hadn't listed) blocked confirmation as intended
+- Changes from the plan: a flat list of gradable questions, each carrying its parent's shared text as `context` (no `parent_id` tree); choice groups in `exams.config`; drafts name their documents explicitly; draft rows keep their content but their status moves
+
+**Acceptance:** a question paper, a rubric, both, or a blank copy become a checked draft; nothing reaches the exam's questions until the teacher confirms a draft without blocking issues.
 
 ## M5: Grading graph v2
 - [ ] `app/grading/` package:

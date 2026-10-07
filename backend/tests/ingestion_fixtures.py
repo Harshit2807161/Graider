@@ -208,3 +208,42 @@ def rtf() -> bytes:
 
 def text(lines: list[str] = ANSWER_LINES) -> bytes:
     return "\n".join(lines).encode()
+
+
+# ===== exam documents (M4c) =====
+
+QUESTION_PAPER = [
+    "Class VIII Science - Unit Test                         Maximum Marks: 10",
+    "General instructions: All questions are compulsory, except where a choice is given.",
+    "",
+    "Q1. Which gas do plants take in for photosynthesis?                      [1]",
+    "     (a) Oxygen   (b) Carbon dioxide   (c) Nitrogen   (d) Hydrogen",
+    "Q2. A car travels 120 km in 2 hours.",
+    "     (a) Define speed.                                                    [1]",
+    "     (b) Calculate the average speed of the car.                          [2]",
+    "Q3. Explain how vaccines protect the body from disease.                  [3]",
+    "                                    OR",
+    "Q4. Explain why the Moon has phases.                                     [3]",
+    "Q5. Solve for x: 2x + 5 = 15. Show your working.                         [3]",
+]
+
+MARKING_SCHEME = [
+    "Marking Scheme - Class VIII Science Unit Test",
+    "",
+    "1.  (b) Carbon dioxide. (1 mark)",
+    "2 (a) Speed is the distance travelled per unit time. (1 mark)",
+    "2 (b) Speed = 120 km / 2 h = 60 km/h. Formula 1 mark, answer 1 mark.",
+    "3.  Vaccine contains a weakened or inactive pathogen (1); the immune system makes",
+    "    antibodies (1); memory cells give a faster response later (1).",
+    "4.  The Moon reflects sunlight (1); as it orbits Earth we see different amounts of",
+    "    its lit half (1); the cycle repeats about every 29.5 days (1).",
+    "5.  2x = 10 (1); x = 5 (2).",
+]
+
+
+def question_paper_pdf() -> bytes:
+    return typed_pdf([QUESTION_PAPER])
+
+
+def marking_scheme_pdf() -> bytes:
+    return typed_pdf([MARKING_SCHEME])

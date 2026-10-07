@@ -41,6 +41,7 @@ backend/
 │   ├── audit/                     # grading runs (lifecycle) + DbCallRecorder → llm_calls (append-only)
 │   ├── rubrics/                   # RubricSpec schema, validation, LLM parser, spec lifecycle
 │   ├── ingestion/                 # formats (detect + safety), pages (render), office (Gotenberg), service
+│   ├── exam_drafts/               # exam documents -> draft: page extraction, merge, rubric linking, checks, confirm
 │   ├── observability/             # optional Langfuse tracing (one trace per run, images masked)
 │   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
 │   │                              # (LangChain chat models), router, budget, costs, recorder
@@ -70,12 +71,13 @@ docs/                              # architecture, ADRs, proposals/
 All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps are timezone-aware UTC — use `app.models.base.utcnow()`, never `datetime.utcnow()` (SQLModel ≥ 0.0.45 rejects naive datetimes).
 
 `Document` (`documents`: one uploaded file, its role, position in the submission, kind from its bytes) → `DocumentPage` (`document_pages`: page image + text layer; derived, re-makeable). A submission's answers are its documents in order; old submissions are adopted from `original_file_url`.
+Exam documents (question paper / rubric / both / blank copy) have no submission; `ExamDraft` (`exam_drafts`) is a versioned extraction of them that the teacher confirms into questions. Questions carry `label` (e.g. `2(b)`), `printed_label` and `choice_group` (groups in `exam.config["choice_groups"]`).
 
 Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet.
 
 ## Grading Pipeline (`services/grading_service.py`)
 Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload/regrade) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots the model config, records every model call to `llm_calls` (append-only; a failed audit write fails the run), and finishes the run as succeeded/failed. See [docs/audit-trail.md](../docs/audit-trail.md).
-1. Load the exam's live questions in order and label them `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
+1. Load the exam's live questions in order and label them: the paper's labels (`2(b)`) if every question has a unique one, else `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
 2. **Rubric specs**: every question needs a *ready* spec for its current inputs. Missing ones are parsed now (`ensure_rubric_specs`); if any is invalid or couldn't be parsed, the run fails before OCR with the reasons (per-question escalation comes in M5). Specs are normally parsed in the background when questions are saved (`parse_rubric_task`, queue `rubric`); see `app/rubrics/`.
 3. **Pages + OCR**: the submission's files become pages (`submission_pages`, made once); each page's image (plus the typed text of digital PDF pages, as a hint) goes to the vision model in batches of 10, answers keyed by label.
 4. **Triplets**: pair each question with its answer and its spec's criteria (ids, points, expected answers, notes).
@@ -151,6 +153,10 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | POST | /exams/{id}/questions | staff — full-list sync: send `id` for existing questions; missing ones are soft-deleted; changed questions get their rubric re-parsed |
 | POST | /exams/{id}/questions/upload | staff — Excel import, all-or-nothing |
 | GET | /exams/{id}/rubric-status | staff — rubric state of every question (Q1..Qn) |
+| POST, GET | /exams/{id}/documents | staff — upload exam documents with `role` (question_paper, rubric, question_paper_and_rubric, blank_copy) / list them |
+| POST, GET | /exams/{id}/drafts | staff — extract a draft from chosen documents (background, 202) / list versions |
+| GET, PUT | /exams/{id}/drafts/{draft_id} | staff — read (content + issues) / save the teacher's corrections as a new version |
+| POST | /exams/{id}/drafts/{draft_id}/confirm | staff — create/update the exam's questions (409 with blocking issues) |
 | GET, PUT | /exams/{id}/questions/{qid}/rubric-spec | staff — current parsed rubric; replace with a teacher's version (422 if it fails the checks) |
 | POST | /exams/{id}/questions/{qid}/rubric-spec/reparse | staff — queue a fresh parse |
 | GET, POST | /exams/{id}/submissions | staff — list / upload a student's answers: `file` or several `files` (PDF, Word/ODT/RTF/PPTX, JPEG/PNG/WebP/HEIC/TIFF/GIF/BMP, text); queues grading |
