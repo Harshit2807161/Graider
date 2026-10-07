@@ -4,7 +4,7 @@
   The run id is the idempotency key for the Celery task; status only moves forward.
 - `llm_calls`: one row per model call attempt (failures included), append-only: Postgres triggers
   reject UPDATE, DELETE and TRUNCATE. Images are stored by reference + sha256, never as bytes.
-  Every call belongs to a grading run, a question (rubric parsing outside a run), or both.
+  Every call belongs to a grading run, a question (rubric parsing) or an exam draft (extraction).
   Calls are committed as they happen; if one can't be written the run fails (fail closed).
 
 Neither table soft-deletes: audit rows are never removed.
@@ -58,13 +58,17 @@ class GradingRun(SQLModel, table=True):
 class LLMCall(SQLModel, table=True):
     __tablename__ = "llm_calls"
     __table_args__ = (
-        CheckConstraint("run_id IS NOT NULL OR question_id IS NOT NULL", name="ck_llm_calls_run_or_question"),
+        CheckConstraint(
+            "run_id IS NOT NULL OR question_id IS NOT NULL OR exam_draft_id IS NOT NULL",
+            name="ck_llm_calls_belongs_to_something",
+        ),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     run_id: Optional[UUID] = Field(default=None, foreign_key="grading_runs.id", index=True)
     submission_id: Optional[UUID] = Field(default=None, foreign_key="submissions.id", index=True)
     question_id: Optional[UUID] = Field(default=None, foreign_key="questions.id", index=True)
+    exam_draft_id: Optional[UUID] = Field(default=None, foreign_key="exam_drafts.id", index=True)
     question_label: Optional[str] = None  # "Q1", "Q2", ...
     role: str
     purpose: str
