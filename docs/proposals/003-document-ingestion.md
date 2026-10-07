@@ -1,6 +1,6 @@
 # Proposal 003: Document ingestion (entry modes and file formats)
 
-- **Status:** Accepted (2026-10-06); decisions in §11. M4b (document intake) is in review, M4c next.
+- **Status:** Accepted (2026-10-06); decisions in §11. M4b (document intake) merged; M4c (exam documents) in review. As built, questions are a flat list carrying their parent's text as context (no `parent_id`), and choice groups live in `exams.config`.
 - **Extends:** [Proposal 002](002-grading-v2-architecture.md). Its rubric parser (M4) and grading graph (M5) stay as they are. This proposal adds how questions, answers and rubrics *arrive*.
 
 ## 1. Summary
