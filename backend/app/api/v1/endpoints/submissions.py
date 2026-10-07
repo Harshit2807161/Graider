@@ -12,32 +12,13 @@ from app.core.constants import Role, SubmissionStatus
 from app.models.user import User, Membership
 from app.schemas.exam import SubmissionAnswerRead, SubmissionRead, SubmissionWithAnswers
 from app.audit.runs import create_run
-from app.ingestion.formats import DOCUMENT_KINDS, OFFICE_KINDS, FileKind, UnsupportedFile, detect
-from app.ingestion.office import converter_available
-from app.ingestion.pages import DocumentError, open_pdf
+from app.api.uploads import validated
 from app.ingestion.service import store_upload
 from app.models.document import DocumentRole
 from app.worker import grade_submission_task
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
-
-async def _validated(upload: UploadFile) -> tuple[str, bytes, FileKind]:
-    """Read and check one uploaded answer file. Never trusts the client's file name or type."""
-    name = upload.filename or "upload"
-    data = await upload.read()
-    if len(data) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-        raise HTTPException(status_code=413, detail=f"{name}: file exceeds the {settings.MAX_UPLOAD_SIZE_MB} MB limit")
-    try:
-        kind = detect(data, name, DOCUMENT_KINDS)
-        if kind in OFFICE_KINDS and not converter_available():
-            raise UnsupportedFile("Word/office documents can't be converted on this server. Upload a PDF instead.")
-        if kind == FileKind.PDF:
-            open_pdf(data).close()  # password-protected, damaged or too long: say so now, not later
-    except (UnsupportedFile, DocumentError) as e:
-        raise HTTPException(status_code=400, detail=f"{name}: {e}")
-    return name, data, kind
-
 
 def _resolve_student(db: Session, *, student_id: Optional[UUID], org_id: UUID) -> Optional[UUID]:
     """student_id is a membership id; it must be a student in the exam's org."""
@@ -84,7 +65,7 @@ async def create_submission(
         raise HTTPException(status_code=400, detail="Attach at least one answer file")
     if len(uploads) > settings.MAX_FILES_PER_SUBMISSION:
         raise HTTPException(status_code=400, detail=f"At most {settings.MAX_FILES_PER_SUBMISSION} files per submission")
-    validated = [await _validated(upload) for upload in uploads]
+    checked = [await validated(upload) for upload in uploads]
 
     # TODO: Move to object storage (MinIO/S3) instead of the local upload dir
     # The submission row goes in first: documents reference it (no ORM relationship orders the inserts)
@@ -104,7 +85,7 @@ async def create_submission(
             role=DocumentRole.ANSWERS, submission_id=db_submission.id, position=position,
             membership_id=membership.id if membership else None,
         )
-        for position, (name, data, kind) in enumerate(validated)
+        for position, (name, data, kind) in enumerate(checked)
     ]
     db_submission.original_file_url = documents[0].stored_path
     db.add(db_submission)
