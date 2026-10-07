@@ -227,3 +227,42 @@ async def test_open_weight_rubric_parser(openweight_roles, question, qtype, max_
         assert any("add up to 4" in e for e in result.errors), result.errors
     else:
         assert result.errors == [], (result.errors, spec)
+
+
+# ===== exam extraction (M4c) =====
+
+@needs_openweight_vision
+async def test_open_weight_exam_extraction(openweight_roles, monkeypatch, tmp_path):
+    """A typed question paper and its marking scheme -> checked draft, with a real vision model.
+    Needs a context window of ~8k tokens (Ollama: OLLAMA_CONTEXT_LENGTH)."""
+    from app.exam_drafts.checks import check_content
+    from app.exam_drafts.extract import extract_page
+    from app.exam_drafts.link import link_rubric
+    from app.exam_drafts.merge import PageInput, attach_rubric, merge
+    from app.ingestion.pages import render_pdf
+    from app.models.document import DocumentPage
+    from tests import ingestion_fixtures as fx
+
+    monkeypatch.setenv("LLM__VISION__PROVIDER", "openweight")
+    monkeypatch.setenv("LLM__VISION__MODEL", OPENWEIGHT_VISION_MODEL)
+    monkeypatch.setenv("LLM__VISION__BASE_URL", OPENWEIGHT_URL)
+    get_llm_settings.cache_clear()
+    inputs = []
+    for role, pdf in (("question_paper", fx.question_paper_pdf()), ("rubric", fx.marking_scheme_pdf())):
+        (rendered,) = list(render_pdf(pdf))
+        image = tmp_path / f"{role}.jpg"
+        rendered.image.save(image, "JPEG", quality=90)
+        page = DocumentPage(document_id=None, page_index=0, kind=rendered.kind, image_path=str(image),
+                            text_layer=rendered.text)
+        inputs.append(PageInput(role, 0, role, await extract_page(page, role, 1, 1)))
+
+    content, pieces = merge(inputs)
+    attach_rubric(content, pieces, await link_rubric(content.questions, pieces))
+
+    by_label = {q.label: q for q in content.questions}
+    assert set(by_label) == {"1", "2(a)", "2(b)", "3", "4", "5"}, [q.label for q in content.questions]
+    assert [by_label[x].marks for x in ("1", "2(a)", "2(b)", "3", "4", "5")] == [1, 1, 2, 3, 3, 3]
+    assert content.total_marks == 10 and "120 km" in (by_label["2(b)"].context or by_label["2(b)"].text)
+    assert [sorted(g.labels) for g in content.choice_groups] == [["3", "4"]]
+    assert all(q.rubric for q in content.questions), [(q.label, q.rubric) for q in content.questions]
+    assert [i for i in check_content(content) if i.severity == "blocking"] == []
