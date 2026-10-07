@@ -4,6 +4,7 @@ from celery import Celery
 from celery.signals import worker_process_shutdown, worker_shutdown
 from app.core.config import get_settings
 from app.observability.tracing import ensure_tracing, shutdown_tracing
+from app.exam_drafts.service import extract_draft
 from app.rubrics.service import parse_question_rubric
 from app.services.grading_service import run_grading
 
@@ -28,9 +29,10 @@ celery_app.conf.update(
     # Redis redelivers unacknowledged tasks after this many seconds; it must exceed the task's
     # hard time limit or a long run would be handed to a second worker while still running
     broker_transport_options={"visibility_timeout": 2 * 60 * 60},
-    # Rubric parses are short; their own queue keeps them from waiting behind long grading runs
+    # Exam setup (rubric parses, exam extraction) gets its own queue, so it doesn't wait behind long
+    # grading runs
     # (run a dedicated worker with `-Q rubric` to get that benefit; the default worker takes both)
-    task_routes={"parse_rubric_task": {"queue": "rubric"}},
+    task_routes={"parse_rubric_task": {"queue": "rubric"}, "extract_exam_task": {"queue": "rubric"}},
 )
 
 # One event loop per worker process, reused by every task (like uvicorn's single loop).
@@ -61,6 +63,13 @@ def parse_rubric_task(question_id: str, input_hash: str, force: bool = False):
     forced, questions that already have a spec for these inputs."""
     ensure_tracing()
     run_in_worker_loop(parse_question_rubric(UUID(question_id), input_hash, force=force))
+
+
+@celery_app.task(name="extract_exam_task", soft_time_limit=20 * 60, time_limit=25 * 60)
+def extract_exam_task(draft_id: str):
+    """Extract an exam draft's questions and rubrics from its documents. Skips non-pending drafts."""
+    ensure_tracing()
+    run_in_worker_loop(extract_draft(UUID(draft_id)))
 
 
 @worker_process_shutdown.connect
