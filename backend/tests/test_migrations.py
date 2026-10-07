@@ -136,3 +136,30 @@ def test_rubric_specs_are_append_only(alembic_config, engine):
         "(gen_random_uuid(), :question_id, 1, 'ai', 'ready', '[]', '{}', 'h', '{}', now())"
     )
     assert_append_only(engine, "rubric_specs", insert, {"question_id": make_question(engine)})
+
+
+def test_transcriptions_and_grades_only_switch_their_current_version(alembic_config, engine):
+    command.downgrade(alembic_config, "base")
+    command.upgrade(alembic_config, "head")
+    question_id = make_question(engine)
+    with engine.begin() as conn:
+        exam_id = conn.execute(text("SELECT exam_id FROM questions WHERE id = :q"), {"q": question_id}).scalar()
+        submission_id = conn.execute(text(
+            "INSERT INTO submissions (id, exam_id, original_file_url, status, created_at, updated_at) "
+            "VALUES (gen_random_uuid(), :e, 'x', 'NEEDS_REVIEW', now(), now()) RETURNING id"), {"e": exam_id}).scalar()
+        for table, extra_cols, extra_vals in (
+            ("transcriptions", "text, segments, flags", "'x = 5', '[]', '[]'"),
+            ("answer_grades", "status, max_score, counted, criteria, rounds, flags, fallback_used",
+             "'graded', 2, true, '[]', '[]', '[]', false"),
+        ):
+            conn.execute(text(
+                f"INSERT INTO {table} (id, submission_id, question_id, version, source, is_current, created_at, {extra_cols}) "
+                f"VALUES (gen_random_uuid(), :s, :q, 1, 'ai', true, now(), {extra_vals})"), {"s": submission_id, "q": question_id})
+
+    for table, change in (("transcriptions", "text = 'x = 6'"), ("answer_grades", "max_score = 3")):
+        with engine.begin() as conn:
+            conn.execute(text(f"UPDATE {table} SET is_current = false"))  # allowed
+        for statement in (f"UPDATE {table} SET {change}", f"DELETE FROM {table}", f"TRUNCATE {table} CASCADE"):
+            with pytest.raises(Exception, match="append-only"):
+                with engine.begin() as conn:
+                    conn.execute(text(statement))

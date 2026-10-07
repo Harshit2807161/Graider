@@ -5,3 +5,4 @@ from app.models.audit import GradingRun, LLMCall
 from app.models.rubric import RubricSpecRecord
 from app.models.document import Document, DocumentPage
 from app.models.exam_draft import ExamDraft
+from app.models.grading import AnswerGrade, Transcription

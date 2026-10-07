@@ -72,6 +72,9 @@ class SubmissionAnswer(Base, table=True):
     score: Optional[float] = None
     feedback: Optional[str] = None
     reasoning: Optional[str] = None
+    # Projection of the current answer grade (app/models/grading.py)
+    status: Optional[str] = None  # graded / escalated / not_attempted
+    escalation_reason: Optional[str] = None
     
     created_at: datetime = Field(default_factory=utcnow)
 

@@ -39,7 +39,9 @@ class GradingRun(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     submission_id: UUID = Field(foreign_key="submissions.id", index=True)
-    trigger: str  # "upload" | "regrade"
+    trigger: str  # "upload" | "regrade" | "transcript_edit"
+    # Questions this run regrades (e.g. after a transcript edit); None = the whole submission
+    question_ids: Optional[list[str]] = Field(default=None, sa_column=Column(JSONType, nullable=True))
     status: str = Field(default=RunStatus.QUEUED, index=True)
     # Resolved model chains per role, budgets, egress setting: what this run was configured with
     config_snapshot: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSONType, nullable=False))
