@@ -25,8 +25,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | Merged |
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | Merged |
 | M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | Merged |
-| M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | [#12](https://github.com/Harshit2807161/Graider/pull/12) | In review |
-| M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
+| M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | [#12](https://github.com/Harshit2807161/Graider/pull/12) | Merged |
+| M5 | Grading graph v2 | `feat/grading-graph-v2` | M4c | – | In review |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
 | M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
 | M8 | Eval harness | `feat/eval-harness` | M5 | – | Not started |
@@ -165,39 +165,20 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 **Acceptance:** a question paper, a rubric, both, or a blank copy become a checked draft; nothing reaches the exam's questions until the teacher confirms a draft without blocking issues.
 
 ## M5: Grading graph v2
-- [ ] `app/grading/` package:
-  - `state.py`, `graph.py`, `nodes/{context,ocr,question}.py`, `checks.py`
-  - `schemas.py`: grader output, revision output, evaluator output (own assessment + agreement + feedback), page transcription
-  - `prompts/`: versioned templates, subject personas, few-shot examples per rubric kind
-  - `persist.py`, `sampling.py`
-- [ ] Submission graph: context → per-page transcription `Send` → stitching in code → per-question `Send` → aggregate; `max_concurrency` setting
-- [ ] Per-question flow:
-  1. Precheck: no answer found, invalid rubric, or low OCR confidence ⇒ escalate
-  2. Grade
-  3. Checks (one repair allowed)
-  4. Grader flags ⇒ escalate
-  5. Evaluate (own view first) ⇒ effective agreement in code
-  6. Revise or push back, at most 2 times ⇒ finalize or escalate
-- [ ] Final transaction: transcriptions, answer grades, projections, events, totals; status GRADED or NEEDS_REVIEW. FAILED only for OCR failure, exhausted budget or no questions.
-- [ ] Spot-check sampler: seeded by run id; default 0%
-- [ ] Delete the replaced code: `app/agents/`, `core/langgraph_setup.py`, `services/triplet_service.py`, `rubric_from_text`, legacy schemas
-- [ ] Tests:
-  - Agree in round 1 (2 calls per answer)
-  - Revise once, then agree
-  - Push-back accepted
-  - 2 revisions ⇒ escalation with both positions stored
-  - LLM reports high agreement but the score gap is large ⇒ treated as disagreement
-  - Repair paths
-  - Illegible flag skips the evaluator
-  - Blank answer escalates without a grader call
-  - Invalid rubric blocks only its question
-  - Fallback recorded; grader and evaluator use different models
-  - Page stitching
-  - Transcript edit regrades only that question
-  - Budget breach ⇒ FAILED, with calls kept
-  - Ported regressions: labels, answers out of order, soft-deleted questions
+- [x] `app/grading/`: `schemas.py` (page answers, grade, evaluator review, revision; built per exam/question so labels and criterion ids are enums), `prompts.py` (`grading-v1`: transcription, grader with worked examples for partial credit and pass/fail, independent revision, fresh-eyes evaluator, subject personas), `checks.py`, `stitch.py`, `choices.py`, `sampling.py`, `question.py`, `transcribe.py`, `graph.py`, `persist.py`
+- [x] Submission graph (LangGraph): pages read in parallel (`Send`) → stitching in code → questions graded in parallel (`Send`); `GRADING_MAX_CONCURRENCY`
+- [x] Per-question flow: precheck (no answer, no ready spec ⇒ escalate, no call) → grade (quoted evidence) → checks (+1 repair) → grader flags ⇒ escalate → evaluate (own view first) → effective agreement in code → revise/push back ≤ 2 ⇒ finalize or escalate with every round kept; low OCR confidence, repeated attempts and spot checks keep the proposed score but escalate
+- [x] Final transaction: transcription and answer-grade versions (append-only except `is_current`; one current per answer), `submission_answers` projection, unassigned segments, totals, status `GRADED` / `NEEDS_REVIEW`; `FAILED` only for unreadable pages, exhausted budget or no questions
+- [x] Choice groups: unattempted alternatives aren't graded (one escalates if an answer is still owed); extra alternatives don't count (exam `choice_policy` best/first); maxima count each group once
+- [x] Scoped runs (`question_ids`, trigger `transcript_edit`) regrade only those questions from their current transcriptions (a teacher's transcript is kept)
+- [x] Spot-check sampler seeded by run and question; default 0%
+- [x] Config snapshot includes grading thresholds and prompt versions
+- [x] Deleted: `app/agents/`, `core/langgraph_setup.py`, triplet and OCR services, legacy grading schemas (the subject now comes from the rubric spec: no tagging call)
+- [x] Tests: checks (bounds, pass/fail, evidence, replies, rejections), agreement (gap and per-criterion tolerance), stitching, choice groups, the loop (agree in round 1 = 2 calls, revise then agree, push-back accepted, 2 revisions ⇒ escalation with both positions, high stated agreement with a large gap, repair, double failure, illegible flag skips the evaluator, blank answer and invalid rubric make no call, fallbacks avoid the other examiner's model, budget), the pipeline (versions, labels, parsed rubric, cross-page and out-of-order answers, soft-deleted questions, unreadable pages, a failing question escalates alone, invalid rubric blocks only its question, regrades, no state between runs, budget, choice groups, transcript-edit regrade); append-only rules (Postgres)
+- [x] Live: the M4b real-handwriting submission (HEIC whiteboard photo, pencil scan PDF, Word file with a photo) through the whole v2 pipeline with local models (Qwen3-VL-4B reading; Qwen3-4B as **both** grader and evaluator), three runs. Mechanics verified: 3 files → 3 pages read → answers stitched → graded and evaluated → versions and totals saved (12 calls). Quality isn't meaningful with one 4B model as both examiners: the transcription dropped a circled final answer in 2 of 3 runs (prompt rule added, `grading-v2`), the grader made inconsistent strict calls and the evaluator agreed every time. The safety nets worked: a grade the model couldn't produce and two zero-confidence readings escalated instead of being finalised. Grading quality needs Claude (the default) or distinct, stronger models: measured in M8
+- Changes from the plan: `grade_events` comes with the human actions in M6; the per-question loop is plain async code inside the graph's grade node (one graph per submission, not a nested graph); the append-only rules are enforced by Postgres triggers only (no SQLite ORM guard; the Postgres CI job runs them)
 
-**Acceptance:** an end-to-end fake run produces full audit rows and correct statuses.
+**Acceptance:** an end-to-end fake run produces full audit rows and correct statuses. ✔
 
 ## M6: Review workflow API
 - [ ] `app/workflow/` state machine: every transition writes a grade event; invalid transitions return 409
