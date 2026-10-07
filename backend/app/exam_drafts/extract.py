@@ -9,7 +9,7 @@ from app.llm.router import get_router
 from app.llm.types import CallContext, ImagePart, LLMRequest, Role, TextPart
 from app.models.document import DocumentPage, DocumentRole
 
-PROMPT_VERSION = "exam-page-v1"
+PROMPT_VERSION = "exam-page-v2"
 
 ROLE_DESCRIPTION = {
     DocumentRole.QUESTION_PAPER: "a question paper",
@@ -46,7 +46,28 @@ three of the following"): the labels of the alternatives and how many to answer.
 instructions: general instructions printed on the page. total_marks: the paper's maximum marks, if \
 printed ("Maximum Marks: 80").
 
-Ignore headers, footers, page numbers and watermarks. has_handwriting: true if anything is handwritten."""
+Ignore headers, footers, page numbers and watermarks. has_handwriting: true if anything is handwritten.
+
+Example. A question paper page printed as:
+  Q.7 A ball is dropped from a height of 20 m.
+      (a) How long does it take to reach the ground?   [2]
+      (b) What is its speed just before it lands?      [2]
+  Q.8 Name the largest planet.   [1]
+                 OR
+  Q.9 Name the smallest planet.  [1]
+gives these questions (labels without "Q", every part listed separately, the shared text in context):
+  {"label": "7(a)", "printed_label": "Q.7 (a)", "context": "A ball is dropped from a height of 20 m.",
+   "text": "How long does it take to reach the ground?", "marks": 2, "question_type": "problem", "continued": false}
+  {"label": "7(b)", "printed_label": "Q.7 (b)", "context": "A ball is dropped from a height of 20 m.",
+   "text": "What is its speed just before it lands?", "marks": 2, "question_type": "problem", "continued": false}
+  {"label": "8", "printed_label": "Q.8", "context": null, "text": "Name the largest planet.", "marks": 1,
+   "question_type": "descriptive", "continued": false}
+  {"label": "9", "printed_label": "Q.9", "context": null, "text": "Name the smallest planet.", "marks": 1,
+   "question_type": "descriptive", "continued": false}
+and the choice group {"labels": ["8", "9"], "pick": 1, "note": "OR"}.
+A marking scheme line "Q7 (a)  t = 2 s; formula 1 mark, answer 1 mark" gives the rubric item
+  {"label": "7(a)", "printed_label": "Q7 (a)", "text": "t = 2 s; formula 1 mark, answer 1 mark", "marks": 2,
+   "continued": false}"""
 
 
 def _image_part(path: str) -> ImagePart:
