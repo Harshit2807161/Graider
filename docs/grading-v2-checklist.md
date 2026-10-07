@@ -23,7 +23,9 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M1 | CI and migrations | `chore/ci-and-migrations` | – | [#6](https://github.com/Harshit2807161/Graider/pull/6) | Merged |
 | M2 | Model router | `feat/llm-router` | M1 | [#7](https://github.com/Harshit2807161/Graider/pull/7) | Merged |
 | M3 | Audit trail and observability | `feat/audit-and-tracing` | M2 | [#8](https://github.com/Harshit2807161/Graider/pull/8) | Merged |
-| M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | In review |
+| M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | Merged |
+| M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | In review |
+| M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | – | Not started |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4 | – | Not started |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
 | M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
@@ -131,6 +133,20 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
   - Until NEEDS_REVIEW exists (M5), an invalid spec fails the whole run instead of escalating its question
 
 **Acceptance:** an invalid spec never reaches the grader. ✔
+
+## M4b: Document intake
+*From [Proposal 003](proposals/003-document-ingestion.md) §4, §5.1–5.2, §8.*
+- [x] File identification by content (`filetype`, PDF/ZIP/OLE/RTF signatures, UTF-8 text): extension must be allowed and match the bytes; mislabelled images accepted as what they are
+- [x] Safety: per-file size cap, ZIP inspection before parsing (entry count, inflation / zip bombs, macros), password-protected and damaged PDFs refused with a clear reason, page and pixel caps
+- [x] Pages: PDFs via pypdfium2 at 200 DPI (long edge ≤ 2576 px), judged per page (digital / mixed / scanned; scanner OCR layers and garbled text ignored); images via Pillow + pi-heif (EXIF rotation, transparency, multi-page TIFF, GIF first frame, photo straightening with OpenCV, gentle contrast); plain text as text pages
+- [x] Office (DOCX, DOC, ODT, RTF, PPTX) → PDF via the sandboxed Gotenberg 8.37 container (compose: internal network without internet, read-only, no capabilities, resource limits; CI service); the user's file name never reaches it
+- [x] `documents` + `document_pages` tables; pages made once per document; failures recorded with a user-safe reason; old submissions adopted from `original_file_url`
+- [x] Uploads: one or many files per submission (`files`, page order), every supported format; grading reads pages (image + typed text hint); pdf2image and poppler removed
+- [x] Frontend: answer upload takes several files in any supported format (minimal; M7 does the UI)
+- [x] Tests: every format generated in code (one small HEIC fixture), every refusal reason, pages per format, documents service, upload API; real Word/ODT/RTF conversion when `GOTENBERG_URL` is set (CI); SQLite tests now enforce foreign keys like Postgres
+- [x] E2E with real student handwriting (DrawEduMath, CC BY-NC 4.0; AIED-Unplugged, CC BY 4.0; samples not committed): one submission of a HEIC whiteboard photo + a scanned PDF + a Word document with a pasted photo, uploaded through the API, converted by Gotenberg, transcribed by Qwen3-VL-4B. All three answers were transcribed exactly in one 6,176-token call (Ollama's default 4,096 would have truncated it). Grading by the 4B text model was too strict on two answers (backlog)
+
+**Acceptance:** any supported file, or several, can be uploaded as one student's answers and is graded from normalised pages; unsupported or unsafe files are refused with the reason.
 
 ## M5: Grading graph v2
 - [ ] `app/grading/` package:

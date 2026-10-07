@@ -30,7 +30,9 @@ from app.schemas.grading import (
     QuestionType as GraderQuestionType,
     RubricCriteria,
 )
-from .ocr_service import get_ocr_service
+from .ocr_service import SheetPage, get_ocr_service
+from app.ingestion.pages import DocumentError
+from app.ingestion.service import submission_pages
 from .triplet_service import get_triplet_service
 from app.agents.orchestrator import get_orchestrator
 from app.models.base import utcnow
@@ -117,7 +119,7 @@ async def run_grading(run_id: UUID) -> None:
                 llm_settings.max_calls_for(question_count), llm_settings.max_cost_usd_per_submission
             ), recording_to(DbCallRecorder(run.id, submission.id)) as recorder:
                 set_trace_id(db, run, trace_id)
-                await _grade(db, submission, Path(submission.original_file_url), recorder)
+                await _grade(db, submission, recorder)
         except Exception as e:
             error = str(e)
             logger.exception("pipeline_error", run_id=str(run_id), submission_id=str(submission.id), error=error)
@@ -140,7 +142,7 @@ async def run_grading(run_id: UUID) -> None:
         finish_run(db, run, error=error)
 
 
-async def _grade(db: Session, submission: Submission, answers_path: Path, recorder: DbCallRecorder) -> None:
+async def _grade(db: Session, submission: Submission, recorder: DbCallRecorder) -> None:
     submission_id = str(submission.id)
     _set_progress(db, submission, "Loading questions...", status=SubmissionStatus.PROCESSING)
 
@@ -169,11 +171,22 @@ async def _grade(db: Session, submission: Submission, answers_path: Path, record
         for label, q in db_question_by_label.items()
     ]
 
-    # ===== Step 1: OCR =====
-    logger.info("pipeline_step", step="ocr", submission_id=submission_id)
-    _set_progress(db, submission, f"Reading answer sheet for {len(questions)} questions...")
+    # ===== Step 1: Pages (every uploaded file -> upright page images + typed text) =====
+    _set_progress(db, submission, "Preparing answer pages...")
+    try:
+        db_pages = submission_pages(db, submission)
+    except DocumentError as e:
+        raise ValueError(f"The answer sheet can't be read: {e}") from e
+    pages = [
+        SheetPage(number=i, image_path=Path(p.image_path) if p.image_path else None, text_layer=p.text_layer)
+        for i, p in enumerate(db_pages, start=1)
+    ]
+
+    # ===== Step 2: OCR =====
+    logger.info("pipeline_step", step="ocr", submission_id=submission_id, pages=len(pages))
+    _set_progress(db, submission, f"Reading {len(pages)} page(s) for {len(questions)} questions...")
     answers: list[Answer] = await get_ocr_service().extract_answers(
-        answers_path, questions, context=CallContext(purpose="ocr_answers", submission_id=submission.id)
+        pages, questions, context=CallContext(purpose="ocr_answers", submission_id=submission.id)
     )
     if not answers:
         # The model read the sheet but matched nothing; grading would award all zeros.
@@ -182,13 +195,13 @@ async def _grade(db: Session, submission: Submission, answers_path: Path, record
             "Check that the uploaded file is this exam's answer sheet."
         )
 
-    # ===== Step 2: Triplet Formation =====
+    # ===== Step 3: Triplet Formation =====
     logger.info("pipeline_step", step="triplets", submission_id=submission_id)
     triplets = get_triplet_service().form_triplets(questions, answers, rubrics)
     answer_text_by_label = {t.question_id: t.candidate_answer for t in triplets}
     _set_progress(db, submission, f"Matched {len(answers)} answers. Starting grading...")
 
-    # ===== Step 3: Agent Grading =====
+    # ===== Step 4: Agent Grading =====
     logger.info("pipeline_step", step="grading", submission_id=submission_id)
     orchestrator = get_orchestrator()
     results: list[GradingResult] = []
@@ -205,7 +218,7 @@ async def _grade(db: Session, submission: Submission, answers_path: Path, record
             grader=result.grader,
         )
 
-    # ===== Step 4: Save results (one transaction) =====
+    # ===== Step 5: Save results (one transaction) =====
     logger.info("pipeline_step", step="save_results", submission_id=submission_id)
     for old_answer in crud.submission_answer.get_by_submission(db, submission_id=submission.id):
         db.delete(old_answer)

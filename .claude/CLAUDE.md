@@ -13,6 +13,7 @@ Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2
 - **Background jobs**: Celery with Redis broker; one task grades one submission
 - **Auth**: JWT bearer tokens (PyJWT) + bcrypt; org-scoped roles owner / admin / teacher / student
 - **Files**: local disk under `UPLOAD_DIR` (shared with the worker via the `./backend/data` volume in Docker). MinIO runs in compose but is not used yet
+- **Document intake** (`app/ingestion/`, Proposal 003): uploads are identified by their bytes (`filetype`), checked (zip bombs, macros, encrypted PDFs, size/page/pixel caps) and turned into pages: PDFs rendered with pypdfium2 at 200 DPI (text layer kept for digital pages), images via Pillow + pi-heif (EXIF rotation, photo straightening with OpenCV), Word/ODT/RTF/PowerPoint via the sandboxed **Gotenberg** container (`GOTENBERG_URL`). No poppler
 - **Logging**: structlog
 
 ### AI/ML
@@ -39,6 +40,7 @@ backend/
 │   ├── core/                      # config, db (engine, upgrade_to_head), security, constants, langgraph_setup
 │   ├── audit/                     # grading runs (lifecycle) + DbCallRecorder → llm_calls (append-only)
 │   ├── rubrics/                   # RubricSpec schema, validation, LLM parser, spec lifecycle
+│   ├── ingestion/                 # formats (detect + safety), pages (render), office (Gotenberg), service
 │   ├── observability/             # optional Langfuse tracing (one trace per run, images masked)
 │   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
 │   │                              # (LangChain chat models), router, budget, costs, recorder
@@ -67,13 +69,15 @@ docs/                              # architecture, ADRs, proposals/
 
 All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps are timezone-aware UTC — use `app.models.base.utcnow()`, never `datetime.utcnow()` (SQLModel ≥ 0.0.45 rejects naive datetimes).
 
+`Document` (`documents`: one uploaded file, its role, position in the submission, kind from its bytes) → `DocumentPage` (`document_pages`: page image + text layer; derived, re-makeable). A submission's answers are its documents in order; old submissions are adopted from `original_file_url`.
+
 Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet.
 
 ## Grading Pipeline (`services/grading_service.py`)
 Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload/regrade) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots the model config, records every model call to `llm_calls` (append-only; a failed audit write fails the run), and finishes the run as succeeded/failed. See [docs/audit-trail.md](../docs/audit-trail.md).
 1. Load the exam's live questions in order and label them `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
 2. **Rubric specs**: every question needs a *ready* spec for its current inputs. Missing ones are parsed now (`ensure_rubric_specs`); if any is invalid or couldn't be parsed, the run fails before OCR with the reasons (per-question escalation comes in M5). Specs are normally parsed in the background when questions are saved (`parse_rubric_task`, queue `rubric`); see `app/rubrics/`.
-3. **OCR**: rasterize PDF pages (poppler), send to the vision model in batches of 10 pages, get answers keyed by label.
+3. **Pages + OCR**: the submission's files become pages (`submission_pages`, made once); each page's image (plus the typed text of digital PDF pages, as a hint) goes to the vision model in batches of 10, answers keyed by label.
 4. **Triplets**: pair each question with its answer and its spec's criteria (ids, points, expected answers, notes).
 5. **Grade**: per question, LangGraph tags the subject, routes to a subject grader, and an LLM evaluator may request up to 3 attempts.
 6. **Save**: all answers and totals in one transaction; status `GRADED`.
@@ -85,7 +89,7 @@ Failure rules: unparseable model output is retried once, then the submission is 
 ```bash
 # Environment (conda) — installs backend/requirements.txt
 conda env create -f environment.yml && conda activate gr8r
-# Requires poppler (pdftoppm) for PDF conversion: brew install poppler
+# Optional, for Word/ODT/RTF/PowerPoint uploads: docker run -d -p 127.0.0.1:3002:3000 gotenberg/gotenberg:8.37.0-libreoffice  (GOTENBERG_URL=http://localhost:3002)
 
 # Infrastructure only
 docker compose up -d db redis
@@ -122,7 +126,8 @@ CELERY_BROKER_URL=redis://localhost:6379/0
 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=... / OPENWEIGHT_API_KEY=...
 LLM__GRADER__PROVIDER / __MODEL / __BASE_URL / __EFFORT / __FALLBACKS=[...]   # per role; profiles in backend/.env.example
 LLM__ALLOW_EXTERNAL_FALLBACK=true    LLM__MAX_COST_USD_PER_SUBMISSION=10
-UPLOAD_DIR=./data/uploads            MAX_UPLOAD_SIZE_MB=50
+UPLOAD_DIR=./data/uploads            MAX_UPLOAD_SIZE_MB=50 (per file)
+GOTENBERG_URL=http://localhost:3002  # office documents; INGEST_DPI=200, INGEST_MAX_LONG_EDGE=2576, MAX_*_PER_* caps
 FIRST_SUPERUSER_EMAIL / FIRST_SUPERUSER_PASSWORD
 BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 ```
@@ -148,7 +153,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | GET | /exams/{id}/rubric-status | staff — rubric state of every question (Q1..Qn) |
 | GET, PUT | /exams/{id}/questions/{qid}/rubric-spec | staff — current parsed rubric; replace with a teacher's version (422 if it fails the checks) |
 | POST | /exams/{id}/questions/{qid}/rubric-spec/reparse | staff — queue a fresh parse |
-| GET, POST | /exams/{id}/submissions | staff — list / upload answer sheet (queues grading) |
+| GET, POST | /exams/{id}/submissions | staff — list / upload a student's answers: `file` or several `files` (PDF, Word/ODT/RTF/PPTX, JPEG/PNG/WebP/HEIC/TIFF/GIF/BMP, text); queues grading |
 | GET | /submissions/{id} | member (students: own only) |
 | POST | /submissions/{id}/regrade | staff |
 | GET | /health | anyone |
@@ -174,6 +179,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - `backend/tests/test_api.py` — auth, tenant isolation, question sync/import, uploads, submissions
 - `backend/tests/test_grading.py` — JSON extraction, grader retries, call budget
 - `backend/tests/test_rubrics.py` — rubric spec validation, parsing lifecycle, grading against specs
+- `backend/tests/test_ingestion.py` — every file format (generated in `tests/ingestion_fixtures.py`), safety checks, pages, documents; real office conversion when `GOTENBERG_URL` is set (CI)
 - `backend/tests/test_audit.py`, `test_tracing.py` — audit rows, run lifecycle, Langfuse tracing
 
 ## Known Gaps

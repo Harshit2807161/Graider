@@ -41,9 +41,10 @@ export const examService = {
         return response.data;
     },
 
-    uploadSubmission: async (examId: string, file: File, studentId?: string): Promise<Submission> => {
+    // One student's answers: one file, or several in page order (e.g. one photo per page)
+    uploadSubmission: async (examId: string, files: File[], studentId?: string): Promise<Submission> => {
         const formData = new FormData();
-        formData.append("file", file);
+        files.forEach((file) => formData.append("files", file));
         if (studentId) formData.append("student_id", studentId);
 
         const response = await api.post(`/exams/${examId}/submissions`, formData);

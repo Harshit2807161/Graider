@@ -13,9 +13,11 @@ from app.core.config import settings
 from app.core.constants import Role, SubmissionStatus
 from app.main import app
 from app.models.audit import GradingRun
+from app.models.document import Document
 from app.models.exam import Question, Submission, SubmissionAnswer
 from app.models.org import Batch
 from app.models.user import User
+from tests import ingestion_fixtures as fx
 from tests.conftest import FIXTURES, add_member, make_org, make_user
 
 API = settings.API_V1_STR
@@ -304,8 +306,10 @@ class TestSubmissions:
 
         assert response.status_code == 200, response.text
         stored = Path(response.json()["original_file_url"]).resolve()
-        assert stored.name == "answer_sheet.png"
+        assert "evil" not in stored.name and stored.suffix == ".png"  # generated name, never the client's
         assert stored.is_relative_to(settings.UPLOAD_DIR.resolve())
+        (document,) = db.exec(select(Document).where(Document.submission_id == UUID(response.json()["id"]))).all()
+        assert document.original_filename == "evil.png" and document.kind == "png" and document.position == 0
         # The task carries only the id of the grading run created for this upload
         assert len(queued) == 1
         run = db.get(GradingRun, UUID(queued[0][0]))
@@ -317,11 +321,52 @@ class TestSubmissions:
         second = self.upload(client, headers, school["exam"].id).json()
         assert first["original_file_url"] != second["original_file_url"]
 
-    @pytest.mark.parametrize("filename,data", [("sheet.exe", b"MZ"), ("sheet.png", b"")])
-    def test_rejects_bad_files(self, client, school, queued, filename, data):
-        response = self.upload(client, login(client, "teacher@school.test"), school["exam"].id, filename, data)
-        assert response.status_code == 400
-        assert queued == []
+    @pytest.mark.parametrize(
+        "filename, make, reason",
+        [
+            ("sheet.exe", lambda: b"MZ", "Unsupported file type"),
+            ("sheet.png", lambda: b"", "empty"),
+            ("sheet.pdf", lambda: fx.image_bytes("PNG"), "don't match its extension"),
+            ("sheet.docx", fx.macro_docx, "macros"),
+            ("sheet.pdf", fx.encrypted_pdf, "password-protected"),
+            ("sheet.pdf", lambda: b"%PDF-1.7 broken", "damaged"),
+        ],
+    )
+    def test_rejects_bad_files_with_the_reason(self, client, db, school, queued, filename, make, reason):
+        response = self.upload(client, login(client, "teacher@school.test"), school["exam"].id, filename, make())
+        assert response.status_code == 400 and reason in response.json()["detail"]
+        assert response.json()["detail"].startswith(filename)
+        assert queued == [] and db.exec(select(Document)).all() == []
+
+    def test_office_files_need_the_converter(self, client, school, queued, monkeypatch):
+        monkeypatch.setattr(settings, "GOTENBERG_URL", None)
+        response = self.upload(client, login(client, "teacher@school.test"), school["exam"].id, "a.docx", fx.docx())
+        assert response.status_code == 400 and "can't be converted on this server" in response.json()["detail"]
+
+    def test_several_files_make_one_submission_in_page_order(self, client, db, school, queued, monkeypatch):
+        monkeypatch.setattr(settings, "GOTENBERG_URL", "http://converter.invalid")
+        files = [
+            ("files", ("page1.HEIC", fx.HEIC_PHOTO.read_bytes(), "image/heic")),
+            ("files", ("page2.jpg", fx.rotated_jpeg_with_exif(), "image/jpeg")),
+            ("files", ("extra.docx", fx.docx(), "application/octet-stream")),
+            ("files", ("notes.txt", fx.text(), "text/plain")),
+        ]
+        response = client.post(f"{API}/exams/{school['exam'].id}/submissions", files=files,
+                               headers=login(client, "teacher@school.test"))
+
+        assert response.status_code == 200, response.text
+        documents = db.exec(select(Document).where(Document.submission_id == UUID(response.json()["id"]))
+                            .order_by(Document.position)).all()
+        assert [(d.original_filename, d.kind) for d in documents] == [
+            ("page1.HEIC", "heic"), ("page2.jpg", "jpeg"), ("extra.docx", "docx"), ("notes.txt", "txt")]
+        assert len(queued) == 1
+
+    def test_too_many_files_are_refused(self, client, school, queued, monkeypatch):
+        monkeypatch.setattr(settings, "MAX_FILES_PER_SUBMISSION", 2)
+        files = [("files", (f"p{i}.png", fx.image_bytes("PNG"), "image/png")) for i in range(3)]
+        response = client.post(f"{API}/exams/{school['exam'].id}/submissions", files=files,
+                               headers=login(client, "teacher@school.test"))
+        assert response.status_code == 400 and "At most 2 files" in response.json()["detail"]
 
     def test_rejects_student_from_another_org(self, client, db, school, queued):
         other = make_org(db, "other-school")

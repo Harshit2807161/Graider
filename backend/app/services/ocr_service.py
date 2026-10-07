@@ -1,6 +1,11 @@
-"""OCR: transcribe student answer sheets (images/PDF pages) with the `vision` model role."""
+"""OCR: transcribe a student's answer pages with the `vision` model role.
+
+Pages come from document intake (app/ingestion): upright, size-capped images plus the typed text
+of digital PDF pages, which is sent alongside the image as a hint (never instead of it).
+"""
 
 import base64
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -10,11 +15,10 @@ from pydantic import BaseModel, ConfigDict, create_model
 from app.llm.router import get_router
 from app.llm.types import CallContext, ImagePart, LLMAllTargetsFailed, LLMRequest, Role, TextPart
 from app.schemas.grading import Answer, Question
-from .pdf_service import process_directory_files_async
 
 logger = structlog.get_logger(__name__)
 
-# Maximum number of page images sent in one request; longer sheets are sent in batches
+# Maximum number of pages sent in one request; longer submissions are sent in batches
 MAX_IMAGES_PER_REQUEST = 10
 
 _MEDIA_TYPES = {
@@ -24,6 +28,15 @@ _MEDIA_TYPES = {
     ".gif": "image/gif",
     ".webp": "image/webp",
 }
+
+
+@dataclass(frozen=True)
+class SheetPage:
+    """One page of a student's submission, as the vision model sees it."""
+
+    number: int  # 1-based, across all of the submission's files
+    image_path: Optional[Path]  # None for a plain-text page
+    text_layer: Optional[str]  # typed text from a digital PDF page or a text file
 
 
 class OCRError(RuntimeError):
@@ -50,6 +63,20 @@ def answer_transcription_schema(labels: list[str]) -> type[BaseModel]:
 def _image_part(path: Path) -> ImagePart:
     data = base64.standard_b64encode(path.read_bytes()).decode("ascii")
     return ImagePart(data=data, media_type=_MEDIA_TYPES.get(path.suffix.lower(), "image/jpeg"), ref=str(path))
+
+
+def _page_parts(page: SheetPage) -> list:
+    """A page as model input: its typed text (if any) as a hint, then its image."""
+    if page.image_path is None:
+        return [TextPart(text=f"Page {page.number} (typed document):\n{page.text_layer or ''}")]
+    parts: list = [TextPart(text=f"Page {page.number}:")]
+    if page.text_layer:
+        parts.append(TextPart(text=(
+            f"Typed text found on page {page.number} (from the PDF; handwriting is never included, so "
+            f"read the image for it):\n{page.text_layer}"
+        )))
+    parts.append(_image_part(page.image_path))
+    return parts
 
 
 INSTRUCTIONS = """Analyze these student answer sheet documents and extract ALL answers.
@@ -79,15 +106,15 @@ class OCRService:
 
     async def extract_answers(
         self,
-        source: Path,
+        pages: list[SheetPage],
         questions: list[Question],
         context: Optional[CallContext] = None,
     ) -> list[Answer]:
         """
-        Extract answers from an answer sheet file (image or PDF) or a directory of them.
+        Extract answers from a submission's pages.
 
         Args:
-            source: Answer sheet file, or a directory of them
+            pages: The submission's pages in order (images and/or typed text)
             questions: Questions to match answers to. Their `id`s are short labels ("Q1"),
                 which become an enum in the output schema.
             context: Audit context (run/submission) copied onto every model call.
@@ -96,12 +123,10 @@ class OCRService:
             One Answer per question label the model found, in the order found.
 
         Raises:
-            OCRError: if the files can't be read or every vision model failed.
+            OCRError: if there are no pages or every vision model failed.
         """
-        image_paths, text_contents = await process_directory_files_async(source)
-        images = [_image_part(p) for p in image_paths if p.exists()]
-        if not images and not text_contents:
-            raise OCRError(f"No readable pages found in {source}")
+        if not pages:
+            raise OCRError("The submission has no readable pages")
 
         labels = [q.id for q in questions]
         schema = answer_transcription_schema(labels)
@@ -110,24 +135,21 @@ class OCRService:
         )
         base_context = context or CallContext(purpose="ocr_answers")
 
-        # Large answer sheets are sent in page batches; answers continuing across batches are joined
-        batches = [images[i:i + MAX_IMAGES_PER_REQUEST] for i in range(0, len(images), MAX_IMAGES_PER_REQUEST)] or [[]]
+        # Long submissions are sent in page batches; answers continuing across batches are joined
+        batches = [pages[i:i + MAX_IMAGES_PER_REQUEST] for i in range(0, len(pages), MAX_IMAGES_PER_REQUEST)]
         merged: dict[str, Answer] = {}
         for batch_index, batch in enumerate(batches):
-            first_page = batch_index * MAX_IMAGES_PER_REQUEST + 1
             page_note = ""
             if len(batches) > 1:
                 page_note = (
-                    f"\nThese images are pages {first_page}-{first_page + len(batch) - 1} of a "
-                    f"{len(images)}-page answer sheet. Only extract answers visible on these pages; "
-                    "omit questions that don't appear here.\n"
+                    f"\nThese are pages {batch[0].number}-{batch[-1].number} of a {len(pages)}-page "
+                    "submission. Only extract answers visible on these pages; omit questions that don't "
+                    "appear here.\n"
                 )
 
             parts: list = []
-            # Embedded PDF text (typed documents) only needs to be sent once
-            if text_contents and batch_index == 0:
-                parts.append(TextPart(text="Extracted text from documents:\n\n" + "\n\n---\n\n".join(text_contents)))
-            parts.extend(batch)
+            for page in batch:
+                parts.extend(_page_parts(page))
             parts.append(
                 TextPart(
                     text=INSTRUCTIONS.format(

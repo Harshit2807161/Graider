@@ -26,6 +26,10 @@ Grader and evaluator share one small model, so this profile is for development, 
 
 ```bash
 brew install ollama && brew services start ollama
+# Ollama gives each model only 4096 tokens of context by default and silently cuts off longer prompts.
+# One 200-DPI page is ~3,800 image tokens for Qwen3-VL, so raise it before grading multi-page sheets:
+#   macOS (brew service): launchctl setenv OLLAMA_CONTEXT_LENGTH 32768 && brew services restart ollama
+#   Linux / docker:       OLLAMA_CONTEXT_LENGTH=32768
 ollama pull qwen3-vl:4b-instruct-q4_K_M
 ollama pull qwen3:4b-instruct-2507-q4_K_M
 # then uncomment "Profile D" in backend/.env.example (copied to backend/.env)

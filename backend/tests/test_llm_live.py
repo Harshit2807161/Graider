@@ -23,7 +23,7 @@ from app.llm.recorder import recording_to
 from app.llm.router import ModelRouter
 from app.llm.types import CallContext, LLMRequest, Role, TextPart
 from app.schemas.grading import Question, QuestionType, RubricCriteria, Subject, Triplet
-from app.services.ocr_service import OCRService
+from app.services.ocr_service import OCRService, SheetPage
 from tests.test_llm_router import Answer
 
 # One event loop for the whole module, like a worker process (cached HTTP clients are loop-bound)
@@ -162,7 +162,8 @@ async def test_open_weight_ocr_reads_answer_sheet(monkeypatch, tmp_path):
         Question(id="Q2", text="Which gas do plants take in for photosynthesis?", max_score=2),
     ]
     try:
-        answers = await OCRService().extract_answers(_answer_sheet(tmp_path / "sheet.png"), questions)
+        sheet = SheetPage(number=1, image_path=_answer_sheet(tmp_path / "sheet.png"), text_layer=None)
+        answers = await OCRService().extract_answers([sheet], questions)
     finally:
         get_llm_settings.cache_clear()
 

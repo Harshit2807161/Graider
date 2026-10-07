@@ -51,7 +51,7 @@ export default function ExamDetailsPage() {
     const [savingQuestions, setSavingQuestions] = useState(false);
 
     // Answer sheet upload
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [uploading, setUploading] = useState(false);
 
     // Excel question import
@@ -160,11 +160,11 @@ export default function ExamDetailsPage() {
     };
 
     const handleUploadSubmission = async () => {
-        if (!selectedFile) return;
+        if (selectedFiles.length === 0) return;
         setUploading(true);
         try {
-            await examService.uploadSubmission(examId, selectedFile);
-            setSelectedFile(null);
+            await examService.uploadSubmission(examId, selectedFiles);
+            setSelectedFiles([]);
             const fileInput = document.getElementById("submission-upload-input") as HTMLInputElement | null;
             if (fileInput) fileInput.value = "";
             await refreshSubmissions();
@@ -294,18 +294,19 @@ export default function ExamDetailsPage() {
             <div style={panelStyle}>
                 <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1rem", color: "#1e293b" }}>2. Grade Answer Sheets</h2>
                 <p style={{ marginBottom: "1.5rem", color: "#64748b" }}>
-                    Upload a student&apos;s answer sheet (PDF or image). It is graded in the background against the saved questions and rubrics.
+                    Upload one student&apos;s answers: a PDF, Word document, photos (JPEG, PNG, HEIC…) or text. Several files (e.g. one photo per page) are graded together, in the order selected.
                 </p>
 
                 <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "2rem" }}>
                     <input
                         id="submission-upload-input"
                         type="file"
-                        accept="application/pdf,image/png,image/jpeg,image/webp"
-                        onChange={e => setSelectedFile(e.target.files?.[0] || null)}
+                        multiple
+                        accept=".pdf,.docx,.doc,.odt,.rtf,.pptx,.txt,.md,.jpg,.jpeg,.png,.webp,.heic,.heif,.tif,.tiff,.gif,.bmp"
+                        onChange={e => setSelectedFiles(Array.from(e.target.files ?? []))}
                         style={{ padding: "0.5rem", border: "1px dashed #cbd5e1", borderRadius: "8px", flex: 1 }}
                     />
-                    <Button onClick={handleUploadSubmission} disabled={uploading || !selectedFile || questions.length === 0}>
+                    <Button onClick={handleUploadSubmission} disabled={uploading || selectedFiles.length === 0 || questions.length === 0}>
                         {uploading ? "Uploading..." : "Upload & Grade"}
                     </Button>
                 </div>

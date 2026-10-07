@@ -16,22 +16,14 @@ Ensure you have the following installed on your system:
 
 ## 🛠️ Step 1: System Dependencies
 
-The OCR service requires **Poppler** to convert PDFs into images.
+None for PDFs and images: PDF pages are rendered by `pypdfium2` (installed with the Python packages); poppler is no longer needed.
 
-### macOS
+**Optional: Word, ODT, RTF and PowerPoint uploads** need the sandboxed document converter (LibreOffice inside Gotenberg). Without it those uploads are refused with a clear message.
 ```bash
-brew install poppler
+docker run -d --name gr8r-gotenberg -p 127.0.0.1:3002:3000 gotenberg/gotenberg:8.37.0-libreoffice
+# then in backend/.env:  GOTENBERG_URL=http://localhost:3002
 ```
-
-### Ubuntu/Debian
-```bash
-sudo apt-get update
-sudo apt-get install -y poppler-utils
-```
-
-### Windows
-1. Download the latest Poppler for Windows.
-2. Add the `bin/` folder to your System PATH.
+In Docker Compose it runs as the `gotenberg` service, hardened and on a private network only the worker can reach.
 
 ---
 

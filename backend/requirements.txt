@@ -9,8 +9,9 @@ pydantic-settings>=2.7.0
 email-validator>=2.2.0  # EmailStr
 
 # ===== DATABASE =====
-sqlmodel>=0.0.45  # 0.0.45+ stores timezone-aware UTC datetimes
-psycopg2-binary>=2.9.10
+sqlmodel>=0.0.48  # timezone-aware UTC datetimes (0.0.45+); SQLAlchemy 2.1 support (0.0.48+)
+SQLAlchemy>=2.1.0  # 2.1 connects postgresql:// URLs with psycopg 3
+psycopg[binary]>=3.2.0  # PostgreSQL driver (psycopg 3)
 alembic>=1.14.0  # schema migrations (backend/alembic)
 
 # ===== AUTH =====
@@ -36,9 +37,11 @@ langfuse>=4.17.0,<5
 langchain>=1.4.0  # required by langfuse.langchain (the LangChain/LangGraph callback handler)
 
 # ===== DOCUMENT PROCESSING =====
-pypdf>=5.0.0  # PDF text extraction
-pdf2image>=1.17.0  # PDF to image conversion (requires poppler)
 Pillow>=11.0.0
+filetype>=1.2.0  # identify uploads by their bytes, not their names (MIT)
+pypdfium2>=5.14.0  # render PDF pages + text layers (BSD-3/Apache-2.0; not PyMuPDF, which is AGPL)
+pi-heif>=1.4.0  # decode iPhone HEIC photos (decode-only; no GPL encoder)
+opencv-python-headless>=4.10.0  # straighten phone photos of pages (Apache-2.0)
 pandas>=2.2.0  # Excel/CSV imports
 openpyxl>=3.1.0  # Excel engine
 

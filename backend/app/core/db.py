@@ -7,7 +7,13 @@ from app.core.config import settings
 
 # Use the same settings object as the rest of the app so DATABASE_URL from .env is honoured
 # (os.getenv alone does not see values that only live in .env).
-engine = create_engine(settings.DATABASE_URL, echo=settings.SQL_ECHO, pool_pre_ping=True)
+# psycopg 3 prepares statements on the server after a few runs; a migration that changes a table
+# (or a pooler such as PgBouncer) then breaks pooled connections ("cached plan must not change result
+# type"). Turn that off, as psycopg2 behaved.
+_connect_args = {"prepare_threshold": None} if settings.DATABASE_URL.startswith("postgresql") else {}
+engine = create_engine(
+    settings.DATABASE_URL, echo=settings.SQL_ECHO, pool_pre_ping=True, connect_args=_connect_args
+)
 
 ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
 
