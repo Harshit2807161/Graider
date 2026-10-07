@@ -97,7 +97,9 @@ class Submission(Base, table=True):
     percentage: Optional[float] = None
     
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING)
-    current_step: Optional[str] = Field(default=None) 
+    current_step: Optional[str] = Field(default=None)
+    # Answer segments the model couldn't place under a question, for the teacher (grading v2)
+    unassigned_segments: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

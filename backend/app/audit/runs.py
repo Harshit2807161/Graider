@@ -38,15 +38,39 @@ def _transition(run: GradingRun, to: str) -> None:
 def config_snapshot() -> tuple[dict, str]:
     """The model configuration this worker will use, and a short hash of it. Holds no secrets
     (API keys live in app settings, not in LLM settings)."""
+    from app.core.config import settings
+    from app.exam_drafts.extract import PROMPT_VERSION as EXAM_PAGE_PROMPT
+    from app.grading.prompts import PROMPT_VERSION as GRADING_PROMPT
+    from app.rubrics.parser import PARSER_PROMPT_VERSION
+
     snapshot = get_llm_settings().model_dump(mode="json")
+    snapshot["grading"] = {
+        "agreement_threshold": settings.GRADING_AGREEMENT_THRESHOLD,
+        "max_revisions": settings.GRADING_MAX_REVISIONS,
+        "criterion_tolerance": settings.GRADING_CRITERION_TOLERANCE,
+        "ocr_confidence_threshold": settings.GRADING_OCR_CONFIDENCE_THRESHOLD,
+        "spot_check_rate": settings.GRADING_SPOT_CHECK_RATE,
+    }
+    snapshot["prompt_versions"] = {
+        "grading": GRADING_PROMPT, "rubric_parser": PARSER_PROMPT_VERSION, "exam_page": EXAM_PAGE_PROMPT,
+    }
     digest = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()[:16]
     return snapshot, digest
 
 
 def create_run(
-    db: Session, *, submission_id: UUID, trigger: str, created_by_membership_id: Optional[UUID] = None
+    db: Session,
+    *,
+    submission_id: UUID,
+    trigger: str,
+    created_by_membership_id: Optional[UUID] = None,
+    question_ids: Optional[list[UUID]] = None,
 ) -> GradingRun:
-    run = GradingRun(submission_id=submission_id, trigger=trigger, created_by_membership_id=created_by_membership_id)
+    """A queued grading run; `question_ids` limits it to those questions (e.g. a transcript edit)."""
+    run = GradingRun(
+        submission_id=submission_id, trigger=trigger, created_by_membership_id=created_by_membership_id,
+        question_ids=[str(q) for q in question_ids] if question_ids else None,
+    )
     db.add(run)
     db.commit()
     db.refresh(run)
