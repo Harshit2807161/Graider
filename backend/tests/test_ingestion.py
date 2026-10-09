@@ -148,6 +148,20 @@ def test_camera_rotation_is_applied(tmp_path):
     assert page.image.height > page.image.width  # stored 900x600 sideways, viewed upright 600x900
 
 
+def test_contrast_stretch_keeps_the_colours(tmp_path):
+    # Green ink on a grey whiteboard: the channels have different ranges, so a per-channel stretch
+    # would tint the background
+    from PIL import Image
+    image = Image.new("RGB", (400, 300), (165, 170, 172))
+    for x in range(50, 350):
+        for y in range(140, 160):
+            image.putpixel((x, y), (30, 140, 110))
+    image.paste((255, 255, 255), (300, 20, 380, 60))  # glare
+    (page,) = list(render_image(write(tmp_path, "board.png", fx.image_bytes("PNG", image)), FileKind.PNG))
+    r, g, b = page.image.getpixel((10, 10))
+    assert abs(r - g) <= 20 and abs(g - b) <= 20  # the background stays grey (a per-channel stretch made it magenta)
+
+
 def test_photo_of_a_page_is_straightened(tmp_path):
     (page,) = list(render_image(write(tmp_path, "photo.jpg", fx.photo_of_page()), FileKind.JPEG))
     width, height = page.image.size
