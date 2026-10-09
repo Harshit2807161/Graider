@@ -1,9 +1,12 @@
 "use client";
 
+import React, { useState } from "react";
 import { useOrgs } from "@/hooks/useOrgs";
+import { Org } from "@/types/org.types";
 import OrgCard from "./OrgCard";
 import Button from "@/components/ui/Button";
-import { Plus, AlertCircle } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { Plus, AlertCircle, Building2, RotateCw } from "lucide-react";
 import styles from "./OrgList.module.css";
 
 interface OrgListProps {
@@ -11,30 +14,34 @@ interface OrgListProps {
 }
 
 export default function OrgList({ onCreateClick }: OrgListProps) {
-    const { orgs, isLoading, error, deleteOrg } = useOrgs();
+    const { orgs, activeOrg, isLoading, error, deleteOrg, refetch } = useOrgs();
+    const [toDelete, setToDelete] = useState<Org | null>(null);
 
-    const handleDelete = async (id: string) => {
-        try {
-            await deleteOrg(id);
-        } catch (err) {
-            alert("Failed to delete organization");
-        }
-    };
-
-    if (isLoading) {
+    if (isLoading && orgs.length === 0) {
         return (
-            <div className={styles.loading}>
-                <div className={styles.spinner}></div>
-                <p>Loading organizations...</p>
+            <div className={styles.grid} role="status">
+                <span className="sr-only">Loading organizations</span>
+                {[0, 1].map((i) => (
+                    <div key={i} className={styles.skeletonCard} aria-hidden="true">
+                        <span className={styles.skeletonTile} />
+                        <span className={styles.skeletonLines}>
+                            <span className={styles.skeletonLine} />
+                            <span className={styles.skeletonLineShort} />
+                        </span>
+                    </div>
+                ))}
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className={styles.error}>
-                <AlertCircle size={24} />
-                <p>{error}</p>
+            <div className={styles.errorBanner} role="alert">
+                <AlertCircle size={18} aria-hidden="true" />
+                <span className={styles.errorText}>{error}</span>
+                <Button variant="outline" size="sm" onClick={refetch} icon={<RotateCw size={14} aria-hidden="true" />}>
+                    Try again
+                </Button>
             </div>
         );
     }
@@ -42,34 +49,46 @@ export default function OrgList({ onCreateClick }: OrgListProps) {
     if (orgs.length === 0) {
         return (
             <div className={styles.empty}>
-                <h3>No organizations yet</h3>
-                <p>Create your first organization to get started</p>
-                <Button onClick={onCreateClick} variant="primary">
-                    <Plus size={18} />
-                    Create Organization
+                <span className={styles.emptyIcon} aria-hidden="true">
+                    <Building2 size={32} />
+                </span>
+                <h2>No organizations yet</h2>
+                <p>Create your school or department first. Its classes, exams and answer sheets live inside it.</p>
+                <Button onClick={onCreateClick} variant="secondary" icon={<Plus size={18} aria-hidden="true" />}>
+                    Create an organization
                 </Button>
             </div>
         );
     }
 
     return (
-        <div className={styles.container}>
-            <div className={styles.header}>
-                <div>
-                    <h2 className={styles.title}>Organizations</h2>
-                    <p className={styles.subtitle}>{orgs.length} organization{orgs.length !== 1 ? 's' : ''}</p>
-                </div>
-                <Button onClick={onCreateClick} variant="primary">
-                    <Plus size={18} />
-                    Create Organization
-                </Button>
-            </div>
-
-            <div className={styles.grid}>
+        <>
+            <ul className={styles.grid} aria-label="Organizations">
                 {orgs.map((org) => (
-                    <OrgCard key={org.id} org={org} onDelete={handleDelete} />
+                    <li key={org.id}>
+                        <OrgCard org={org} isCurrent={activeOrg?.id === org.id} onDelete={() => setToDelete(org)} />
+                    </li>
                 ))}
-            </div>
-        </div>
+            </ul>
+
+            {toDelete && (
+                <ConfirmDialog
+                    title="Delete organization"
+                    danger
+                    confirmLabel="Delete organization"
+                    message={
+                        <>
+                            Everyone in <strong>{toDelete.name}</strong> loses access to its classes, exams and
+                            results. Only the organization&apos;s owner can do this.
+                        </>
+                    }
+                    onConfirm={async () => {
+                        await deleteOrg(toDelete.id);
+                        setToDelete(null);
+                    }}
+                    onClose={() => setToDelete(null)}
+                />
+            )}
+        </>
     );
 }

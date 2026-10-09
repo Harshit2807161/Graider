@@ -1,18 +1,61 @@
 .container {
-    display: flex;
     min-height: 100vh;
+    min-height: 100dvh;
     background-color: var(--slate-50);
 }
 
-.main {
-    flex: 1;
-    margin-left: var(--sidebar-width);
-    min-height: 100vh;
+/* First stop for keyboard users; hidden until focused */
+.skipLink {
+    position: fixed;
+    top: var(--space-3);
+    left: var(--space-3);
+    z-index: 2000;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius);
+    background-color: var(--primary);
+    color: var(--color-surface);
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-xl);
+    transform: translateY(-200%);
+    transition: transform 0.15s ease;
 }
 
+.skipLink:focus,
+.skipLink:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid var(--color-surface);
+    outline-offset: 2px;
+}
+
+.main {
+    min-width: 0;
+}
+
+/* Focus lands here from the skip link; the content itself shows where you are */
+.main:focus {
+    outline: none;
+}
+
+/* Phone: 16px gutters */
 .content {
-    padding: 2rem;
     max-width: 80rem;
-    /* 1280px */
     margin: 0 auto;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+@media (min-width: 768px) {
+    .content {
+        padding: var(--space-8) var(--space-6);
+    }
+}
+
+@media (min-width: 1024px) {
+    .main {
+        margin-left: var(--sidebar-width);
+    }
+
+    .content {
+        padding: var(--space-8);
+    }
 }

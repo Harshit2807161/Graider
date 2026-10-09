@@ -1,99 +1,15 @@
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
-}
-
-.modal {
-    background: white;
-    border-radius: var(--radius);
-    width: 90%;
-    max-width: 500px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
-    animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--slate-200);
-}
-
-.header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--slate-900);
-    margin: 0;
-}
-
-.closeBtn {
-    background: none;
-    border: none;
-    color: var(--slate-400);
-    cursor: pointer;
-    padding: 0.5rem;
-    border-radius: var(--radius-sm);
-    transition: all 0.2s;
-}
-
-.closeBtn:hover {
-    background: var(--slate-100);
-    color: var(--slate-600);
-}
-
 .form {
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-5);
 }
 
 .error {
-    padding: 0.75rem;
-    background: var(--red-50);
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--red-50);
     border: 1px solid var(--red-200);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     color: var(--red-700);
     font-size: 0.875rem;
-}
-
-.actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding-top: 0.5rem;
+    white-space: pre-line;
 }

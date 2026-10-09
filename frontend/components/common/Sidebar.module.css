@@ -1,86 +1,277 @@
-.sidebar {
-    width: var(--sidebar-width);
-    height: 100vh;
-    position: fixed;
-    left: 0;
+/* ===== Top bar (below 1024px) ===== */
+.topbar {
+    position: sticky;
     top: 0;
-    background-color: var(--slate-900);
-    color: white;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--slate-800);
-}
-
-.logoContainer {
-    height: var(--header-height);
+    z-index: 40;
+    height: 3.5rem;
     display: flex;
     align-items: center;
-    padding: 0 1.5rem;
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+    background-color: var(--slate-900);
     border-bottom: 1px solid var(--slate-800);
 }
 
-.logo {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: white;
+.menuBtn,
+.closeBtn {
+    width: 2.75rem;
+    height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--slate-300);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.nav {
-    flex: 1;
-    padding: 1.5rem 1rem;
+.menuBtn:hover,
+.closeBtn:hover {
+    background-color: var(--slate-800);
+    color: var(--color-surface);
+}
+
+.menuBtn:focus-visible,
+.closeBtn:focus-visible,
+.navItem:focus-visible,
+.logoutBtn:focus-visible,
+.brandLink:focus-visible,
+.topbarBrand:focus-visible {
+    outline: 2px solid var(--indigo-400);
+    outline-offset: 2px;
+}
+
+.topbarBrand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 var(--space-1);
+    border-radius: var(--radius);
+}
+
+.topbarOrg {
+    margin-left: auto;
+    padding-right: var(--space-2);
+    min-width: 0;
+    max-width: 50%;
+    font-size: 0.8125rem;
+    color: var(--slate-400);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: var(--overlay-scrim);
+    backdrop-filter: blur(2px);
+    animation: fade 0.2s ease-out;
+}
+
+@keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ===== Sidebar / drawer ===== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    width: min(18rem, 85vw);
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    background-color: var(--slate-900);
+    color: var(--color-surface);
+    border-right: 1px solid var(--slate-800);
+    overflow-y: auto;
+    /* Closed drawer: off screen and out of the tab order */
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s var(--ease-out), visibility 0s linear 0.2s;
+}
+
+.open {
+    transform: translateX(0);
+    visibility: visible;
+    box-shadow: var(--shadow-xl);
+    transition: transform 0.25s var(--ease-out), visibility 0s;
+}
+
+.brandRow {
+    height: 4rem;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-3) 0 var(--space-5);
+}
+
+.brandLink {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    border-radius: var(--radius);
+}
+
+/* ----- Organization context ----- */
+.orgCard {
+    margin: 0 var(--space-4) var(--space-2);
+    padding: var(--space-3);
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    border: 1px solid var(--slate-800);
+    border-radius: 0.75rem;
+}
+
+.orgAvatar {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    background-color: var(--slate-700);
+    color: var(--slate-100);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.orgText {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.orgLabel {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate-400);
+}
+
+.orgName {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--slate-100);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.orgSkeleton {
+    width: 100%;
+    height: 2rem;
+    border-radius: var(--radius);
+    background-color: var(--slate-800);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.5; }
+}
+
+/* ----- Navigation ----- */
+.nav {
+    flex: 1;
+    padding: var(--space-4);
+}
+
+.navList {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
 }
 
 .navItem {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    gap: var(--space-3);
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
     border-radius: var(--radius);
     color: var(--slate-400);
     font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.2s;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .navItem:hover {
     background-color: var(--slate-800);
-    color: white;
+    color: var(--color-surface);
 }
 
 .active {
     background-color: var(--color-primary);
-    color: white;
+    color: var(--color-surface);
 }
 
 .active:hover {
     background-color: var(--color-primary-hover);
+    color: var(--color-surface);
 }
 
+/* ----- Sign out, kept apart from navigation ----- */
 .footer {
-    padding: 1.5rem;
+    flex-shrink: 0;
+    padding: var(--space-4);
     border-top: 1px solid var(--slate-800);
 }
 
 .logoutBtn {
     width: 100%;
+    min-height: 2.75rem;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    gap: var(--space-3);
+    padding: 0 var(--space-3);
     background: none;
     border: none;
+    border-radius: var(--radius);
     color: var(--slate-400);
     font-size: 0.875rem;
     font-weight: 500;
-    border-radius: var(--radius);
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .logoutBtn:hover {
-    background-color: rgba(244, 63, 94, 0.1);
-    /* Error color with opacity */
-    color: var(--color-error);
+    background-color: var(--slate-800);
+    color: var(--red-200);
+}
+
+/* ===== Desktop: fixed sidebar ===== */
+@media (min-width: 1024px) {
+    .topbar,
+    .backdrop,
+    .closeBtn {
+        display: none;
+    }
+
+    .sidebar {
+        width: var(--sidebar-width);
+        transform: none;
+        visibility: visible;
+        transition: none;
+        box-shadow: none;
+        z-index: 30;
+    }
 }

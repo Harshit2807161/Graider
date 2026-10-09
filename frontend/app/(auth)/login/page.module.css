@@ -1,18 +1,26 @@
 .container {
     display: flex;
     min-height: 100vh;
+    min-height: 100dvh;
     width: 100%;
+    background-color: var(--background);
 }
 
-/* Left Side */
+/* ===== Brand panel (from 1024px, on the left) ===== */
 .brandSection {
     display: none;
-    flex: 1;
-    background-color: var(--color-primary);
-    color: white;
-    padding: 4rem;
+    order: -1;
+    flex: 1 1 0;
     flex-direction: column;
-    justify-content: space-between;
+    gap: 4rem;
+    padding: 3.5rem 4rem;
+    background-color: var(--color-primary);
+    /* Faint grid, in the Swiss spirit; purely decorative */
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 2.5rem 2.5rem;
+    color: var(--color-surface);
 }
 
 @media (min-width: 1024px) {
@@ -22,59 +30,119 @@
 }
 
 .brandContent {
-    max-width: 32rem;
-}
-
-.logo {
-    font-size: 2rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
+    max-width: 30rem;
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
 }
 
 .tagline {
-    font-size: 1.5rem;
-    font-weight: 500;
-    opacity: 0.9;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.points {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.point {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+.pointIcon {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.14);
+    color: var(--color-surface);
+}
+
+.pointTitle {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
     line-height: 1.4;
 }
 
-.testimonial {
-    margin-top: auto;
-    font-style: italic;
-    opacity: 0.8;
+.pointText {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--indigo-100);
 }
 
-/* Right Side */
+/* ===== Form ===== */
 .formSection {
-    flex: 1;
+    flex: 1 1 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: white;
-    padding: 2rem;
+    padding: var(--space-8) var(--space-4);
+    background-color: var(--background);
+}
+
+@media (min-width: 768px) {
+    .formSection {
+        padding: var(--space-8);
+    }
 }
 
 .formContainer {
     width: 100%;
-    max-width: 28rem;
+    max-width: 24rem;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--space-8);
+}
+
+.mobileBrand {
+    display: flex;
 }
 
 .header {
-    text-align: center;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-2);
 }
 
 .title {
     font-size: 1.875rem;
     font-weight: 700;
-    color: var(--color-text-main);
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: var(--foreground);
 }
 
 .subtitle {
-    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+    color: var(--muted-foreground);
+}
+
+.mobileBlurb {
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--muted-foreground);
+}
+
+@media (min-width: 1024px) {
+    .mobileBrand,
+    .mobileBlurb {
+        display: none;
+    }
 }
