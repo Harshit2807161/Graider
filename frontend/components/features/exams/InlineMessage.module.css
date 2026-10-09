@@ -1,0 +1,59 @@
+.message {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    font-size: var(--text-base);
+    line-height: 1.5;
+}
+
+.icon {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.text {
+    flex: 1;
+    min-width: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.success {
+    background-color: var(--status-graded-bg);
+    color: var(--status-graded-fg);
+}
+
+.error {
+    background-color: var(--red-50);
+    border-color: var(--red-200);
+    color: var(--status-failed-fg);
+}
+
+.info {
+    background-color: var(--primary-light);
+    color: var(--indigo-800);
+}
+
+.dismiss {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: -0.0625rem -0.25rem 0 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: inherit;
+    opacity: 0.75;
+    transition: var(--transition);
+}
+
+.dismiss:hover {
+    opacity: 1;
+    background-color: var(--hover-overlay);
+}

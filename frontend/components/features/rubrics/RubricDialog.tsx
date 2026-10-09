@@ -1,18 +1,20 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, Plus, RotateCcw, ScrollText, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
+import InlineMessage from "@/components/features/exams/InlineMessage";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { rubricService } from "@/services/rubric.service";
 import { Criterion, QuestionRubricStatus, RubricKind, RubricSpecRecord, Subject } from "@/types/review.types";
-import local from "./RubricDialog.module.css";
-
-const styles = local;
+import styles from "./RubricDialog.module.css";
 
 const SUBJECTS: Subject[] = ["math", "science", "english", "history", "general"];
+const SUBJECT_LABELS: Record<Subject, string> = {
+    math: "Mathematics", science: "Science", english: "English", history: "History", general: "General",
+};
 
 interface QuestionInfo {
     id: string;
@@ -32,6 +34,7 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
 }) {
     const [record, setRecord] = useState<RubricSpecRecord | null | undefined>(undefined);
     const [error, setError] = useState<string | null>(null);
+    const [reparsing, setReparsing] = useState(false);
 
     useEffect(() => {
         rubricService.getSpec(examId, question.id)
@@ -40,30 +43,45 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
     }, [examId, question.id]);
 
     const reparse = async () => {
-        await rubricService.reparse(examId, question.id);
-        onChanged();
-        onClose();
+        setReparsing(true);
+        setError(null);
+        try {
+            await rubricService.reparse(examId, question.id);
+            onChanged();
+            onClose();
+        } catch (err) {
+            setError(getErrorMessage(err, "The rubric couldn't be parsed again"));
+            setReparsing(false);
+        }
     };
 
     return (
-        <Modal open title={`Rubric · ${question.label}`} onClose={onClose} size="lg"
-               description={<span className={local.questionText}>{question.text} ({question.maxScore} marks)</span>}>
-            {error && <p role="alert" className={styles.formError}>{error}</p>}
-            {record === undefined && !error && <p className={styles.muted} aria-live="polite">Loading…</p>}
+        <Modal open title={`Rubric · ${question.label}`} onClose={onClose} size="lg" icon={<ScrollText size={18} />}
+               description={<span className={styles.questionText}>{question.text} <span className={styles.marks}>({question.maxScore} marks)</span></span>}>
+            {error && <InlineMessage kind="error" className={styles.topMessage}>{error}</InlineMessage>}
+            {record === undefined && !error && (
+                <div className={styles.loading} aria-busy="true">
+                    <span className="sr-only" role="status">Loading…</span>
+                    <span className={styles.skeleton} />
+                    <span className={styles.skeleton} />
+                    <span className={styles.skeleton} />
+                </div>
+            )}
             {record === null && (
-                <div className={local.empty}>
+                <div className={styles.empty}>
+                    <span className={styles.emptyIcon} aria-hidden="true"><ScrollText size={22} /></span>
                     <p>
                         {status?.rubric_status === "pending" ? "The rubric is being parsed. Check back in a moment."
                             : status?.rubric_status === "error" ? `Parsing failed: ${status.rubric_error ?? "unknown error"}`
                             : "This rubric hasn't been parsed yet. It will be parsed when grading starts, or now:"}
                     </p>
-                    <Button size="sm" variant="secondary" onClick={reparse} icon={<RotateCcw size={14} aria-hidden="true" />}>
+                    <Button size="sm" variant="secondary" onClick={reparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}>
                         Parse now
                     </Button>
                 </div>
             )}
             {record && (
-                <RubricEditor key={record.id} examId={examId} question={question} record={record} onReparse={reparse}
+                <RubricEditor key={record.id} examId={examId} question={question} record={record} onReparse={reparse} reparsing={reparsing}
                               onSaved={(saved) => {
                                   setRecord(saved);
                                   onChanged();
@@ -73,12 +91,13 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
     );
 }
 
-function RubricEditor({ examId, question, record, onSaved, onReparse }: {
+function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing }: {
     examId: string;
     question: QuestionInfo;
     record: RubricSpecRecord;
     onSaved: (record: RubricSpecRecord) => void;
     onReparse: () => Promise<void>;
+    reparsing: boolean;
 }) {
     const [kind, setKind] = useState<RubricKind>(record.spec.kind);
     const [subject, setSubject] = useState<Subject>(record.spec.subject);
@@ -120,61 +139,77 @@ function RubricEditor({ examId, question, record, onSaved, onReparse }: {
 
     return (
         <div className={styles.form}>
-            <p className={styles.sectionNote}>
-                Version {record.version} · {record.source === "teacher" ? "edited by a teacher" : `parsed by ${record.model ?? "the model"}`}
+            <p className={styles.version}>
+                <span className={cn(styles.source, record.source === "teacher" && styles.sourceTeacher)}>
+                    {record.source === "teacher" ? "Teacher edit" : "AI parsed"}
+                </span>
+                Version {record.version}{record.source !== "teacher" && record.model ? ` · ${record.model}` : ""}
                 {record.spec.derived && " · derived from the question (no rubric text)"}
             </p>
             {record.spec.parser_warnings.length > 0 && (
-                <ul className={local.warnings}>
-                    {record.spec.parser_warnings.map((w, i) => <li key={i}>{w}</li>)}
-                </ul>
+                <div className={styles.warnings}>
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <ul>
+                        {record.spec.parser_warnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                </div>
             )}
-            <div className={local.row}>
+            <div className={styles.row}>
                 <label className={styles.field}>
                     <span>Kind</span>
-                    <select value={kind} onChange={(e) => setKind(e.target.value as RubricKind)} className={local.select}>
-                        <option value="criteria">Criteria (partial credit)</option>
-                        <option value="pass_fail">Pass / fail (all or nothing)</option>
-                    </select>
+                    <span className={styles.selectWrap}>
+                        <select value={kind} onChange={(e) => setKind(e.target.value as RubricKind)} className={styles.select}>
+                            <option value="criteria">Criteria (partial credit)</option>
+                            <option value="pass_fail">Pass / fail (all or nothing)</option>
+                        </select>
+                        <ChevronDown size={16} className={styles.selectIcon} aria-hidden="true" />
+                    </span>
                 </label>
                 <label className={styles.field}>
                     <span>Subject</span>
-                    <select value={subject} onChange={(e) => setSubject(e.target.value as Subject)} className={local.select}>
-                        {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <span className={styles.selectWrap}>
+                        <select value={subject} onChange={(e) => setSubject(e.target.value as Subject)} className={styles.select}>
+                            {SUBJECTS.map((s) => <option key={s} value={s}>{SUBJECT_LABELS[s]}</option>)}
+                        </select>
+                        <ChevronDown size={16} className={styles.selectIcon} aria-hidden="true" />
+                    </span>
                 </label>
-                <p className={cn(local.sum, sumOk ? local.sumOk : local.sumBad)} aria-live="polite">
-                    Points {Number(sum.toFixed(2))} of {question.maxScore}
-                    {!sumOk && <span> · must add up to the question&apos;s marks</span>}
+                <p className={cn(styles.sum, sumOk ? styles.sumOk : styles.sumBad)} aria-live="polite">
+                    {sumOk ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertTriangle size={16} aria-hidden="true" />}
+                    <span>
+                        Points <strong>{Number(sum.toFixed(2))} of {question.maxScore}</strong>
+                        {!sumOk && <span className={styles.sumNote}> · must add up to the question&apos;s marks</span>}
+                    </span>
                 </p>
             </div>
 
-            <ol className={local.criteria}>
+            <ol className={styles.criteria} aria-label="Criteria">
                 {criteria.map((c, i) => (
-                    <li key={c.id} className={local.criterion}>
-                        <div className={local.criterionHead}>
+                    <li key={c.id} className={styles.criterion}>
+                        <div className={styles.criterionHead}>
                             <span className={styles.criterionId}>{c.id}</span>
                             <button type="button" className={styles.iconButton} onClick={() => setCriteria(criteria.filter((_, j) => j !== i))}
-                                    aria-label={`Remove criterion ${c.id}`} disabled={criteria.length === 1}>
+                                    aria-label={`Remove criterion ${c.id}`} title={criteria.length === 1 ? "A rubric needs at least one criterion" : "Remove criterion"}
+                                    disabled={criteria.length === 1}>
                                 <Trash2 size={15} aria-hidden="true" />
                             </button>
                         </div>
-                        <div className={local.criterionGrid}>
-                            <label className={cn(styles.field, local.wide)}>
+                        <div className={styles.criterionGrid}>
+                            <label className={cn(styles.field, styles.wide)}>
                                 <span>What earns the points</span>
                                 <textarea rows={2} value={c.description} onChange={(e) => update(i, { description: e.target.value })} />
                             </label>
-                            <label className={styles.scoreField}>
-                                <span>Points</span>
-                                <input type="number" min={0} step={0.5} value={c.points}
-                                       onChange={(e) => update(i, { points: e.target.value === "" ? 0 : Number(e.target.value) })} />
-                            </label>
-                            <label className={styles.noteField}>
+                            <label className={styles.field}>
                                 <span>Expected answer</span>
                                 <input type="text" value={c.expected_answer ?? ""} onChange={(e) => update(i, { expected_answer: e.target.value })} />
                             </label>
-                            <label className={cn(styles.noteField, local.wide)}>
-                                <span>Notes (partial credit, accepted variants)</span>
+                            <label className={styles.field}>
+                                <span>Points</span>
+                                <input type="number" min={0} step={0.5} value={c.points} className={styles.points}
+                                       onChange={(e) => update(i, { points: e.target.value === "" ? 0 : Number(e.target.value) })} />
+                            </label>
+                            <label className={cn(styles.field, styles.wide)}>
+                                <span>Notes <span className={styles.optional}>(partial credit, accepted variants)</span></span>
                                 <input type="text" value={c.notes ?? ""} onChange={(e) => update(i, { notes: e.target.value })} />
                             </label>
                         </div>
@@ -182,8 +217,8 @@ function RubricEditor({ examId, question, record, onSaved, onReparse }: {
                 ))}
             </ol>
             {kind === "criteria" && (
-                <button type="button" className={styles.linkButton} onClick={add}>
-                    <Plus size={14} aria-hidden="true" /> Add a criterion
+                <button type="button" className={styles.addButton} onClick={add}>
+                    <Plus size={16} aria-hidden="true" /> Add a criterion
                 </button>
             )}
             <label className={styles.field}>
@@ -192,19 +227,24 @@ function RubricEditor({ examId, question, record, onSaved, onReparse }: {
             </label>
 
             {errors.length > 0 && (
-                <div role="alert" className={local.errors}>
-                    <strong>This rubric can&apos;t be used yet:</strong>
-                    <ul>{errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                <div role="alert" className={styles.errors}>
+                    <AlertTriangle size={16} aria-hidden="true" />
+                    <div>
+                        <strong>This rubric can&apos;t be used yet:</strong>
+                        <ul>{errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                    </div>
                 </div>
             )}
-            {saved && <p className={local.saved} role="status">Saved. New grading runs use this rubric.</p>}
 
-            <div className={local.actions}>
-                <Button variant="ghost" onClick={onReparse} icon={<RotateCcw size={14} aria-hidden="true" />}
+            <div className={styles.actions}>
+                <Button variant="ghost" onClick={onReparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}
                         title="Replaces the current version, including teacher edits">
                     Parse again with the model
                 </Button>
-                <Button onClick={save} isLoading={saving} disabled={criteria.length === 0}>Save rubric</Button>
+                <div className={styles.saveGroup}>
+                    {saved && <p className={styles.saved} role="status"><CheckCircle2 size={16} aria-hidden="true" /> Saved. New grading runs use this rubric.</p>}
+                    <Button onClick={save} isLoading={saving} disabled={criteria.length === 0}>Save rubric</Button>
+                </div>
             </div>
         </div>
     );

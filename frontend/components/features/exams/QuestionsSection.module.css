@@ -1,0 +1,484 @@
+/* Step 1: question list, Excel import and the add-a-question form. Layout adapts to the
+   section card's width (container "section", see SectionCard.module.css). */
+
+.subTitle {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.note {
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+}
+
+.note code {
+    font-family: var(--font-mono);
+    font-size: 0.8125em;
+    padding: 0.0625rem 0.3125rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--slate-100);
+    color: var(--slate-700);
+}
+
+/* Excel import (disclosure) */
+.importPanel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background-color: var(--secondary);
+    animation: reveal 0.2s var(--ease-out);
+}
+
+@keyframes reveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+
+.importText {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.importRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.filePicker {
+    flex: 1;
+    min-width: 14rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-1);
+    padding-right: var(--space-3);
+    border: 1px dashed var(--slate-300);
+    border-radius: var(--radius);
+    background-color: var(--card);
+}
+
+/* The native input stays in the tab order (sr-only); its label is the visible button */
+.fileInput {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.fileButton {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 2rem;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-sm);
+    background-color: var(--slate-100);
+    color: var(--slate-900);
+    font-size: var(--text-base);
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.fileButton:hover {
+    background-color: var(--slate-200);
+}
+
+.fileInput:focus-visible + .fileButton {
+    outline: 2px solid var(--indigo-600);
+    outline-offset: 2px;
+}
+
+.fileName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-base);
+    color: var(--foreground);
+}
+
+.fileNameEmpty {
+    color: var(--muted-foreground);
+}
+
+/* Question list */
+.list {
+    border-top: 1px solid var(--border);
+}
+
+.listHead,
+.row {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 5rem 11rem 8.5rem;
+    column-gap: var(--space-4);
+    align-items: center;
+    padding: 0 var(--space-3);
+}
+
+.listHead {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.right {
+    text-align: right;
+}
+
+.rows {
+    list-style: none;
+}
+
+.row {
+    min-height: 56px;
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+    transition: background-color 0.15s ease;
+}
+
+.row:hover {
+    background-color: var(--slate-50);
+}
+
+.label {
+    justify-self: start;
+    align-self: start;
+    min-width: 2.25rem;
+    padding: 0.125rem var(--space-2);
+    border-radius: var(--radius-sm);
+    background-color: var(--slate-100);
+    color: var(--slate-700);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.question {
+    min-width: 0;
+    align-self: start;
+}
+
+.questionText {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--foreground);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.rubricText {
+    display: flex;
+    gap: 0.375rem;
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.rubricText svg {
+    flex-shrink: 0;
+    margin-top: 0.1875rem;
+    color: var(--slate-400);
+}
+
+.marks {
+    text-align: right;
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+    white-space: nowrap;
+}
+
+.marksNum {
+    font-weight: 600;
+    color: var(--foreground);
+    font-variant-numeric: tabular-nums;
+}
+
+.status {
+    min-width: 0;
+}
+
+.rowActions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-1);
+}
+
+.iconButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--slate-500);
+    transition: var(--transition);
+}
+
+.iconButton:hover {
+    background-color: var(--red-50);
+    color: var(--red-700);
+}
+
+/* Empty list */
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-8) var(--space-4);
+    border: 1px dashed var(--border);
+    border-radius: 0.75rem;
+    text-align: center;
+}
+
+.emptyIcon {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: var(--space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.emptyTitle {
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+/* Add a question */
+.addToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 2.75rem;
+    margin-top: var(--space-4);
+    border: 1px dashed var(--slate-300);
+    border-radius: 0.75rem;
+    background: none;
+    color: var(--slate-600);
+    font-size: var(--text-base);
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.addToggle:hover {
+    border-color: var(--indigo-400);
+    background-color: var(--primary-light);
+    color: var(--indigo-700);
+}
+
+.addForm {
+    margin-top: var(--space-5);
+    padding: var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background-color: var(--secondary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.addGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 7rem;
+    gap: var(--space-3) var(--space-4);
+}
+
+.fieldRubric {
+    grid-column: 1 / -1;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--slate-700);
+}
+
+.optional {
+    font-weight: 400;
+    color: var(--muted-foreground);
+}
+
+.field input,
+.field textarea {
+    width: 100%;
+    padding: 0.5625rem var(--space-3);
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius);
+    background-color: var(--card);
+    font: inherit;
+    font-weight: 400;
+    color: var(--foreground);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input {
+    height: 2.5rem;
+}
+
+.field textarea {
+    resize: vertical;
+    min-height: 5.5rem;
+    line-height: 1.5;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+    color: var(--slate-400);
+}
+
+.field input:focus,
+.field textarea:focus {
+    outline: none;
+    border-color: var(--indigo-500);
+    box-shadow: var(--focus-ring);
+}
+
+.field input[type="number"] {
+    font-variant-numeric: tabular-nums;
+}
+
+.help {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--muted-foreground);
+}
+
+.addActions {
+    display: flex;
+    justify-content: flex-start;
+    gap: var(--space-2);
+}
+
+/* Footer: save state + save */
+.saveState {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+}
+
+.unsaved {
+    font-weight: 500;
+    color: var(--status-review-fg);
+}
+
+.dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--amber-500);
+}
+
+.saveActions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-left: auto;
+}
+
+/* Medium: drop the header row and fold marks/status/actions under the question */
+@container section (max-width: 46rem) {
+    .listHead {
+        display: none;
+    }
+
+    .row {
+        grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+        grid-template-areas:
+            "label question marks"
+            ". status actions";
+        row-gap: var(--space-2);
+        padding-left: var(--space-1);
+        padding-right: var(--space-1);
+    }
+
+    .label { grid-area: label; }
+    .question { grid-area: question; }
+    .status { grid-area: status; }
+    .marks { grid-area: marks; }
+    .rowActions { grid-area: actions; }
+    .marks { align-self: start; }
+    .status { align-self: center; }
+}
+
+/* Small: the question gets the full width; badge + marks, then the actions, under it */
+@container section (max-width: 32rem) {
+    .row {
+        grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+        grid-template-areas:
+            "label question question"
+            ". status marks"
+            ". actions actions";
+    }
+
+    .marks { align-self: center; }
+
+    .addGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .addActions > * {
+        flex: 1;
+    }
+
+    .saveActions {
+        width: 100%;
+    }
+
+    .saveActions > button {
+        width: 100%;
+    }
+
+    .rowButton {
+        flex: 1;
+        min-height: 2.5rem;
+    }
+
+    .iconButton {
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 1px solid var(--border);
+    }
+
+    .importRow > button {
+        width: 100%;
+    }
+}

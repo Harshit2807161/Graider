@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
+import { AlertCircle, Calendar, ClipboardCheck, ListChecks, Send, SlidersHorizontal, Trophy } from "lucide-react";
+import type { AxiosError } from "axios";
 import { getErrorMessage } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { examService } from "@/services/exam.service";
 import { reviewService } from "@/services/review.service";
 import { rubricService } from "@/services/rubric.service";
@@ -11,75 +13,58 @@ import { Exam, QuestionSync, Submission, SubmissionStatus } from "@/types/exam.t
 import { QuestionRubricStatus } from "@/types/review.types";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import StatusBadge from "@/components/ui/StatusBadge";
+import ButtonLink from "@/components/common/ButtonLink";
+import PageHeader from "@/components/common/PageHeader";
+import AnswerSheetsSection from "@/components/features/exams/AnswerSheetsSection";
+import ExamProgress from "@/components/features/exams/ExamProgress";
+import InlineMessage from "@/components/features/exams/InlineMessage";
+import QuestionsSection, { RubricTarget } from "@/components/features/exams/QuestionsSection";
+import SectionCard from "@/components/features/exams/SectionCard";
 import GradingSettingsPanel from "@/components/features/review/GradingSettingsPanel";
 import RubricDialog from "@/components/features/rubrics/RubricDialog";
+import styles from "./page.module.css";
 
 const IN_PROGRESS: SubmissionStatus[] = ["PENDING", "PROCESSING"];
 const POLL_INTERVAL_MS = 3000;
 
-/** A question's rubric state, in the same badge language as submissions. */
-const RUBRIC_BADGES: Record<QuestionRubricStatus["rubric_status"], { status: SubmissionStatus; label: string }> = {
-    ready: { status: "GRADED", label: "Rubric ready" },
-    pending: { status: "PROCESSING", label: "Parsing rubric" },
-    invalid: { status: "NEEDS_REVIEW", label: "Rubric needs fixing" },
-    error: { status: "FAILED", label: "Rubric parsing failed" },
-    missing: { status: "PENDING", label: "Rubric not parsed yet" },
-};
-
-const panelStyle: React.CSSProperties = {
-    backgroundColor: "#ffffff",
-    padding: "2rem",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-};
-
+/** One exam's workspace: questions & rubrics → grade answer sheets → review → publish. */
 export default function ExamDetailsPage() {
     const params = useParams();
     const examId = params.id as string;
-    const router = useRouter();
     const [exam, setExam] = useState<Exam | null>(null);
     const [questions, setQuestions] = useState<QuestionSync[]>([]);
+    const [dirty, setDirty] = useState(false);
     const [loading, setLoading] = useState(true);
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
-
-    const [newText, setNewText] = useState("");
-    const [newMaxScore, setNewMaxScore] = useState(10);
-    const [newRubric, setNewRubric] = useState("");
-    const [savingQuestions, setSavingQuestions] = useState(false);
-
-    // Answer sheet upload
-    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [uploading, setUploading] = useState(false);
-
-    // Excel question import
-    const [excelFile, setExcelFile] = useState<File | null>(null);
-    const [uploadingExcel, setUploadingExcel] = useState(false);
+    const [notFound, setNotFound] = useState(false);
 
     const [submissions, setSubmissions] = useState<Submission[]>([]);
 
     // Parsed rubrics, the one being viewed, and publishing
     const [rubricStatus, setRubricStatus] = useState<QuestionRubricStatus[]>([]);
-    const [rubricQuestion, setRubricQuestion] = useState<{ id: string; label: string; text: string; maxScore: number } | null>(null);
+    const [rubricQuestion, setRubricQuestion] = useState<RubricTarget | null>(null);
     const [confirmPublish, setConfirmPublish] = useState(false);
     const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchExamAndQuestions = async () => {
-            if (!examId) return;
-            try {
-                const data = await examService.getExam(examId);
-                setExam(data);
-                setQuestions(data.questions || []);
-            } catch (err) {
-                setErrorDetails(getErrorMessage(err, "Failed to load exam"));
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchExamAndQuestions();
+    const loadExam = useCallback(async () => {
+        if (!examId) return;
+        try {
+            const data = await examService.getExam(examId);
+            setExam(data);
+            setQuestions(data.questions || []);
+            setDirty(false);
+            setErrorDetails(null);
+        } catch (err) {
+            setNotFound((err as AxiosError)?.response?.status === 404);
+            setErrorDetails(getErrorMessage(err, "Failed to load exam"));
+        } finally {
+            setLoading(false);
+        }
     }, [examId]);
+
+    useEffect(() => {
+        loadExam();
+    }, [loadExam]);
 
     const refreshSubmissions = useCallback(async () => {
         try {
@@ -121,276 +106,104 @@ export default function ExamDetailsPage() {
         return () => clearInterval(timer);
     }, [anyParsing, refreshRubrics]);
 
-    const handleAddQuestionLocal = () => {
-        if (!newText.trim()) return;
-        const q: QuestionSync = {
-            question_text: newText.trim(),
-            max_score: newMaxScore,
-            rubric_criteria: newRubric.trim() || undefined,
-            order_index: questions.length + 1,
-            question_type: "descriptive",
-        };
-        setQuestions([...questions, q]);
-        setNewText("");
-        setNewRubric("");
-    };
-
-    const handleRemoveQuestionLocal = (index: number) => {
-        setQuestions(
-            questions
-                .filter((_, i) => i !== index)
-                .map((q, i) => ({ ...q, order_index: i + 1 }))
+    if (loading) {
+        return (
+            <div className={styles.page} aria-busy="true">
+                <span className="sr-only" role="status">Loading exam…</span>
+                <div className={styles.skeletonHeader}>
+                    <span className={cn(styles.skeleton, styles.skCrumb)} />
+                    <span className={cn(styles.skeleton, styles.skTitle)} />
+                    <span className={cn(styles.skeleton, styles.skLine)} />
+                </div>
+                <span className={cn(styles.skeleton, styles.skProgress)} />
+                <span className={cn(styles.skeleton, styles.skSection)} />
+                <span className={cn(styles.skeleton, styles.skSection)} />
+            </div>
         );
-    };
+    }
 
-    const handleSaveQuestions = async () => {
-        setSavingQuestions(true);
-        try {
-            const payload: QuestionSync[] = questions.map((q) => ({
-                id: q.id,
-                question_text: q.question_text,
-                order_index: q.order_index,
-                max_score: q.max_score,
-                rubric_criteria: q.rubric_criteria,
-                question_type: q.question_type,
-            }));
-            // Keep the returned ids so saving again updates instead of duplicating
-            setQuestions(await examService.syncQuestions(examId, payload));
-            await refreshRubrics();
-            alert("Questions saved.");
-        } catch (err) {
-            alert(`Failed to save questions: ${getErrorMessage(err)}`);
-        } finally {
-            setSavingQuestions(false);
-        }
-    };
+    if (errorDetails || !exam) {
+        return (
+            <div className={styles.page}>
+                <PageHeader title="Exam" breadcrumbs={[{ label: "Exams", href: "/dashboard/exams" }, { label: "Exam" }]} />
+                <div className={styles.errorBanner} role="alert">
+                    <AlertCircle size={20} aria-hidden="true" />
+                    <div className={styles.errorText}>
+                        <p className={styles.errorTitle}>{notFound || !errorDetails ? "Exam not found" : "This exam couldn't be loaded"}</p>
+                        <p>{notFound || !errorDetails ? "It may have been deleted, or the link is wrong." : errorDetails}</p>
+                    </div>
+                    {notFound || !errorDetails
+                        ? <ButtonLink href="/dashboard/exams" variant="outline" size="sm">Back to exams</ButtonLink>
+                        : <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadExam(); }}>Try again</Button>}
+                </div>
+            </div>
+        );
+    }
 
-    const handleUploadExcel = async () => {
-        if (!excelFile) return;
-        setUploadingExcel(true);
-        try {
-            const created = await examService.importQuestions(examId, excelFile);
-            alert(`Imported ${created.length} questions from Excel.`);
-            const examData = await examService.getExam(examId);
-            setQuestions(examData.questions || []);
-            await refreshRubrics();
-        } catch (err) {
-            alert(`Failed to import questions:\n${getErrorMessage(err)}`);
-        } finally {
-            setUploadingExcel(false);
-            setExcelFile(null);
-            const fileInput = document.getElementById("excel-upload-input") as HTMLInputElement | null;
-            if (fileInput) fileInput.value = "";
-        }
-    };
-
-    const handleUploadSubmission = async () => {
-        if (selectedFiles.length === 0) return;
-        setUploading(true);
-        try {
-            await examService.uploadSubmission(examId, selectedFiles);
-            setSelectedFiles([]);
-            const fileInput = document.getElementById("submission-upload-input") as HTMLInputElement | null;
-            if (fileInput) fileInput.value = "";
-            await refreshSubmissions();
-        } catch (err) {
-            alert(`Failed to upload answer sheet: ${getErrorMessage(err)}`);
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleRegrade = async (submission: Submission) => {
-        try {
-            await examService.regradeSubmission(submission.id);
-            await refreshSubmissions();
-        } catch (err) {
-            alert(`Failed to regrade: ${getErrorMessage(err)}`);
-        }
-    };
-
-    if (loading) return <div style={{ padding: "3rem", color: "#64748b" }}>Loading exam...</div>;
-    if (errorDetails) return <div style={{ padding: "3rem", color: "#ef4444" }}><strong>Error:</strong> {errorDetails}</div>;
-    if (!exam) return <div style={{ padding: "3rem", color: "#ef4444" }}>Exam not found.</div>;
-
-    const rubricById = new Map(rubricStatus.map((r) => [r.question_id, r]));
     const approvedCount = submissions.filter((s) => s.status === "APPROVED").length;
     const reviewCount = submissions.filter((s) => s.status === "NEEDS_REVIEW").length;
+    const totalMarks = questions.reduce((t, q) => t + (Number(q.max_score) || 0), 0);
+    const created = new Date(exam.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
     return (
-        <div style={{ padding: "3rem", maxWidth: "900px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
-                <div>
-                    <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#0f172a" }}>{exam.name}</h1>
-                    <p style={{ color: "#64748b", marginTop: "0.25rem" }}>{exam.description}</p>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    <Button variant="secondary" onClick={() => router.push("/dashboard/exams")}>Back to Exams</Button>
-                    <Button variant="secondary" onClick={() => router.push(`/dashboard/exams/${examId}/review`)}>
-                        Review queue{reviewCount > 0 ? ` (${reviewCount})` : ""}
-                    </Button>
-                    <Button onClick={() => setConfirmPublish(true)} disabled={approvedCount === 0}
-                            title={approvedCount === 0 ? "Approve answer sheets first" : undefined}>
-                        Publish approved ({approvedCount})
-                    </Button>
-                </div>
-            </div>
-            {publishMessage && <p role="status" style={{ color: "#166534" }}>{publishMessage}</p>}
+        <div className={styles.page}>
+            <PageHeader
+                breadcrumbs={[{ label: "Exams", href: "/dashboard/exams" }, { label: exam.name }]}
+                title={exam.name}
+                subtitle={
+                    <>
+                        {exam.description}
+                        <span className={styles.meta}>
+                            <span><ListChecks size={15} aria-hidden="true" />{questions.length} {questions.length === 1 ? "question" : "questions"}</span>
+                            <span><Trophy size={15} aria-hidden="true" />{totalMarks} marks</span>
+                            <span><Calendar size={15} aria-hidden="true" />Created {created}</span>
+                        </span>
+                    </>
+                }
+                actions={
+                    <>
+                        <ButtonLink href={`/dashboard/exams/${examId}/review`} variant="outline" icon={<ClipboardCheck size={16} />} className={styles.headerAction}>
+                            Review queue
+                            {reviewCount > 0 && <span className={styles.countReview}><span className="sr-only">(</span>{reviewCount}<span className="sr-only">)</span></span>}
+                        </ButtonLink>
+                        <Button onClick={() => setConfirmPublish(true)} disabled={approvedCount === 0} className={styles.headerAction}
+                                icon={<Send size={16} aria-hidden="true" />}
+                                title={approvedCount === 0 ? "Approve answer sheets first" : undefined}>
+                            Publish approved{" "}
+                            <span className={styles.countPrimary}><span className="sr-only">(</span>{approvedCount}<span className="sr-only">)</span></span>
+                        </Button>
+                    </>
+                }
+            />
+            <div className={styles.sections}>
+            {publishMessage && (
+                <InlineMessage kind="success" onDismiss={() => setPublishMessage(null)}>{publishMessage}</InlineMessage>
+            )}
 
-            <div style={panelStyle}>
-                <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1.5rem", color: "#1e293b" }}>1. Questions</h2>
+            <ExamProgress questions={questions} dirty={dirty} rubrics={rubricStatus} submissions={submissions} />
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem", backgroundColor: "#f8fafc", padding: "1.5rem", borderRadius: "8px" }}>
-                    <div style={{ display: "flex", gap: "1rem" }}>
-                        <input
-                            placeholder="Question text"
-                            value={newText}
-                            onChange={e => setNewText(e.target.value)}
-                            style={{ flex: 1, padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-                        />
-                        <input
-                            type="number"
-                            min={0}
-                            placeholder="Max Score"
-                            title="Max Score"
-                            value={newMaxScore}
-                            onChange={e => setNewMaxScore(Number(e.target.value))}
-                            style={{ width: "120px", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-                        />
-                    </div>
-                    <textarea
-                        placeholder="Rubric: one expected point per line"
-                        value={newRubric}
-                        onChange={e => setNewRubric(e.target.value)}
-                        style={{ padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", minHeight: "100px", fontFamily: "inherit" }}
-                    />
-                    <Button onClick={handleAddQuestionLocal} style={{ alignSelf: "flex-start" }}>Add to List</Button>
-                </div>
+            <QuestionsSection
+                examId={examId}
+                questions={questions}
+                dirty={dirty}
+                rubrics={rubricStatus}
+                onEdit={(next) => { setQuestions(next); setDirty(true); }}
+                onSaved={(next) => { setQuestions(next); setDirty(false); }}
+                onRubricsChanged={refreshRubrics}
+                onOpenRubric={setRubricQuestion}
+            />
 
-                <div style={{ marginBottom: "1.5rem" }}>
-                    <h3 style={{ fontWeight: "600", marginBottom: "1rem", color: "#334155" }}>Questions ({questions.length}):</h3>
-                    {questions.length === 0 ? (
-                        <p style={{ color: "#94a3b8", fontStyle: "italic" }}>No questions added yet.</p>
-                    ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                            {questions.map((q, idx) => {
-                                const rubric = q.id ? rubricById.get(q.id) : undefined;
-                                const label = rubric?.label ?? `Q${idx + 1}`;
-                                return (
-                                <div key={q.id ?? `new-${idx}`} style={{ padding: "1rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc" }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", marginBottom: "0.5rem" }}>
-                                        <strong style={{ color: "#0f172a" }}>{label}. {q.question_text}</strong>
-                                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
-                                            <span style={{ backgroundColor: "#e0e7ff", color: "#4f46e5", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem", fontWeight: "500" }}>{q.max_score} points</span>
-                                            {rubric && <StatusBadge {...RUBRIC_BADGES[rubric.rubric_status]} />}
-                                            {q.id && (
-                                                <Button size="sm" variant="secondary"
-                                                        onClick={() => setRubricQuestion({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
-                                                    Rubric
-                                                </Button>
-                                            )}
-                                            <Button size="sm" variant="ghost" onClick={() => handleRemoveQuestionLocal(idx)}>Remove</Button>
-                                        </div>
-                                    </div>
-                                    {q.rubric_criteria && (
-                                        <p style={{ fontSize: "0.875rem", color: "#64748b", whiteSpace: "pre-line" }}>Rubric: {q.rubric_criteria}</p>
-                                    )}
-                                </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+            <AnswerSheetsSection examId={examId} submissions={submissions} canUpload={questions.length > 0}
+                                 onChanged={refreshSubmissions} />
 
-                <Button onClick={handleSaveQuestions} disabled={savingQuestions} style={{ backgroundColor: "#10b981", color: "white" }}>
-                    {savingQuestions ? "Saving..." : "Save Questions"}
-                </Button>
-            </div>
-
-            <div style={panelStyle}>
-                <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1rem", color: "#1e293b" }}>Import Questions from Excel (.xlsx)</h2>
-                <p style={{ marginBottom: "1.5rem", color: "#64748b" }}>
-                    Required columns: <strong>question_text</strong> and <strong>max_score</strong>. Optional: <em>rubric_criteria</em> and <em>question_type</em>. Imported questions are added after the existing ones; if any row is invalid, nothing is imported.
-                </p>
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                    <input
-                        id="excel-upload-input"
-                        type="file"
-                        accept=".xlsx, .xls"
-                        onChange={e => setExcelFile(e.target.files?.[0] || null)}
-                        style={{ padding: "0.5rem", border: "1px dashed #cbd5e1", borderRadius: "8px", flex: 1 }}
-                    />
-                    <Button onClick={handleUploadExcel} disabled={uploadingExcel || !excelFile} style={{ backgroundColor: "#3b82f6", color: "white" }}>
-                        {uploadingExcel ? "Importing..." : "Import"}
-                    </Button>
-                </div>
-            </div>
-
-            <div style={panelStyle}>
-                <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1rem", color: "#1e293b" }}>2. Grade Answer Sheets</h2>
-                <p style={{ marginBottom: "1.5rem", color: "#64748b" }}>
-                    Upload one student&apos;s answers: a PDF, Word document, photos (JPEG, PNG, HEIC…) or text. Several files (e.g. one photo per page) are graded together, in the order selected.
-                </p>
-
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "2rem" }}>
-                    <input
-                        id="submission-upload-input"
-                        type="file"
-                        multiple
-                        accept=".pdf,.docx,.doc,.odt,.rtf,.pptx,.txt,.md,.jpg,.jpeg,.png,.webp,.heic,.heif,.tif,.tiff,.gif,.bmp"
-                        onChange={e => setSelectedFiles(Array.from(e.target.files ?? []))}
-                        style={{ padding: "0.5rem", border: "1px dashed #cbd5e1", borderRadius: "8px", flex: 1 }}
-                    />
-                    <Button onClick={handleUploadSubmission} disabled={uploading || selectedFiles.length === 0 || questions.length === 0}>
-                        {uploading ? "Uploading..." : "Upload & Grade"}
-                    </Button>
-                </div>
-
-                {submissions.length === 0 ? (
-                    <p style={{ color: "#94a3b8", fontStyle: "italic" }}>No answer sheets uploaded yet.</p>
-                ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                        {submissions.map((s) => (
-                            <div key={s.id} style={{ border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                                        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                                            <StatusBadge status={s.status} />
-                                            <span style={{ color: "#64748b", fontSize: "0.875rem" }}>{new Date(s.created_at).toLocaleString()}</span>
-                                        </div>
-                                        {s.current_step && (
-                                            <span style={{ color: s.status === "FAILED" ? "#b91c1c" : "#64748b", fontSize: "0.875rem" }}>{s.current_step}</span>
-                                        )}
-                                    </div>
-                                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
-                                        {s.total_score != null && s.max_score != null && (
-                                            <strong style={{ color: "#0f172a" }}>{s.total_score} / {s.max_score}</strong>
-                                        )}
-                                        {s.status === "FAILED" && (
-                                            <Button size="sm" variant="ghost" onClick={() => handleRegrade(s)}>Regrade</Button>
-                                        )}
-                                        {!IN_PROGRESS.includes(s.status) && (
-                                            <Link href={`/dashboard/exams/${examId}/submissions/${s.id}`}
-                                                  style={{ fontWeight: 600, color: "#4338ca", fontSize: "0.875rem" }}>
-                                                {s.status === "NEEDS_REVIEW" ? "Review" : "Open"}
-                                            </Link>
-                                        )}
-                                    </div>
-                                </div>
-
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div style={panelStyle}>
-                <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1rem", color: "#1e293b" }}>Grading settings</h2>
+            <SectionCard icon={<SlidersHorizontal size={18} />} title="Grading settings"
+                         description="New grading runs use these settings; answer sheets already graded keep their grades.">
                 <GradingSettingsPanel examId={examId} />
+            </SectionCard>
             </div>
 
             {rubricQuestion && (
-                <RubricDialog examId={examId} question={rubricQuestion} status={rubricById.get(rubricQuestion.id)}
+                <RubricDialog examId={examId} question={rubricQuestion} status={rubricStatus.find((r) => r.question_id === rubricQuestion.id)}
                               onClose={() => setRubricQuestion(null)} onChanged={refreshRubrics} />
             )}
             {confirmPublish && (
