@@ -334,3 +334,30 @@ async def test_the_timeline_shows_runs_calls_versions_and_actions_in_order(fake_
     add_member(db, make_user(db, "admin@school.test"), school["org"], Role.ADMIN)
     calls = [e for e in client.get(url, headers=login(client, "admin@school.test")).json() if e["type"] == "llm_call"]
     assert all("request" in e["data"] and "response" in e["data"] for e in calls)
+
+
+async def test_students_see_only_their_own_published_scores_and_feedback(fake_llm, db, school, tmp_path, client):
+    submission = await graded(db, school, tmp_path)
+    row = db.get(Submission, submission.id)
+    row.student_membership_id = school["student_m"].id
+    db.add(row)
+    db.commit()
+    add_member(db, make_user(db, "classmate@school.test"), school["org"], Role.STUDENT)
+    url = f"{API}/submissions/{submission.id}"
+    student, teacher = login(client, "student@school.test"), login(client, "teacher@school.test")
+
+    assert client.get(url, headers=student).status_code == 404  # graded, not published
+    client.post(f"{url}/approve", headers=teacher)
+    assert client.get(url, headers=student).status_code == 404  # approved, not published
+    client.post(f"{API}/exams/{school['exam'].id}/publish", headers=teacher)
+
+    view = client.get(url, headers=student).json()
+    assert set(view) == {"id", "exam_id", "status", "total_score", "max_score", "percentage", "answers"}
+    assert [(a["label"], a["score"], a["max_score"], a["counted"]) for a in view["answers"]] == [
+        ("Q1", 4, 4, True), ("Q2", 6, 6, True)]
+    assert set(view["answers"][0]) == {"question_id", "label", "question_text", "score", "max_score", "counted",
+                                       "feedback"}
+    assert client.get(url, headers=login(client, "classmate@school.test")).status_code == 404
+
+    full = client.get(url, headers=teacher).json()
+    assert "original_file_url" in full and full["answers"][0]["reasoning"] and full["answers"][0]["status"] == "graded"

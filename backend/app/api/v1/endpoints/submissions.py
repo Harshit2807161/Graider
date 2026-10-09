@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from uuid import UUID, uuid4
 
 import structlog
@@ -10,7 +10,17 @@ from app.api import deps
 from app.core.config import settings
 from app.core.constants import Role, SubmissionStatus
 from app.models.user import User, Membership
-from app.schemas.exam import SubmissionAnswerRead, SubmissionRead, SubmissionWithAnswers
+from app.grading.persist import current
+from app.models.exam import Submission
+from app.models.grading import AnswerGrade
+from app.schemas.exam import (
+    StudentAnswerView,
+    StudentSubmissionView,
+    SubmissionAnswerRead,
+    SubmissionRead,
+    SubmissionWithAnswers,
+)
+from app.services.labels import exam_labels
 from app.audit.runs import create_run
 from app.api.uploads import validated
 from app.ingestion.service import store_upload
@@ -124,7 +134,7 @@ def list_submissions(
     return crud.submission.get_by_exam(db, exam_id=exam_id, skip=skip, limit=limit)
 
 
-@router.get("/submissions/{submission_id}", response_model=SubmissionWithAnswers)
+@router.get("/submissions/{submission_id}", response_model=Union[SubmissionWithAnswers, StudentSubmissionView])
 def read_submission(
     *,
     db: Session = Depends(deps.get_session),
@@ -132,7 +142,8 @@ def read_submission(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """
-    Get a specific submission with its graded answers.
+    Get a submission with its graded answers. Students see only their own, once published, and only
+    the scores and feedback.
     """
     submission = crud.submission.get(db, id=submission_id)
     if not submission:
@@ -143,18 +154,32 @@ def read_submission(
         raise HTTPException(status_code=404, detail="Submission not found")
 
     membership = deps.require_org_role(db, user=current_user, org_id=exam.org_id)
-    # Students may only see their own submission
-    if (
-        membership is not None
-        and membership.role == Role.STUDENT
-        and submission.student_membership_id != membership.id
-    ):
-        raise HTTPException(status_code=404, detail="Submission not found")
+    if membership is not None and membership.role == Role.STUDENT:
+        if submission.student_membership_id != membership.id or submission.status != SubmissionStatus.PUBLISHED:
+            raise HTTPException(status_code=404, detail="Submission not found")
+        return _student_view(db, submission)
 
     answers = crud.submission_answer.get_by_submission(db, submission_id=submission_id)
     return SubmissionWithAnswers(
         **SubmissionRead.model_validate(submission).model_dump(),
         answers=[SubmissionAnswerRead.model_validate(a) for a in answers],
+    )
+
+
+def _student_view(db: Session, submission: Submission) -> StudentSubmissionView:
+    questions = crud.question.get_by_exam(db, exam_id=submission.exam_id)
+    grades = current(db, AnswerGrade, submission.id)
+    answers = []
+    for label, q in zip(exam_labels(questions), questions):
+        grade = grades.get(q.id)
+        if grade is not None:
+            answers.append(StudentAnswerView(
+                question_id=q.id, label=label, question_text=q.question_text, score=grade.score,  # type: ignore[attr-defined]
+                max_score=q.max_score, counted=grade.counted, feedback=grade.feedback,  # type: ignore[attr-defined]
+            ))
+    return StudentSubmissionView(
+        id=submission.id, exam_id=submission.exam_id, status=submission.status, total_score=submission.total_score,
+        max_score=submission.max_score, percentage=submission.percentage, answers=answers,
     )
 
 

@@ -92,6 +92,8 @@ class SubmissionAnswerBase(BaseModel):
 class SubmissionAnswerRead(SubmissionAnswerBase):
     id: UUID
     submission_id: UUID
+    status: Optional[str] = None  # graded / escalated / not_attempted
+    escalation_reason: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -134,3 +136,25 @@ class GradingSettingsUpdate(BaseModel):
     agreement_threshold: Optional[float] = Field(default=None, ge=0.5, le=1.0)
     spot_check_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     choice_policy: Optional[Literal["best", "first"]] = None
+
+
+class StudentAnswerView(BaseModel):
+    question_id: UUID
+    label: str
+    question_text: str
+    score: Optional[float] = None
+    max_score: float
+    counted: bool = True  # False for an extra alternative of a choice question
+    feedback: Optional[str] = None
+
+
+class StudentSubmissionView(BaseModel):
+    """What a student sees of their own published submission: scores and feedback, not the grading
+    internals (transcripts, evaluator rounds, escalations, models)."""
+    id: UUID
+    exam_id: UUID
+    status: SubmissionStatus
+    total_score: Optional[float] = None
+    max_score: Optional[float] = None
+    percentage: Optional[float] = None
+    answers: List[StudentAnswerView] = []
