@@ -4,7 +4,8 @@ import React, { useCallback, useEffect, useId, useState } from "react";
 import { batchService } from "@/services/batch.service";
 import { getErrorMessage } from "@/lib/api";
 import { Student } from "@/types/batch.types";
-import { AlertCircle, RotateCw, Search, Upload, Users } from "lucide-react";
+import { Search, Upload, Users } from "lucide-react";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import styles from "./StudentListModal.module.css";
@@ -123,13 +124,7 @@ export default function StudentListModal({
                     ))}
                 </div>
             ) : error ? (
-                <div className={styles.errorBanner} role="alert">
-                    <AlertCircle size={18} aria-hidden="true" />
-                    <span className={styles.errorText}>{error}</span>
-                    <Button onClick={loadStudents} variant="outline" size="sm" icon={<RotateCw size={14} aria-hidden="true" />}>
-                        Try again
-                    </Button>
-                </div>
+                <ErrorBanner title="The roster couldn't be loaded" detail={error} onRetry={loadStudents} />
             ) : students.length === 0 ? (
                 <div className={styles.emptyState}>
                     <span className={styles.emptyIcon} aria-hidden="true"><Users size={24} /></span>

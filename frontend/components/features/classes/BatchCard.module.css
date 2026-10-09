@@ -8,13 +8,12 @@
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease;
 }
 
+/* The card itself isn't a link, so it doesn't lift */
 .card:hover {
     border-color: var(--slate-300);
-    box-shadow: var(--shadow-card-hover);
-    transform: translateY(-2px);
 }
 
 @media (min-width: 768px) {

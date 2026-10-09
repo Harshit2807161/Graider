@@ -68,25 +68,6 @@
     50% { opacity: 0.55; }
 }
 
-/* ===== Error ===== */
-.errorBanner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    background-color: var(--red-50);
-    border: 1px solid var(--red-200);
-    border-radius: 0.75rem;
-    color: var(--red-700);
-    font-size: 0.875rem;
-}
-
-.errorText {
-    flex: 1;
-    min-width: 12rem;
-}
-
 /* ===== Empty (dashed card + round icon + one action) ===== */
 .empty {
     display: flex;

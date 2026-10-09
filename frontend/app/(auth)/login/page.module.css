@@ -12,8 +12,8 @@
     order: -1;
     flex: 1 1 0;
     flex-direction: column;
-    gap: 4rem;
-    padding: 3.5rem 4rem;
+    gap: var(--space-8);
+    padding: 3rem 4rem;
     background-color: var(--color-primary);
     /* Faint grid, in the Swiss spirit; purely decorative */
     background-image:
@@ -37,6 +37,134 @@
     gap: var(--space-8);
 }
 
+/* ----- A graded answer, drawn with the app's own pieces ----- */
+.glimpse {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 26rem;
+}
+
+.glimpseCard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-lg);
+    background-color: var(--card);
+    color: var(--foreground);
+    box-shadow: var(--shadow-xl);
+}
+
+.glimpseHead {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 0.875rem;
+}
+
+.glimpseLabel {
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--primary-light);
+    color: var(--primary);
+    font-size: var(--text-xs);
+    font-weight: 700;
+}
+
+.glimpseQuestion {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.glimpseScore {
+    color: var(--muted-foreground);
+    font-variant-numeric: tabular-nums;
+}
+
+.glimpseScore strong {
+    font-size: 1.125rem;
+    color: var(--foreground);
+}
+
+.glimpseTranscript {
+    padding: var(--space-3);
+    border-radius: var(--radius);
+    background-color: var(--slate-50);
+    border: 1px solid var(--border-light);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--slate-700);
+}
+
+.glimpseTranscript mark {
+    padding: 0 0.125rem;
+    border-radius: 0.125rem;
+    background-color: var(--evidence-bg);
+    color: var(--foreground);
+}
+
+.glimpseChecks {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    font-size: 0.8125rem;
+    color: var(--slate-600);
+}
+
+.glimpseChecks li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.glimpseChecks svg {
+    color: var(--grader-color);
+}
+
+.glimpseChecks .glimpseAgree svg {
+    color: var(--evaluator-color);
+}
+
+/* The escalation, tucked under the card and offset to the right */
+.glimpseFlag {
+    align-self: flex-end;
+    width: 85%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: 0.75rem;
+    background-color: var(--card);
+    box-shadow: var(--shadow-xl);
+    font-size: 0.8125rem;
+    color: var(--muted-foreground);
+}
+
+.glimpseFlag strong {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--foreground);
+}
+
+.glimpseFlagIcon {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    background-color: var(--status-review-bg);
+    color: var(--status-review-fg);
+}
+
 .tagline {
     font-size: 2rem;
     font-weight: 700;
@@ -49,7 +177,7 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
 }
 
 .point {
@@ -66,13 +194,13 @@
     align-items: center;
     justify-content: center;
     border-radius: 0.75rem;
-    background-color: rgba(255, 255, 255, 0.14);
+    background-color: var(--on-primary-subtle);
     color: var(--color-surface);
 }
 
 .pointTitle {
     display: block;
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 600;
     line-height: 1.4;
 }
@@ -80,9 +208,16 @@
 .pointText {
     display: block;
     margin-top: 0.125rem;
-    font-size: 0.9375rem;
-    line-height: 1.55;
+    font-size: 0.875rem;
+    line-height: 1.5;
     color: var(--indigo-100);
+}
+
+/* Short laptop screens: the titles say enough */
+@media (max-height: 820px) {
+    .pointText {
+        display: none;
+    }
 }
 
 /* ===== Form ===== */
@@ -130,6 +265,14 @@
 .subtitle {
     font-size: 0.9375rem;
     color: var(--muted-foreground);
+}
+
+.help {
+    margin-top: calc(-1 * var(--space-4));
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--muted-foreground);
+    text-align: center;
 }
 
 .mobileBlurb {

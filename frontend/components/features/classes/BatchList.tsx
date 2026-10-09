@@ -6,7 +6,8 @@ import { Batch } from "@/types/batch.types";
 import BatchCard from "./BatchCard";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { Plus, AlertCircle, GraduationCap, RotateCw } from "lucide-react";
+import ErrorBanner from "@/components/common/ErrorBanner";
+import { Plus, GraduationCap } from "lucide-react";
 import styles from "./BatchList.module.css";
 
 interface BatchListProps {
@@ -37,17 +38,9 @@ export default function BatchList({ onCreateClick, onRetry, orgName }: BatchList
     }
 
     if (error) {
-        return (
-            <div className={styles.errorBanner} role="alert">
-                <AlertCircle size={18} aria-hidden="true" />
-                <span className={styles.errorText}>{error}</span>
-                {onRetry && (
-                    <Button variant="outline" size="sm" onClick={onRetry} icon={<RotateCw size={14} aria-hidden="true" />}>
-                        Try again
-                    </Button>
-                )}
-            </div>
-        );
+        // The context's own fallback only repeats the title
+        const detail = error === "Failed to load classes" ? null : error;
+        return <ErrorBanner title="The classes couldn't be loaded" detail={detail} onRetry={onRetry} />;
     }
 
     if (batches.length === 0) {

@@ -4,12 +4,12 @@ import React from "react";
 import Link from "next/link";
 import { Org } from "@/types/org.types";
 import { useOrgs } from "@/hooks/useOrgs";
-import { ArrowRight, Building2, Trash2 } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Building2, Trash2 } from "lucide-react";
 import styles from "./OrgCard.module.css";
 
 interface OrgCardProps {
     org: Org;
-    /** The organization you're working in (shown in the sidebar) */
+    /** The organization you're working in (shown in the sidebar); the others offer a Switch */
     isCurrent?: boolean;
     onDelete?: () => void;
 }
@@ -30,7 +30,7 @@ export default function OrgCard({ org, isCurrent = false, onDelete }: OrgCardPro
                     <Building2 size={24} />
                 </span>
                 <div className={styles.info}>
-                    <h3 id={titleId} className={styles.name}>{org.name}</h3>
+                    <h2 id={titleId} className={styles.name}>{org.name}</h2>
                     <p className={styles.slug}>@{org.slug}</p>
                 </div>
                 {onDelete && (
@@ -62,6 +62,12 @@ export default function OrgCard({ org, isCurrent = false, onDelete }: OrgCardPro
                     Exams <ArrowRight size={14} aria-hidden="true" />
                     <span className="sr-only"> in {org.name}</span>
                 </Link>
+                {!isCurrent && (
+                    <button type="button" className={styles.switchBtn} onClick={select}>
+                        <ArrowLeftRight size={14} aria-hidden="true" />
+                        Switch<span className="sr-only"> to {org.name}</span>
+                    </button>
+                )}
             </div>
         </article>
     );

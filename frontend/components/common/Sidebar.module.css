@@ -40,7 +40,8 @@
 .navItem:focus-visible,
 .logoutBtn:focus-visible,
 .brandLink:focus-visible,
-.topbarBrand:focus-visible {
+.topbarBrand:focus-visible,
+.accountLink:focus-visible {
     outline: 2px solid var(--indigo-400);
     outline-offset: 2px;
 }
@@ -122,72 +123,6 @@
     border-radius: var(--radius);
 }
 
-/* ----- Organization context ----- */
-.orgCard {
-    margin: 0 var(--space-4) var(--space-2);
-    padding: var(--space-3);
-    min-height: 3.5rem;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    border: 1px solid var(--slate-800);
-    border-radius: 0.75rem;
-}
-
-.orgAvatar {
-    width: 2rem;
-    height: 2rem;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius);
-    background-color: var(--slate-700);
-    color: var(--slate-100);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-
-.orgText {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.orgLabel {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--slate-400);
-}
-
-.orgName {
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 1.35;
-    color: var(--slate-100);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-}
-
-.orgSkeleton {
-    width: 100%;
-    height: 2rem;
-    border-radius: var(--radius);
-    background-color: var(--slate-800);
-    animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    50% { opacity: 0.5; }
-}
-
 /* ----- Navigation ----- */
 .nav {
     flex: 1;
@@ -229,11 +164,107 @@
     color: var(--color-surface);
 }
 
-/* ----- Sign out, kept apart from navigation ----- */
+/* ----- Who is signed in, where, and Sign out: kept apart from navigation ----- */
 .footer {
     flex-shrink: 0;
-    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4) var(--space-4);
     border-top: 1px solid var(--slate-800);
+}
+
+.account {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 3.25rem;
+    padding: var(--space-2) var(--space-3);
+}
+
+.avatar {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: var(--slate-700);
+    color: var(--slate-100);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.accountText {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.userName {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--slate-100);
+}
+
+/* Long school names wrap to a second line rather than being cut */
+.orgName {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--slate-400);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+/* With several organizations the block is a link to switch between them */
+.accountLink {
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.accountLink:hover {
+    background-color: var(--slate-800);
+}
+
+.accountLink:hover .orgName {
+    color: var(--slate-300);
+}
+
+.switchIcon {
+    flex-shrink: 0;
+    color: var(--slate-400);
+}
+
+.skeleton {
+    display: block;
+    background-color: var(--slate-800);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonLine,
+.skeletonLineShort {
+    height: 0.75rem;
+    border-radius: var(--radius-sm);
+}
+
+.skeletonLine { width: 70%; }
+.skeletonLineShort { width: 50%; }
+
+@keyframes pulse {
+    50% { opacity: 0.5; }
 }
 
 .logoutBtn {

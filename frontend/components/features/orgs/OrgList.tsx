@@ -6,7 +6,8 @@ import { Org } from "@/types/org.types";
 import OrgCard from "./OrgCard";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { Plus, AlertCircle, Building2, RotateCw } from "lucide-react";
+import ErrorBanner from "@/components/common/ErrorBanner";
+import { Plus, Building2 } from "lucide-react";
 import styles from "./OrgList.module.css";
 
 interface OrgListProps {
@@ -35,15 +36,9 @@ export default function OrgList({ onCreateClick }: OrgListProps) {
     }
 
     if (error) {
-        return (
-            <div className={styles.errorBanner} role="alert">
-                <AlertCircle size={18} aria-hidden="true" />
-                <span className={styles.errorText}>{error}</span>
-                <Button variant="outline" size="sm" onClick={refetch} icon={<RotateCw size={14} aria-hidden="true" />}>
-                    Try again
-                </Button>
-            </div>
-        );
+        // The context's own fallback only repeats the title
+        const detail = error === "Failed to load organizations" ? null : error;
+        return <ErrorBanner title="Your organizations couldn't be loaded" detail={detail} onRetry={refetch} />;
     }
 
     if (orgs.length === 0) {

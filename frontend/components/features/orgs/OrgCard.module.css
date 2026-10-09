@@ -8,13 +8,12 @@
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease;
 }
 
+/* The card itself isn't a link, so it doesn't lift; its border firms up to group what's under the pointer */
 .card:hover {
     border-color: var(--slate-300);
-    box-shadow: var(--shadow-card-hover);
-    transform: translateY(-2px);
 }
 
 @media (min-width: 768px) {
@@ -117,6 +116,7 @@
     border-top: 1px solid var(--border-light);
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-1) var(--space-4);
 }
 
@@ -141,4 +141,26 @@
 .link:hover {
     background-color: var(--primary-light);
     color: var(--color-primary-hover);
+}
+
+.switchBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.5rem;
+    margin-left: auto;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--card);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.switchBtn:hover {
+    background-color: var(--slate-50);
+    border-color: var(--slate-300);
 }

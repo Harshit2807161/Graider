@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { Building2, ChevronDown, Plus } from "lucide-react";
 import { useOrgContext } from "@/context/OrgContext";
 import { useBatchContext } from "@/context/BatchContext";
 import PageHeader from "@/components/common/PageHeader";
@@ -37,36 +37,37 @@ export default function ClassesPage() {
                     ? <>{lead} <strong className={styles.orgName}>{selectedOrg.name}</strong>. Students on a roster can be matched to their answer sheets.</>
                     : "Class rosters, so answer sheets can be matched to students."}
                 actions={
-                    <>
-                        {orgs.length > 1 && (
-                            <div className={styles.selector}>
-                                <label htmlFor="org-select" className={styles.selectorLabel}>Organization</label>
-                                <span className={styles.selectWrap}>
-                                    <select
-                                        id="org-select"
-                                        value={selectedOrgId}
-                                        onChange={(e) => setActiveOrg(orgs.find((o) => o.id === e.target.value) ?? null)}
-                                        className={styles.select}
-                                    >
-                                        {orgs.map((org) => (
-                                            <option key={org.id} value={org.id}>{org.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={16} aria-hidden="true" className={styles.selectIcon} />
-                                </span>
-                            </div>
-                        )}
-                        <Button
-                            onClick={() => setIsModalOpen(true)}
-                            variant="primary"
-                            icon={<Plus size={18} aria-hidden="true" />}
-                            disabled={!selectedOrgId}
-                        >
-                            New class
-                        </Button>
-                    </>
+                    <Button
+                        onClick={() => setIsModalOpen(true)}
+                        variant="primary"
+                        icon={<Plus size={18} aria-hidden="true" />}
+                        disabled={!selectedOrgId}
+                    >
+                        New class
+                    </Button>
                 }
             />
+
+            {/* Only when there's a choice; otherwise the subtitle names the organization (as on Exams) */}
+            {orgs.length > 1 && (
+                <div className={styles.toolbar}>
+                    <label htmlFor="org-select" className={styles.toolbarLabel}>Organization</label>
+                    <span className={styles.selectWrap}>
+                        <Building2 size={16} aria-hidden="true" className={styles.selectLead} />
+                        <select
+                            id="org-select"
+                            value={selectedOrgId}
+                            onChange={(e) => setActiveOrg(orgs.find((o) => o.id === e.target.value) ?? null)}
+                            className={styles.select}
+                        >
+                            {orgs.map((org) => (
+                                <option key={org.id} value={org.id}>{org.name}</option>
+                            ))}
+                        </select>
+                        <ChevronDown size={16} aria-hidden="true" className={styles.selectIcon} />
+                    </span>
+                </div>
+            )}
 
             <BatchList
                 onCreateClick={() => setIsModalOpen(true)}

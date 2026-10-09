@@ -29,7 +29,7 @@ export default function BatchCard({ batch, onDelete }: BatchCardProps) {
                         <Users size={24} />
                     </span>
                     <div className={styles.info}>
-                        <h3 id={titleId} className={styles.name}>{batch.name}</h3>
+                        <h2 id={titleId} className={styles.name}>{batch.name}</h2>
                         <p className={styles.studentCount}>
                             <span className={styles.figure}>{batch.student_count}</span>
                             {" "}{batch.student_count === 1 ? "student" : "students"}

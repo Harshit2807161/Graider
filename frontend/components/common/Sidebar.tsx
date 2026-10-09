@@ -3,10 +3,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, GraduationCap, FileText, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Building2, ChevronsUpDown, GraduationCap, FileText, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgContext } from "@/context/OrgContext";
+import { CurrentUser, userService } from "@/services/user.service";
 import BrandMark from "./BrandMark";
 import styles from "./Sidebar.module.css";
 
@@ -21,23 +22,53 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 const FOCUSABLE = 'a[href], button:not([disabled])';
 
 function initials(name: string): string {
-    const words = name.trim().split(/\s+/).filter(Boolean);
-    return (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
+    const words = name.trim().split(/[\s@._-]+/).filter(Boolean);
+    if (words.length === 0) return "?";
+    return (words.length > 1 ? words[0][0] + words[words.length - 1][0] : words[0].slice(0, 2)).toUpperCase();
+}
+
+/** Who is signed in, and where. With more than one organization it links to the list to switch. */
+function AccountBlock({ switchable, onNavigate, title, children }: {
+    switchable: boolean;
+    onNavigate: () => void;
+    title?: string;
+    children: React.ReactNode;
+}) {
+    return switchable ? (
+        <Link href="/dashboard/orgs" className={cn(styles.account, styles.accountLink)} onClick={onNavigate} title={title}>
+            {children}
+        </Link>
+    ) : (
+        <p className={styles.account} title={title}>{children}</p>
+    );
 }
 
 /**
  * The portal's navigation. From 1024px it is a fixed dark sidebar; below that it collapses
  * into a top bar whose Menu button opens it as a drawer (Escape, the backdrop or the close
  * button shut it, focus stays inside while open and goes back to the Menu button).
+ * The footer says who is signed in and in which organization, next to Sign out.
  */
 export default function Sidebar() {
     const pathname = usePathname();
     const { logout } = useAuth();
-    const { activeOrg, isLoading: orgsLoading } = useOrgContext();
+    const { orgs, activeOrg, isLoading: orgsLoading } = useOrgContext();
     const [open, setOpen] = useState(false);
+    // undefined while loading, null if it couldn't be loaded (the footer then shows the organization only)
+    const [user, setUser] = useState<CurrentUser | null | undefined>(undefined);
     const toggleRef = useRef<HTMLButtonElement>(null);
     const drawerRef = useRef<HTMLElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        userService.me()
+            .then((me) => !cancelled && setUser(me))
+            .catch(() => !cancelled && setUser(null));
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const close = useCallback((returnFocus: boolean) => {
         setOpen(false);
@@ -83,6 +114,8 @@ export default function Sidebar() {
             desktop.removeEventListener("change", onResize);
         };
     }, [open, close]);
+
+    const userName = user?.full_name?.trim() || user?.email || "";
 
     const isActive = (href: string, exact: boolean) =>
         exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -136,24 +169,6 @@ export default function Sidebar() {
                     </button>
                 </div>
 
-                <div className={styles.orgCard}>
-                    {orgsLoading && !activeOrg ? (
-                        <span className={styles.orgSkeleton} aria-hidden="true" />
-                    ) : (
-                        <>
-                            <span className={styles.orgAvatar} aria-hidden="true">
-                                {activeOrg ? initials(activeOrg.name) : <Building2 size={14} />}
-                            </span>
-                            <span className={styles.orgText}>
-                                <span className={styles.orgLabel}>Organization</span>
-                                <span className={styles.orgName} title={activeOrg?.name}>
-                                    {activeOrg?.name ?? "None yet"}
-                                </span>
-                            </span>
-                        </>
-                    )}
-                </div>
-
                 <nav className={styles.nav} aria-label="Main">
                     <ul className={styles.navList}>
                         {navItems.map((item) => {
@@ -177,6 +192,37 @@ export default function Sidebar() {
                 </nav>
 
                 <div className={styles.footer}>
+                    {user === undefined || (orgsLoading && !activeOrg) ? (
+                        <div className={styles.account} aria-hidden="true">
+                            <span className={cn(styles.avatar, styles.skeleton)} />
+                            <span className={styles.accountText}>
+                                <span className={cn(styles.skeletonLine, styles.skeleton)} />
+                                <span className={cn(styles.skeletonLineShort, styles.skeleton)} />
+                            </span>
+                        </div>
+                    ) : (
+                        <AccountBlock
+                            switchable={orgs.length > 1}
+                            onNavigate={() => setOpen(false)}
+                            title={user?.email}
+                        >
+                            <span className={styles.avatar} aria-hidden="true">
+                                {user ? initials(userName) : <Building2 size={14} />}
+                            </span>
+                            <span className={styles.accountText}>
+                                {user && (
+                                    <>
+                                        <span className="sr-only">Signed in as </span>
+                                        <span className={styles.userName}>{userName}</span>
+                                        <span className="sr-only">, </span>
+                                    </>
+                                )}
+                                <span className={styles.orgName}>{activeOrg?.name ?? "No organization yet"}</span>
+                                {orgs.length > 1 && <span className="sr-only">. Switch organization</span>}
+                            </span>
+                            {orgs.length > 1 && <ChevronsUpDown size={16} aria-hidden="true" className={styles.switchIcon} />}
+                        </AccountBlock>
+                    )}
                     <button type="button" onClick={logout} className={styles.logoutBtn}>
                         <LogOut size={18} aria-hidden="true" />
                         <span>Sign out</span>

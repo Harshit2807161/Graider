@@ -3,14 +3,16 @@
     color: var(--slate-700);
 }
 
-.selector {
+/* ===== Organization picker, laid out like the Exams toolbar ===== */
+.toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
+    gap: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-6);
 }
 
-.selectorLabel {
+.toolbarLabel {
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-secondary);
@@ -20,20 +22,43 @@
 .selectWrap {
     position: relative;
     display: inline-flex;
+    align-items: center;
     min-width: 0;
+    max-width: 100%;
+}
+
+.selectLead,
+.selectIcon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.selectLead {
+    left: 0.75rem;
+    color: var(--slate-400);
+}
+
+.selectIcon {
+    right: 0.75rem;
+    color: var(--text-tertiary);
 }
 
 .select {
     appearance: none;
     height: 2.5rem;
-    max-width: 18rem;
-    padding: 0 2.25rem 0 0.75rem;
+    min-width: 15rem;
+    max-width: 100%;
+    padding: 0 2.25rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background-color: var(--card);
+    box-shadow: var(--shadow-sm);
     color: var(--foreground);
     font: inherit;
     font-size: 0.875rem;
+    font-weight: 500;
     text-overflow: ellipsis;
     cursor: pointer;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -49,29 +74,15 @@
     box-shadow: var(--focus-ring);
 }
 
-.selectIcon {
-    position: absolute;
-    right: 0.75rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-tertiary);
-    pointer-events: none;
-}
-
 @media (max-width: 767px) {
-    .selector {
-        width: 100%;
-    }
-
     .selectWrap,
     .select {
         flex: 1;
         width: 100%;
-        max-width: none;
+        min-width: 0;
     }
 
     .select {
         height: 2.75rem;
-        font-size: 1rem;
     }
 }
