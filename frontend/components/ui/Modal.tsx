@@ -16,10 +16,12 @@ interface ModalProps {
     size?: "md" | "lg";
     /** Shown under the title */
     description?: ReactNode;
+    /** A small icon in the header tile, as in the app's other dialogs */
+    icon?: ReactNode;
 }
 
 /** An accessible dialog: focus moves in and stays in, Escape closes, focus returns on close. */
-export default function Modal({ open, title, onClose, children, footer, size = "md", description }: ModalProps) {
+export default function Modal({ open, title, onClose, children, footer, size = "md", description, icon }: ModalProps) {
     const titleId = useId();
     const dialogRef = useRef<HTMLDivElement>(null);
     const onCloseRef = useRef(onClose);
@@ -67,9 +69,12 @@ export default function Modal({ open, title, onClose, children, footer, size = "
             <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
                  className={cn(styles.dialog, styles[size])}>
                 <header className={styles.header}>
-                    <div>
-                        <h2 id={titleId} className={styles.title}>{title}</h2>
-                        {description && <div className={styles.description}>{description}</div>}
+                    <div className={styles.headerTitle}>
+                        {icon && <span className={styles.iconTile} aria-hidden="true">{icon}</span>}
+                        <div>
+                            <h2 id={titleId} className={styles.title}>{title}</h2>
+                            {description && <div className={styles.description}>{description}</div>}
+                        </div>
                     </div>
                     <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
                         <X size={18} aria-hidden="true" />

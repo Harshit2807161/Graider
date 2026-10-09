@@ -56,6 +56,7 @@ export interface Submission {
     percentage?: number;
     status: SubmissionStatus;
     current_step?: string | null;
+    student_name?: string | null;
     created_at: string;
     updated_at: string;
     answers?: SubmissionAnswer[];
