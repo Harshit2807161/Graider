@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { orgService } from "@/services/org.service";
 import { Org, CreateOrgPayload } from "@/types/org.types";
+import { getErrorMessage } from "@/lib/api";
 
 interface OrgContextType {
     orgs: Org[];
@@ -52,9 +53,9 @@ export function OrgProvider({ children }: { children: ReactNode }) {
             } else if (data.length > 0) {
                 setActiveOrg(data[0]);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to fetch organizations:", err);
-            setError(err.response?.data?.detail || "Failed to load organizations");
+            setError(getErrorMessage(err, "Failed to load organizations"));
         } finally {
             setIsLoading(false);
         }
@@ -65,7 +66,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
             const newOrg = await orgService.create(payload);
             setOrgs((prev) => [...prev, newOrg]);
             if (!activeOrg) setActiveOrg(newOrg);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to create organization:", err);
             throw err;
         }
@@ -78,7 +79,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
             if (activeOrg?.id === id) {
                 setActiveOrg(null);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to delete organization:", err);
             throw err;
         }

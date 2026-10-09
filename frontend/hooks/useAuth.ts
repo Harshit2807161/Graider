@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { api } from "@/lib/api";
+import { api, getErrorMessage } from "@/lib/api";
 
 interface LoginResponse {
     access_token: string;
@@ -35,9 +35,9 @@ export function useAuth() {
 
             router.push("/dashboard");
             return true;
-        } catch (err: any) {
+        } catch (err) {
             console.error("Login Error:", err);
-            const msg = err.response?.data?.detail || "Invalid credentials. Please try again.";
+            const msg = getErrorMessage(err, "Invalid credentials. Please try again.");
             setError(msg);
             return false;
         } finally {
