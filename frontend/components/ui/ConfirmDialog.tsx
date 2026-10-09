@@ -1,6 +1,7 @@
 "use client";
 
 import React, { ReactNode, useState } from "react";
+import { AlertTriangle, HelpCircle } from "lucide-react";
 import { getErrorMessage } from "@/lib/api";
 import Button from "./Button";
 import Modal from "./Modal";
@@ -13,7 +14,7 @@ export default function ConfirmDialog({ title, message, confirmLabel, withReason
     confirmLabel: string;
     withReason?: boolean;
     danger?: boolean;
-    /** Shown in the dialog's header tile */
+    /** Shown in the dialog's header tile (default: a question mark, or a warning for destructive actions) */
     icon?: ReactNode;
     onConfirm: (reason: string) => Promise<void>;
     onClose: () => void;
@@ -34,7 +35,8 @@ export default function ConfirmDialog({ title, message, confirmLabel, withReason
     };
 
     return (
-        <Modal open title={title} onClose={onClose} icon={icon} footer={
+        <Modal open title={title} onClose={onClose} tone={danger ? "danger" : "default"}
+               icon={icon ?? (danger ? <AlertTriangle size={18} /> : <HelpCircle size={18} />)} footer={
             <>
                 <Button variant="secondary" onClick={onClose}>Cancel</Button>
                 <Button variant={danger ? "danger" : "primary"} onClick={confirm} isLoading={busy}>{confirmLabel}</Button>

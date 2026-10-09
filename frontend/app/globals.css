@@ -197,6 +197,13 @@ button {
   }
 }
 
+/* Below 1024px a sticky top bar sits over the page: keep scrolled-to and focused things below it */
+@media (max-width: 1023px) {
+  html {
+    scroll-padding-top: 4.5rem;
+  }
+}
+
 /* Phones zoom into fields smaller than 16px; keep form text at 16px there */
 @media (max-width: 767px) {
   input,

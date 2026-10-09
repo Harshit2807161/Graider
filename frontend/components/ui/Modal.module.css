@@ -66,6 +66,11 @@
     color: var(--color-on-primary);
 }
 
+.iconTileDanger {
+    background-color: var(--status-failed-bg);
+    color: var(--status-failed-fg);
+}
+
 .title {
     font-size: var(--text-xl);
     font-weight: 600;

@@ -19,10 +19,12 @@ interface ModalProps {
     description?: ReactNode;
     /** A small icon in the header tile, as in the app's other dialogs */
     icon?: ReactNode;
+    /** A red tile for destructive confirmations */
+    tone?: "default" | "danger";
 }
 
 /** An accessible dialog: focus moves in and stays in, Escape closes, focus returns on close. */
-export default function Modal({ open, title, onClose, children, footer, size = "md", description, icon }: ModalProps) {
+export default function Modal({ open, title, onClose, children, footer, size = "md", description, icon, tone = "default" }: ModalProps) {
     const titleId = useId();
     const dialogRef = useRef<HTMLDivElement>(null);
     const onCloseRef = useRef(onClose);
@@ -72,7 +74,7 @@ export default function Modal({ open, title, onClose, children, footer, size = "
                  className={cn(styles.dialog, styles[size])}>
                 <header className={styles.header}>
                     <div className={styles.headerTitle}>
-                        {icon && <span className={styles.iconTile} aria-hidden="true">{icon}</span>}
+                        {icon && <span className={cn(styles.iconTile, tone === "danger" && styles.iconTileDanger)} aria-hidden="true">{icon}</span>}
                         <div>
                             <h2 id={titleId} className={styles.title}>{title}</h2>
                             {description && <div className={styles.description}>{description}</div>}
