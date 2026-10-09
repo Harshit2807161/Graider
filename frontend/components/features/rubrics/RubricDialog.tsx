@@ -4,12 +4,13 @@ import React, { useEffect, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import styles from "@/components/features/review/review.module.css";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { rubricService } from "@/services/rubric.service";
 import { Criterion, QuestionRubricStatus, RubricKind, RubricSpecRecord, Subject } from "@/types/review.types";
 import local from "./RubricDialog.module.css";
+
+const styles = local;
 
 const SUBJECTS: Subject[] = ["math", "science", "english", "history", "general"];
 

@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import { getErrorMessage } from "@/lib/api";
 import { reviewService } from "@/services/review.service";
 import { GradingSettings } from "@/types/review.types";
-import styles from "./review.module.css";
+import styles from "./GradingSettingsPanel.module.css";
 
 /** An exam's grading settings; new grading runs use them. */
 export default function GradingSettingsPanel({ examId }: { examId: string }) {
