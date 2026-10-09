@@ -1,15 +1,31 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { getErrorMessage } from "@/lib/api";
 import { examService } from "@/services/exam.service";
+import { reviewService } from "@/services/review.service";
+import { rubricService } from "@/services/rubric.service";
 import { Exam, QuestionSync, Submission, SubmissionStatus } from "@/types/exam.types";
+import { QuestionRubricStatus } from "@/types/review.types";
 import Button from "@/components/ui/Button";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import StatusBadge from "@/components/ui/StatusBadge";
+import GradingSettingsPanel from "@/components/features/review/GradingSettingsPanel";
+import RubricDialog from "@/components/features/rubrics/RubricDialog";
 
 const IN_PROGRESS: SubmissionStatus[] = ["PENDING", "PROCESSING"];
 const POLL_INTERVAL_MS = 3000;
+
+/** A question's rubric state, in the same badge language as submissions. */
+const RUBRIC_BADGES: Record<QuestionRubricStatus["rubric_status"], { status: SubmissionStatus; label: string }> = {
+    ready: { status: "GRADED", label: "Rubric ready" },
+    pending: { status: "PROCESSING", label: "Parsing rubric" },
+    invalid: { status: "NEEDS_REVIEW", label: "Rubric needs fixing" },
+    error: { status: "FAILED", label: "Rubric parsing failed" },
+    missing: { status: "PENDING", label: "Rubric not parsed yet" },
+};
 
 const panelStyle: React.CSSProperties = {
     backgroundColor: "#ffffff",
@@ -41,9 +57,13 @@ export default function ExamDetailsPage() {
     const [excelFile, setExcelFile] = useState<File | null>(null);
     const [uploadingExcel, setUploadingExcel] = useState(false);
 
-    // Submissions and the one currently expanded
     const [submissions, setSubmissions] = useState<Submission[]>([]);
-    const [expanded, setExpanded] = useState<Submission | null>(null);
+
+    // Parsed rubrics, the one being viewed, and publishing
+    const [rubricStatus, setRubricStatus] = useState<QuestionRubricStatus[]>([]);
+    const [rubricQuestion, setRubricQuestion] = useState<{ id: string; label: string; text: string; maxScore: number } | null>(null);
+    const [confirmPublish, setConfirmPublish] = useState(false);
+    const [publishMessage, setPublishMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchExamAndQuestions = async () => {
@@ -81,6 +101,26 @@ export default function ExamDetailsPage() {
         return () => clearInterval(timer);
     }, [anyInProgress, refreshSubmissions]);
 
+    const refreshRubrics = useCallback(async () => {
+        try {
+            setRubricStatus(await rubricService.getStatus(examId));
+        } catch (err) {
+            console.error("Failed to load rubric status", err);
+        }
+    }, [examId]);
+
+    useEffect(() => {
+        refreshRubrics();
+    }, [refreshRubrics]);
+
+    // Rubrics are parsed in the background after questions change
+    const anyParsing = rubricStatus.some((r) => r.rubric_status === "pending");
+    useEffect(() => {
+        if (!anyParsing) return;
+        const timer = setInterval(refreshRubrics, POLL_INTERVAL_MS);
+        return () => clearInterval(timer);
+    }, [anyParsing, refreshRubrics]);
+
     const handleAddQuestionLocal = () => {
         if (!newText.trim()) return;
         const q: QuestionSync = {
@@ -116,6 +156,7 @@ export default function ExamDetailsPage() {
             }));
             // Keep the returned ids so saving again updates instead of duplicating
             setQuestions(await examService.syncQuestions(examId, payload));
+            await refreshRubrics();
             alert("Questions saved.");
         } catch (err) {
             alert(`Failed to save questions: ${getErrorMessage(err)}`);
@@ -132,6 +173,7 @@ export default function ExamDetailsPage() {
             alert(`Imported ${created.length} questions from Excel.`);
             const examData = await examService.getExam(examId);
             setQuestions(examData.questions || []);
+            await refreshRubrics();
         } catch (err) {
             alert(`Failed to import questions:\n${getErrorMessage(err)}`);
         } finally {
@@ -158,22 +200,9 @@ export default function ExamDetailsPage() {
         }
     };
 
-    const handleToggleSubmission = async (submission: Submission) => {
-        if (expanded?.id === submission.id) {
-            setExpanded(null);
-            return;
-        }
-        try {
-            setExpanded(await examService.getSubmission(submission.id));
-        } catch (err) {
-            alert(`Failed to load results: ${getErrorMessage(err)}`);
-        }
-    };
-
     const handleRegrade = async (submission: Submission) => {
         try {
             await examService.regradeSubmission(submission.id);
-            if (expanded?.id === submission.id) setExpanded(null);
             await refreshSubmissions();
         } catch (err) {
             alert(`Failed to regrade: ${getErrorMessage(err)}`);
@@ -184,7 +213,9 @@ export default function ExamDetailsPage() {
     if (errorDetails) return <div style={{ padding: "3rem", color: "#ef4444" }}><strong>Error:</strong> {errorDetails}</div>;
     if (!exam) return <div style={{ padding: "3rem", color: "#ef4444" }}>Exam not found.</div>;
 
-    const questionTextById = new Map(questions.filter((q) => q.id).map((q) => [q.id as string, q.question_text]));
+    const rubricById = new Map(rubricStatus.map((r) => [r.question_id, r]));
+    const approvedCount = submissions.filter((s) => s.status === "APPROVED").length;
+    const reviewCount = submissions.filter((s) => s.status === "NEEDS_REVIEW").length;
 
     return (
         <div style={{ padding: "3rem", maxWidth: "900px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "2.5rem" }}>
@@ -193,8 +224,18 @@ export default function ExamDetailsPage() {
                     <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#0f172a" }}>{exam.name}</h1>
                     <p style={{ color: "#64748b", marginTop: "0.25rem" }}>{exam.description}</p>
                 </div>
-                <Button variant="secondary" onClick={() => router.push("/dashboard/exams")}>Back to Exams</Button>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <Button variant="secondary" onClick={() => router.push("/dashboard/exams")}>Back to Exams</Button>
+                    <Button variant="secondary" onClick={() => router.push(`/dashboard/exams/${examId}/review`)}>
+                        Review queue{reviewCount > 0 ? ` (${reviewCount})` : ""}
+                    </Button>
+                    <Button onClick={() => setConfirmPublish(true)} disabled={approvedCount === 0}
+                            title={approvedCount === 0 ? "Approve answer sheets first" : undefined}>
+                        Publish approved ({approvedCount})
+                    </Button>
+                </div>
             </div>
+            {publishMessage && <p role="status" style={{ color: "#166534" }}>{publishMessage}</p>}
 
             <div style={panelStyle}>
                 <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1.5rem", color: "#1e293b" }}>1. Questions</h2>
@@ -232,12 +273,22 @@ export default function ExamDetailsPage() {
                         <p style={{ color: "#94a3b8", fontStyle: "italic" }}>No questions added yet.</p>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                            {questions.map((q, idx) => (
+                            {questions.map((q, idx) => {
+                                const rubric = q.id ? rubricById.get(q.id) : undefined;
+                                const label = rubric?.label ?? `Q${idx + 1}`;
+                                return (
                                 <div key={q.id ?? `new-${idx}`} style={{ padding: "1rem", border: "1px solid #e2e8f0", borderRadius: "8px", backgroundColor: "#f8fafc" }}>
                                     <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", marginBottom: "0.5rem" }}>
-                                        <strong style={{ color: "#0f172a" }}>Q{idx + 1}. {q.question_text}</strong>
+                                        <strong style={{ color: "#0f172a" }}>{label}. {q.question_text}</strong>
                                         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
                                             <span style={{ backgroundColor: "#e0e7ff", color: "#4f46e5", padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.875rem", fontWeight: "500" }}>{q.max_score} points</span>
+                                            {rubric && <StatusBadge {...RUBRIC_BADGES[rubric.rubric_status]} />}
+                                            {q.id && (
+                                                <Button size="sm" variant="secondary"
+                                                        onClick={() => setRubricQuestion({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
+                                                    Rubric
+                                                </Button>
+                                            )}
                                             <Button size="sm" variant="ghost" onClick={() => handleRemoveQuestionLocal(idx)}>Remove</Button>
                                         </div>
                                     </div>
@@ -245,7 +296,8 @@ export default function ExamDetailsPage() {
                                         <p style={{ fontSize: "0.875rem", color: "#64748b", whiteSpace: "pre-line" }}>Rubric: {q.rubric_criteria}</p>
                                     )}
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -314,39 +366,46 @@ export default function ExamDetailsPage() {
                                         {s.total_score != null && s.max_score != null && (
                                             <strong style={{ color: "#0f172a" }}>{s.total_score} / {s.max_score}</strong>
                                         )}
-                                        {!IN_PROGRESS.includes(s.status) && (
+                                        {s.status === "FAILED" && (
                                             <Button size="sm" variant="ghost" onClick={() => handleRegrade(s)}>Regrade</Button>
                                         )}
-                                        {s.status === "GRADED" && (
-                                            <Button size="sm" variant="secondary" onClick={() => handleToggleSubmission(s)}>
-                                                {expanded?.id === s.id ? "Hide" : "View"}
-                                            </Button>
+                                        {!IN_PROGRESS.includes(s.status) && (
+                                            <Link href={`/dashboard/exams/${examId}/submissions/${s.id}`}
+                                                  style={{ fontWeight: 600, color: "#4338ca", fontSize: "0.875rem" }}>
+                                                {s.status === "NEEDS_REVIEW" ? "Review" : "Open"}
+                                            </Link>
                                         )}
                                     </div>
                                 </div>
 
-                                {expanded?.id === s.id && (
-                                    <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                                        {(expanded.answers ?? []).map((a) => (
-                                            <div key={a.id} style={{ backgroundColor: "#f8fafc", borderRadius: "8px", padding: "1rem", fontSize: "0.9rem" }}>
-                                                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", marginBottom: "0.5rem" }}>
-                                                    <strong style={{ color: "#0f172a" }}>{questionTextById.get(a.question_id) ?? "Question"}</strong>
-                                                    <strong>{a.score}</strong>
-                                                </div>
-                                                {a.student_answer_text && (
-                                                    <p style={{ color: "#334155", whiteSpace: "pre-line", marginBottom: "0.5rem" }}><em>Answer:</em> {a.student_answer_text}</p>
-                                                )}
-                                                {a.feedback && <p style={{ color: "#334155", marginBottom: "0.5rem" }}><em>Feedback:</em> {a.feedback}</p>}
-                                                {a.reasoning && <p style={{ color: "#64748b" }}><em>Grader reasoning:</em> {a.reasoning}</p>}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>
                 )}
             </div>
+
+            <div style={panelStyle}>
+                <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "1rem", color: "#1e293b" }}>Grading settings</h2>
+                <GradingSettingsPanel examId={examId} />
+            </div>
+
+            {rubricQuestion && (
+                <RubricDialog examId={examId} question={rubricQuestion} status={rubricById.get(rubricQuestion.id)}
+                              onClose={() => setRubricQuestion(null)} onChanged={refreshRubrics} />
+            )}
+            {confirmPublish && (
+                <ConfirmDialog title={`Publish ${approvedCount} approved ${approvedCount === 1 ? "result" : "results"}?`}
+                               confirmLabel="Publish"
+                               message={<>Students will see their scores and feedback. Published results can&apos;t be changed;
+                                   answer sheets that aren&apos;t approved yet stay unpublished.</>}
+                               onClose={() => setConfirmPublish(false)}
+                               onConfirm={async () => {
+                                   const result = await reviewService.publishExam(examId);
+                                   setConfirmPublish(false);
+                                   setPublishMessage(`Published ${result.published}. ${result.not_approved} not approved yet.`);
+                                   await refreshSubmissions();
+                               }} />
+            )}
         </div>
     );
 }

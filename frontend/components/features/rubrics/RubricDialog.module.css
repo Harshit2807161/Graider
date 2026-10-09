@@ -1,0 +1,97 @@
+.questionText {
+    display: block;
+    max-width: 40rem;
+}
+
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    font-size: var(--text-base);
+    color: var(--slate-700);
+}
+
+.warnings {
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-6);
+    background-color: var(--amber-50);
+    border: 1px solid var(--amber-200);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    color: var(--amber-800);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: var(--space-3);
+    align-items: end;
+}
+
+.select {
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-weight: 400;
+    background-color: var(--color-surface);
+}
+
+.sum {
+    font-size: var(--text-base);
+    font-weight: 600;
+    padding-bottom: var(--space-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.sumOk { color: var(--status-graded-fg); }
+.sumBad { color: var(--status-failed-fg); }
+
+.criteria {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.criterion {
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.criterionHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-1);
+}
+
+.criterionGrid {
+    display: grid;
+    grid-template-columns: 1fr 7rem;
+    gap: var(--space-3);
+}
+
+.wide { grid-column: 1 / -1; }
+
+.errors {
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    background-color: var(--status-failed-bg);
+    color: var(--status-failed-fg);
+    font-size: var(--text-base);
+}
+
+.errors ul { padding-left: var(--space-5); margin-top: var(--space-1); }
+
+.saved {
+    font-size: var(--text-base);
+    color: var(--status-graded-fg);
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
