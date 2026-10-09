@@ -113,9 +113,11 @@
     color: var(--muted-foreground);
 }
 
-/* Question list */
+/* Question list: the same table pattern as the answer sheets (header on slate-50) */
 .list {
-    border-top: 1px solid var(--border);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    overflow: hidden;
 }
 
 .listHead,
@@ -124,13 +126,14 @@
     grid-template-columns: 2.75rem minmax(0, 1fr) 5rem 11rem 8.5rem;
     column-gap: var(--space-4);
     align-items: center;
-    padding: 0 var(--space-3);
+    padding: 0 var(--space-4);
 }
 
 .listHead {
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
     border-bottom: 1px solid var(--border);
+    background-color: var(--slate-50);
     font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -146,6 +149,10 @@
     list-style: none;
 }
 
+.row:last-child {
+    border-bottom: none;
+}
+
 .row {
     min-height: 56px;
     padding-top: var(--space-4);
@@ -156,6 +163,101 @@
 
 .row:hover {
     background-color: var(--slate-50);
+}
+
+/* Added to the list but not saved yet */
+.rowNew {
+    background-color: var(--primary-light);
+    box-shadow: inset 3px 0 0 var(--indigo-300);
+}
+
+.rowNew:hover {
+    background-color: var(--primary-light);
+}
+
+.labelNew {
+    background-color: var(--card);
+    color: var(--indigo-700);
+    box-shadow: inset 0 0 0 1px var(--indigo-200);
+}
+
+/* Where a removed question was, with Undo until the list is saved */
+.removedRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    min-height: 3rem;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-light);
+    background-color: var(--slate-50);
+    font-size: var(--text-base);
+    color: var(--slate-600);
+    animation: reveal 0.2s var(--ease-out);
+}
+
+.removedRow:last-child {
+    border-bottom: none;
+}
+
+.removedRow > span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.removedRow svg {
+    flex-shrink: 0;
+    color: var(--slate-400);
+}
+
+.undo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 2rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--card);
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--indigo-700);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.undo svg {
+    color: currentColor;
+}
+
+.undo:hover {
+    border-color: var(--indigo-200);
+    background-color: var(--primary-light);
+}
+
+/* How the list is edited, under it */
+.editNote {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--muted-foreground);
+}
+
+.editNote svg {
+    flex-shrink: 0;
+    margin-top: 0.1875rem;
+    color: var(--slate-400);
+}
+
+.editNote strong {
+    font-weight: 600;
+    color: var(--slate-700);
 }
 
 .label {
@@ -309,6 +411,17 @@
     gap: var(--space-3);
 }
 
+/* The first question of an empty exam: the form is the section's content, no gap above it */
+.addFormFirst {
+    margin-top: 0;
+}
+
+.addHead {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
 .addGrid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 7rem;
@@ -380,8 +493,24 @@
 
 .addActions {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-start;
     gap: var(--space-2);
+}
+
+.addedNote {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-left: var(--space-2);
+    font-size: var(--text-base);
+    color: var(--status-graded-fg);
+}
+
+/* Stays in the page (a live region must exist before it speaks); takes no room when empty */
+.addedNote:empty {
+    margin-left: 0;
 }
 
 /* Footer: save state + save */
@@ -396,6 +525,11 @@
 .unsaved {
     font-weight: 500;
     color: var(--status-review-fg);
+}
+
+.savedIcon {
+    flex-shrink: 0;
+    color: var(--status-graded-fg);
 }
 
 .dot {
@@ -426,8 +560,8 @@
             "label question marks"
             ". status actions";
         row-gap: var(--space-2);
-        padding-left: var(--space-1);
-        padding-right: var(--space-1);
+        padding-left: var(--space-3);
+        padding-right: var(--space-3);
     }
 
     .label { grid-area: label; }
@@ -455,8 +589,19 @@
         grid-template-columns: 1fr;
     }
 
-    .addActions > * {
+    .addActions > button {
         flex: 1;
+    }
+
+    .addedNote {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .addFormFirst {
+        padding: 0;
+        border: none;
+        background: none;
     }
 
     .saveActions {

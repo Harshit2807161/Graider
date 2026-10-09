@@ -71,6 +71,18 @@
     gap: var(--space-5);
 }
 
+.versionRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+}
+
+.reparse {
+    margin-right: calc(-1 * var(--space-2));
+}
+
 .version {
     display: flex;
     flex-wrap: wrap;
@@ -117,7 +129,7 @@
 
 .row {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: 1fr 1fr;
     gap: var(--space-4);
     align-items: end;
 }
@@ -241,6 +253,7 @@
 }
 
 .criterion {
+    position: relative;
     padding: var(--space-3) var(--space-4) var(--space-4);
     border: 1px solid var(--border);
     border-radius: 0.75rem;
@@ -252,11 +265,18 @@
     border-color: var(--indigo-200);
 }
 
-.criterionHead {
-    display: flex;
-    justify-content: space-between;
+/* The remove button sits in the card's corner, beside the first label */
+.criterion > .iconButton {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+}
+
+.criterionLabel {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: var(--space-2);
+    gap: var(--space-2);
+    padding-right: 2.5rem;
 }
 
 .criterionId {
@@ -354,7 +374,7 @@
     z-index: 1;
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     gap: var(--space-3);
     margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
@@ -381,32 +401,47 @@
 }
 
 @media (max-width: 640px) {
-    .row {
-        grid-template-columns: 1fr 1fr;
-    }
-
-    .sum {
-        grid-column: 1 / -1;
-    }
-
     .criterionGrid {
         grid-template-columns: minmax(0, 1fr) 5.5rem;
     }
 
-    .actions > button,
-    .saveGroup,
-    .saveGroup > button {
+    .criterion {
+        padding: var(--space-3);
+    }
+
+    /* One row: the total, then Save (a "Saved" note goes on its own line above) */
+    .saveGroup {
         width: 100%;
+    }
+
+    .saveGroup .saved {
+        flex-basis: 100%;
+    }
+
+    .sum {
+        flex: 1;
+        min-width: 0;
+        white-space: normal;
+        height: auto;
+        min-height: 2.5rem;
+        padding-top: var(--space-2);
+        padding-bottom: var(--space-2);
     }
 
     .iconButton {
         width: 2.5rem;
         height: 2.5rem;
     }
+
+    .criterion > .iconButton {
+        top: var(--space-1);
+        right: var(--space-1);
+    }
 }
 
 @media (max-width: 480px) {
     .row {
         grid-template-columns: 1fr;
+        gap: var(--space-3);
     }
 }

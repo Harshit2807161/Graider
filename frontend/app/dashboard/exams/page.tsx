@@ -1,14 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AlertCircle, Building2, ChevronDown, GraduationCap, Plus, Search } from "lucide-react";
+import { ArrowRight, Building2, ChevronDown, GraduationCap, Plus, Search } from "lucide-react";
 import { useOrgContext } from "@/context/OrgContext";
 import { useExamContext } from "@/context/ExamContext";
 import Button from "@/components/ui/Button";
 import ButtonLink from "@/components/common/ButtonLink";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import PageHeader from "@/components/common/PageHeader";
 import ExamCard from "@/components/features/exams/ExamCard";
 import CreateExamModal from "@/components/features/exams/CreateExamModal";
+import InlineMessage from "@/components/ui/InlineMessage";
 import styles from "./page.module.css";
 
 export default function ExamsPage() {
@@ -16,6 +18,8 @@ export default function ExamsPage() {
     const { exams, isLoading, error, fetchExams } = useExamContext();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [query, setQuery] = useState("");
+    // The exam just created: the page points the way to its questions
+    const [createdName, setCreatedName] = useState<string | null>(null);
     // The org whose exams are on screen (exams from another org may still be in the context)
     const [loadedOrgId, setLoadedOrgId] = useState<string | null>(null);
 
@@ -53,20 +57,40 @@ export default function ExamsPage() {
     const loading = isLoading || orgsLoading || !selectedOrgId || loadedOrgId !== selectedOrgId;
     const q = query.trim().toLowerCase();
     const shown = q ? exams.filter((e) => `${e.name} ${e.description ?? ""}`.toLowerCase().includes(q)) : exams;
+    const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
+    // Newly created exams are added to the top of the list
+    const created = createdName ? exams.find((e) => e.name === createdName) : undefined;
 
     return (
         <div className={styles.page}>
             <PageHeader
                 title="Exams"
-                subtitle="Set up an exam's questions and rubrics, grade answer sheets, then review and publish results."
+                subtitle={selectedOrg && !loading && !error
+                    ? <>{exams.length} {exams.length === 1 ? "exam" : "exams"} in <strong className={styles.orgName}>{selectedOrg.name}</strong>. Set up
+                        each exam&apos;s questions and rubrics, grade answer sheets, then review and publish results.</>
+                    : "Set up an exam's questions and rubrics, grade answer sheets, then review and publish results."}
                 actions={
                     <Button onClick={() => setIsCreateModalOpen(true)} icon={<Plus size={18} aria-hidden="true" />} disabled={!selectedOrgId}>
-                        New Exam
+                        New exam
                     </Button>
                 }
             />
 
+            {created && (
+                <InlineMessage kind="success" className={styles.created} onDismiss={() => setCreatedName(null)}
+                               action={
+                                   <ButtonLink href={`/dashboard/exams/${created.id}`} variant="outline" size="sm"
+                                               icon={<ArrowRight size={14} />} className={styles.createdAction}>
+                                       Add its questions
+                                   </ButtonLink>
+                               }>
+                    <strong>{created.name}</strong> is created. Next, add its questions and how you mark them.
+                </InlineMessage>
+            )}
+
             <div className={styles.toolbar}>
+                {/* Only when there's a choice; otherwise the subtitle names the organization */}
+                {orgs.length > 1 && (
                 <div className={styles.orgField}>
                     <label htmlFor="org-select" className={styles.toolbarLabel}>Organization</label>
                     <div className={styles.selectWrap}>
@@ -88,22 +112,20 @@ export default function ExamsPage() {
                         <ChevronDown size={16} className={styles.selectChevron} aria-hidden="true" />
                     </div>
                 </div>
+                )}
                 <div className={styles.searchWrap}>
                     <Search size={16} className={styles.selectLead} aria-hidden="true" />
                     <input type="search" className={styles.search} value={query} onChange={(e) => setQuery(e.target.value)}
                            placeholder="Search exams" aria-label="Search exams" />
                 </div>
                 <p className={styles.count} aria-live="polite">
-                    {loading ? "" : q ? `${shown.length} of ${exams.length} exams` : `${exams.length} ${exams.length === 1 ? "exam" : "exams"}`}
+                    {loading || !q ? "" : `${shown.length} of ${exams.length} exams`}
                 </p>
             </div>
 
             {error && (
-                <div className={styles.errorBanner} role="alert">
-                    <AlertCircle size={20} aria-hidden="true" />
-                    <span className={styles.errorText}>{error}</span>
-                    <Button variant="outline" size="sm" onClick={() => fetchExams(selectedOrgId)}>Try again</Button>
-                </div>
+                <ErrorBanner title="The exams couldn't be loaded" detail={error} onRetry={() => fetchExams(selectedOrgId)}
+                             className={styles.errorBanner} />
             )}
 
             {loading && !error ? (
@@ -139,6 +161,7 @@ export default function ExamsPage() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 selectedOrgId={selectedOrgId}
+                onCreated={(name) => { setQuery(""); setCreatedName(name); }}
             />
         </div>
     );

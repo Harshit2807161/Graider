@@ -71,7 +71,8 @@
     background-color: var(--indigo-200);
 }
 
-.current .marker {
+/* Something here for the teacher (several steps can need them at once) */
+.active .marker {
     border-color: var(--primary);
     background-color: var(--primary-light);
     color: var(--primary);
@@ -86,8 +87,14 @@
     color: var(--text-tertiary);
 }
 
-.current .title {
+.active .title {
     color: var(--primary);
+}
+
+/* Upcoming steps recede; their text stays readable */
+.upcoming .title,
+.upcoming .number {
+    color: var(--slate-500);
 }
 
 .value {
@@ -111,6 +118,20 @@
     color: var(--muted-foreground);
 }
 
+/* Before there is anything to count, the step says what it's for */
+.about {
+    margin-top: var(--space-1);
+    font-size: var(--text-base);
+    line-height: 1.45;
+    color: var(--slate-600);
+    max-width: 18rem;
+}
+
+.active .about {
+    color: var(--foreground);
+    font-weight: 500;
+}
+
 .hint {
     margin-top: var(--space-1);
     display: flex;
@@ -131,6 +152,58 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* The step's call to action: a text link (the header keeps the page's only primary button) */
+.skeleton {
+    display: block;
+    width: min(10rem, 80%);
+    height: 2.75rem;
+    margin-top: var(--space-1);
+    border-radius: var(--radius);
+    background-color: var(--slate-100);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.5; }
+}
+
+.action {
+    align-self: flex-start;
+    white-space: nowrap;
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2rem;
+    margin: var(--space-1) 0 0 calc(-1 * var(--space-2));
+    padding: 0 var(--space-2);
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    font: inherit;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--indigo-700);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.action:hover {
+    background-color: var(--primary-light);
+}
+
+.action svg {
+    transition: transform 0.2s var(--ease-out);
+}
+
+.action:hover svg {
+    transform: translateX(2px);
+}
+
+.actionDown:hover svg {
+    transform: translateY(2px);
+}
+
 .hint_ok { color: var(--status-graded-fg); }
 .hint_warn { color: var(--status-review-fg); }
 .hint_busy { color: var(--status-processing-fg); }
@@ -141,6 +214,13 @@
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spin { animation-duration: 3s; }
+    .action:hover svg,
+    .actionDown:hover svg { transform: none; }
+    .skeleton { animation: none; }
 }
 
 @container progress (max-width: 40rem) {
@@ -173,7 +253,7 @@
     }
 
     .track {
-        grid-row: 1 / span 3;
+        grid-row: 1 / span 4;
         margin: 0;
         align-self: start;
     }
@@ -199,8 +279,15 @@
 
     .title,
     .value,
-    .hint {
+    .about,
+    .skeleton,
+    .hint,
+    .action {
         grid-column: 2;
+    }
+
+    .about {
+        max-width: none;
     }
 
     .title {

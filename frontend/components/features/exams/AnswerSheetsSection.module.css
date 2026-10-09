@@ -34,14 +34,19 @@
     outline-offset: 2px;
 }
 
+/* Locked until the exam has saved questions: muted, not faded (the text must stay readable) */
 .disabled {
     cursor: not-allowed;
-    opacity: 0.7;
+    border-color: var(--slate-200);
 }
 
 .disabled:hover {
-    border-color: var(--slate-300);
+    border-color: var(--slate-200);
     background-color: var(--secondary);
+}
+
+.disabled .dropIcon {
+    color: var(--slate-400);
 }
 
 .dropIcon {
@@ -162,7 +167,36 @@
     margin-top: var(--space-3);
 }
 
+.listError {
+    margin-top: var(--space-6);
+}
+
 /* List */
+.loadingList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-6);
+}
+
+.skeletonRow {
+    display: block;
+    height: 3.75rem;
+    border-radius: var(--radius);
+    background-color: var(--slate-100);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.5; }
+}
+
+.emptyNote {
+    margin-top: var(--space-4);
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+}
+
 .listHeader {
     display: flex;
     flex-wrap: wrap;
@@ -211,23 +245,32 @@
     to { transform: rotate(360deg); }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .spin { animation-duration: 3s; }
+    .skeletonRow { animation: none; }
+}
+
+/* Table: the same pattern as the review queue (header on slate-50, group rows, 60px rows) */
 .table {
-    border-top: 1px solid var(--border);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    overflow: hidden;
 }
 
 .head,
 .row {
     display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) 9rem 7.5rem 8.5rem;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.5fr) 7.5rem 8.5rem;
     column-gap: var(--space-4);
     align-items: center;
-    padding: 0 var(--space-3);
+    padding: 0 var(--space-4);
 }
 
 .head {
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
     border-bottom: 1px solid var(--border);
+    background-color: var(--slate-50);
     font-size: var(--text-xs);
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -239,13 +282,50 @@
     text-align: right;
 }
 
+.groupRow {
+    padding: var(--space-4) var(--space-4) var(--space-2);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.groupLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.groupCount {
+    min-width: 1.25rem;
+    padding: 0 0.4375rem;
+    border-radius: 999px;
+    background-color: var(--slate-100);
+    color: var(--slate-600);
+    letter-spacing: 0;
+    line-height: 1.25rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.groupCountAction {
+    background-color: var(--status-review-bg);
+    color: var(--status-review-fg);
+}
+
 .row {
     position: relative;
-    min-height: 60px;
+    min-height: 3.75rem;
     padding-top: var(--space-3);
     padding-bottom: var(--space-3);
     border-bottom: 1px solid var(--border-light);
     transition: background-color 0.15s ease;
+}
+
+.group:last-child > .row:last-child {
+    border-bottom: none;
 }
 
 .rowLink:hover {
@@ -280,6 +360,12 @@
     color: var(--slate-400);
 }
 
+.who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
 .name {
     min-width: 0;
     overflow: hidden;
@@ -296,33 +382,40 @@
     color: var(--muted-foreground);
 }
 
+.uploaded {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    color: var(--muted-foreground);
+    font-variant-numeric: tabular-nums;
+}
+
 .statusCell {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.125rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem var(--space-2);
     min-width: 0;
 }
 
-.step {
+.statusCell > :first-child {
+    flex-shrink: 0;
+}
+
+.step,
+.reason {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    max-width: 100%;
-    font-size: var(--text-xs);
+    min-width: 0;
+    font-size: var(--text-sm);
     color: var(--muted-foreground);
-    overflow-wrap: anywhere;
 }
 
-.stepFailed {
+.reason {
+    flex: 1 1 14rem;
     color: var(--status-failed-fg);
-}
-
-.date {
-    font-size: var(--text-base);
-    color: var(--muted-foreground);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
 }
 
 .score {
@@ -335,31 +428,44 @@
 }
 
 .scoreNum {
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+}
+
+.scoreNum strong {
     font-size: 0.9375rem;
     font-weight: 600;
     color: var(--foreground);
 }
 
 .percent {
-    min-width: 2.25rem;
+    min-width: 2.5rem;
     text-align: right;
     font-size: var(--text-sm);
     color: var(--muted-foreground);
+}
+
+/* Lines up with the score of scored rows (number + percent) */
+.noScore {
+    padding-right: calc(2.5rem + var(--space-2));
+    color: var(--slate-400);
 }
 
 .actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-2);
+    gap: var(--space-1);
 }
 
 /* The open link covers the whole row; Regrade sits above it */
 .open {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.125rem;
     min-height: 2rem;
+    min-width: 2rem;
     padding: 0 var(--space-2) 0 var(--space-3);
     border-radius: var(--radius);
     font-size: var(--text-base);
@@ -378,14 +484,6 @@
     background-color: var(--primary-light);
 }
 
-.openReview {
-    color: var(--status-review-fg);
-}
-
-.rowLink:hover .openReview {
-    background-color: var(--amber-50);
-}
-
 .open:focus-visible {
     outline: none;
 }
@@ -393,7 +491,7 @@
 .open:focus-visible::after {
     outline: 2px solid var(--indigo-600);
     outline-offset: -2px;
-    border-radius: var(--radius);
+    border-radius: 0.75rem;
 }
 
 .regrade {
@@ -401,42 +499,7 @@
     z-index: 1;
 }
 
-/* Empty list */
-.empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    padding: var(--space-8) var(--space-4);
-    border: 1px dashed var(--border);
-    border-radius: 0.75rem;
-    text-align: center;
-}
-
-.emptyIcon {
-    width: 3rem;
-    height: 3rem;
-    margin-bottom: var(--space-2);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background-color: var(--primary-light);
-    color: var(--primary);
-}
-
-.emptyTitle {
-    font-size: var(--text-md);
-    font-weight: 600;
-    color: var(--foreground);
-}
-
-.emptyText {
-    font-size: var(--text-base);
-    color: var(--muted-foreground);
-}
-
-/* Medium: rows become two lines (who, score, open / status, when) */
+/* Medium: rows become two lines (who, score, open / status) */
 @container section (max-width: 46rem) {
     .head {
         display: none;
@@ -446,9 +509,9 @@
         grid-template-columns: minmax(0, 1fr) auto auto;
         grid-template-areas:
             "student score actions"
-            "status date date";
+            "status status status";
         row-gap: var(--space-2);
-        padding: var(--space-3) var(--space-1);
+        padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
     }
 
     .student { grid-area: student; }
@@ -456,13 +519,12 @@
         grid-area: status;
         padding-left: calc(32px + var(--space-3));
     }
-    .date {
-        grid-area: date;
-        text-align: right;
-        font-size: var(--text-sm);
-    }
     .score { grid-area: score; }
     .actions { grid-area: actions; }
+
+    .noScore {
+        padding-right: 0;
+    }
 }
 
 /* Small: stacked drop zone; the open link keeps only its chevron (the whole row is the target) */
@@ -477,6 +539,14 @@
         flex: 1;
     }
 
+    .row {
+        padding-left: var(--space-3);
+    }
+
+    .groupRow {
+        padding-left: var(--space-3);
+    }
+
     .statusCell {
         padding-left: 0;
     }
@@ -486,7 +556,12 @@
     }
 
     .open {
-        font-size: 0;
-        padding: 0 var(--space-1);
+        padding: 0;
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+    }
+
+    .openText {
+        display: none;
     }
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useId, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CheckCircle2, ChevronDown } from "lucide-react";
 import Button from "@/components/ui/Button";
-import InlineMessage from "@/components/features/exams/InlineMessage";
+import ErrorBanner from "@/components/common/ErrorBanner";
+import InlineMessage from "@/components/ui/InlineMessage";
 import { getErrorMessage } from "@/lib/api";
 import { reviewService } from "@/services/review.service";
 import { GradingSettings } from "@/types/review.types";
@@ -17,6 +18,8 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
     const [draft, setDraft] = useState<{ threshold: string; spotPercent: string; policy: "best" | "first" } | null>(null);
     const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
     const [saving, setSaving] = useState(false);
+    // Bumped by "Try again" to load the settings once more
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
         reviewService.getGradingSettings(examId)
@@ -25,11 +28,12 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
                 setDraft({ threshold: String(s.agreement_threshold), spotPercent: String(Math.round(s.spot_check_rate * 100)), policy: s.choice_policy });
             })
             .catch((err) => setMessage({ kind: "error", text: getErrorMessage(err, "Settings couldn't be loaded") }));
-    }, [examId]);
+    }, [examId, attempt]);
 
     if (!draft || !saved) {
         return message
-            ? <InlineMessage kind="error">{message.text}</InlineMessage>
+            ? <ErrorBanner title="The grading settings couldn't be loaded" detail={message.text}
+                           onRetry={() => { setMessage(null); setAttempt((n) => n + 1); }} />
             : (
                 <div className={styles.loading} aria-busy="true">
                     <span className="sr-only" role="status">Loading settings…</span>
@@ -115,16 +119,23 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
                     </div>
                 </div>
             </div>
+            {/* The same save bar as the questions section: state on the left, Save on the right */}
             <div className={styles.actions}>
-                {message && (
-                    <InlineMessage kind={message.kind === "ok" ? "success" : "error"} onDismiss={() => setMessage(null)}>
-                        {message.text}
-                    </InlineMessage>
-                )}
-                {!message && changed && valid && <p className={styles.unsaved}>Unsaved changes</p>}
-                <Button type="submit" disabled={!valid || !changed} isLoading={saving} variant={changed && valid ? "primary" : "secondary"}>
-                    Save settings
-                </Button>
+                <p className={styles.state}>
+                    {!valid ? "Correct the value above to save."
+                        : changed ? <><span className={styles.dot} aria-hidden="true" /><span className={styles.unsaved}>Unsaved changes</span></>
+                        : <><CheckCircle2 size={16} className={styles.savedIcon} aria-hidden="true" />Settings saved</>}
+                </p>
+                <div className={styles.saveGroup}>
+                    {message && (
+                        <InlineMessage kind={message.kind === "ok" ? "success" : "error"} onDismiss={() => setMessage(null)}>
+                            {message.text}
+                        </InlineMessage>
+                    )}
+                    <Button type="submit" disabled={!valid || !changed} isLoading={saving} variant={changed && valid ? "primary" : "secondary"}>
+                        Save settings
+                    </Button>
+                </div>
             </div>
         </form>
     );

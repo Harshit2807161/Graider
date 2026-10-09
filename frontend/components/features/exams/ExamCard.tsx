@@ -43,9 +43,9 @@ export default function ExamCard({ exam }: ExamCardProps) {
 
             <div className={styles.footer}>
                 <ul className={styles.stats}>
-                    <li className={styles.stat}>
+                    <li className={cn(styles.stat, questions === 0 && styles.statTodo)}>
                         <ListChecks size={15} aria-hidden="true" />
-                        {questions} {questions === 1 ? "question" : "questions"}
+                        {questions === 0 ? "No questions yet" : `${questions} ${questions === 1 ? "question" : "questions"}`}
                     </li>
                     <li className={styles.stat}>
                         <Calendar size={15} aria-hidden="true" />
@@ -54,6 +54,7 @@ export default function ExamCard({ exam }: ExamCardProps) {
                         </time>
                     </li>
                 </ul>
+                {/* The title link is the card's target; this only says where it leads */}
                 <span className={styles.open} aria-hidden="true">
                     Open <ArrowRight size={16} />
                 </span>

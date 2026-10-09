@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, Plus, RotateCcw, ScrollText, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import InlineMessage from "@/components/features/exams/InlineMessage";
+import InlineMessage from "@/components/ui/InlineMessage";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { rubricService } from "@/services/rubric.service";
@@ -139,13 +139,20 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
 
     return (
         <div className={styles.form}>
-            <p className={styles.version}>
-                <span className={cn(styles.source, record.source === "teacher" && styles.sourceTeacher)}>
-                    {record.source === "teacher" ? "Teacher edit" : "AI parsed"}
-                </span>
-                Version {record.version}{record.source !== "teacher" && record.model ? ` · ${record.model}` : ""}
-                {record.spec.derived && " · derived from the question (no rubric text)"}
-            </p>
+            <div className={styles.versionRow}>
+                <p className={styles.version}>
+                    <span className={cn(styles.source, record.source === "teacher" && styles.sourceTeacher)}>
+                        {record.source === "teacher" ? "Teacher edit" : "AI parsed"}
+                    </span>
+                    Version {record.version}{record.source !== "teacher" && record.model ? ` · ${record.model}` : ""}
+                    {record.spec.derived && " · derived from the question (no rubric text)"}
+                </p>
+                {/* A new version from the rubric text: it belongs with the version, away from Save */}
+                <Button variant="ghost" size="sm" onClick={onReparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}
+                        title="Replaces the current version, including teacher edits" className={styles.reparse}>
+                    Parse again with the model
+                </Button>
+            </div>
             {record.spec.parser_warnings.length > 0 && (
                 <div className={styles.warnings}>
                     <AlertTriangle size={16} aria-hidden="true" />
@@ -174,42 +181,33 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
                         <ChevronDown size={16} className={styles.selectIcon} aria-hidden="true" />
                     </span>
                 </label>
-                <p className={cn(styles.sum, sumOk ? styles.sumOk : styles.sumBad)} aria-live="polite">
-                    {sumOk ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertTriangle size={16} aria-hidden="true" />}
-                    <span>
-                        Points <strong>{Number(sum.toFixed(2))} of {question.maxScore}</strong>
-                        {!sumOk && <span className={styles.sumNote}> · must add up to the question&apos;s marks</span>}
-                    </span>
-                </p>
             </div>
 
             <ol className={styles.criteria} aria-label="Criteria">
                 {criteria.map((c, i) => (
                     <li key={c.id} className={styles.criterion}>
-                        <div className={styles.criterionHead}>
-                            <span className={styles.criterionId}>{c.id}</span>
-                            <button type="button" className={styles.iconButton} onClick={() => setCriteria(criteria.filter((_, j) => j !== i))}
-                                    aria-label={`Remove criterion ${c.id}`} title={criteria.length === 1 ? "A rubric needs at least one criterion" : "Remove criterion"}
-                                    disabled={criteria.length === 1}>
-                                <Trash2 size={15} aria-hidden="true" />
-                            </button>
-                        </div>
+                        <button type="button" className={styles.iconButton} onClick={() => setCriteria(criteria.filter((_, j) => j !== i))}
+                                aria-label={`Remove criterion ${c.id}`} title={criteria.length === 1 ? "A rubric needs at least one criterion" : "Remove criterion"}
+                                disabled={criteria.length === 1}>
+                            <Trash2 size={15} aria-hidden="true" />
+                        </button>
                         <div className={styles.criterionGrid}>
                             <label className={cn(styles.field, styles.wide)}>
-                                <span>What earns the points</span>
+                                {/* The criterion's id leads its first label (and names its fields apart) */}
+                                <span className={styles.criterionLabel}><span className={styles.criterionId}>{c.id}</span> What earns the points</span>
                                 <textarea rows={2} value={c.description} onChange={(e) => update(i, { description: e.target.value })} />
                             </label>
                             <label className={styles.field}>
-                                <span>Expected answer</span>
+                                <span>Expected answer<span className="sr-only"> for {c.id}</span></span>
                                 <input type="text" value={c.expected_answer ?? ""} onChange={(e) => update(i, { expected_answer: e.target.value })} />
                             </label>
                             <label className={styles.field}>
-                                <span>Points</span>
+                                <span>Points<span className="sr-only"> for {c.id}</span></span>
                                 <input type="number" min={0} step={0.5} value={c.points} className={styles.points}
                                        onChange={(e) => update(i, { points: e.target.value === "" ? 0 : Number(e.target.value) })} />
                             </label>
                             <label className={cn(styles.field, styles.wide)}>
-                                <span>Notes <span className={styles.optional}>(partial credit, accepted variants)</span></span>
+                                <span>Notes <span className={styles.optional}>(partial credit, accepted variants)</span><span className="sr-only"> for {c.id}</span></span>
                                 <input type="text" value={c.notes ?? ""} onChange={(e) => update(i, { notes: e.target.value })} />
                             </label>
                         </div>
@@ -236,13 +234,17 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
                 </div>
             )}
 
+            {/* Sticky: the points total stays in view while editing any criterion */}
             <div className={styles.actions}>
-                <Button variant="ghost" onClick={onReparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}
-                        title="Replaces the current version, including teacher edits">
-                    Parse again with the model
-                </Button>
                 <div className={styles.saveGroup}>
                     {saved && <p className={styles.saved} role="status"><CheckCircle2 size={16} aria-hidden="true" /> Saved. New grading runs use this rubric.</p>}
+                    <p className={cn(styles.sum, sumOk ? styles.sumOk : styles.sumBad)} aria-live="polite">
+                        {sumOk ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertTriangle size={16} aria-hidden="true" />}
+                        <span>
+                            Points <strong>{Number(sum.toFixed(2))} of {question.maxScore}</strong>
+                            {!sumOk && <span className={styles.sumNote}> · must add up to the question&apos;s marks</span>}
+                        </span>
+                    </p>
                     <Button onClick={save} isLoading={saving} disabled={criteria.length === 0}>Save rubric</Button>
                 </div>
             </div>

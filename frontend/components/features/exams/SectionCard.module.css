@@ -7,6 +7,13 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
+    /* In-page links land with some air above the card */
+    scroll-margin-top: var(--space-4);
+}
+
+/* Focused by an in-page link (tabIndex -1): no ring on the whole card */
+.card:focus {
+    outline: none;
 }
 
 .header {

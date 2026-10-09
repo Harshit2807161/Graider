@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useId, useRef, useState } from "react";
-import { FileSpreadsheet, ListChecks, Plus, ScrollText, Trash2, Upload } from "lucide-react";
+import { CheckCircle2, FileSpreadsheet, Info, ListChecks, Plus, RotateCcw, ScrollText, Trash2, Upload } from "lucide-react";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { getErrorMessage } from "@/lib/api";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { examService } from "@/services/exam.service";
 import { QuestionSync, SubmissionStatus } from "@/types/exam.types";
 import { QuestionRubricStatus } from "@/types/review.types";
-import InlineMessage, { Message } from "./InlineMessage";
+import InlineMessage, { Message } from "@/components/ui/InlineMessage";
 import SectionCard from "./SectionCard";
 import styles from "./QuestionsSection.module.css";
 
@@ -29,11 +29,16 @@ export interface RubricTarget {
     maxScore: number;
 }
 
-/** Step 1: the exam's questions and their rubrics. Edits stay local until "Save questions",
- *  which sends the full list (existing questions keep their id; missing ones are removed). */
-export default function QuestionsSection({ examId, questions, dirty, rubrics, onEdit, onSaved, onRubricsChanged, onOpenRubric }: {
+/** Step 1: the exam's questions and their rubrics. Questions are added to and removed from the list
+ *  locally; "Save questions" sends the full list (existing questions keep their id; missing ones are
+ *  removed). A saved question's wording and marks can't be edited in place, its rubric can. */
+export default function QuestionsSection({ id, examId, questions, saved, dirty, rubrics, onEdit, onSaved, onRubricsChanged, onOpenRubric }: {
+    /** Anchor for in-page links */
+    id?: string;
     examId: string;
     questions: QuestionSync[];
+    /** The list as last saved, to say what saving will change */
+    saved: QuestionSync[];
     dirty: boolean;
     rubrics: QuestionRubricStatus[];
     /** A local edit (add/remove) that isn't saved yet */
@@ -59,6 +64,17 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
     const [importError, setImportError] = useState<string | null>(null);
 
     const rubricById = new Map(rubrics.map((r) => [r.question_id, r]));
+    // The last question removed from the list, shown in its place with Undo until the list is saved
+    const [removed, setRemoved] = useState<{ question: QuestionSync; index: number; label: string } | null>(null);
+    const [added, setAdded] = useState<string | null>(null);
+    const undoRef = useRef<HTMLButtonElement>(null);
+    const listRef = useRef<HTMLOListElement>(null);
+
+    const currentIds = new Set(questions.map((q) => q.id).filter(Boolean));
+    const addedCount = questions.filter((q) => !q.id).length;
+    const removedCount = saved.filter((q) => q.id && !currentIds.has(q.id)).length;
+    const changes = [addedCount > 0 && `${addedCount} added`, removedCount > 0 && `${removedCount} removed`].filter(Boolean).join(", ");
+    const totalMarks = questions.reduce((t, q) => t + (Number(q.max_score) || 0), 0);
     // The add form is open from the start only when there's nothing to list yet
     const [addOpen, setAddOpen] = useState(questions.length === 0);
     const textRef = useRef<HTMLInputElement>(null);
@@ -86,11 +102,29 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
         setNewText("");
         setNewRubric("");
         setMessage(null);
+        setAdded("Added to the list. Save the list to keep it.");
+        // Ready for the next question
+        requestAnimationFrame(() => textRef.current?.focus());
     };
 
-    const removeQuestion = (index: number) => {
+    const removeQuestion = (index: number, label: string) => {
+        setRemoved({ question: questions[index], index, label });
         onEdit(questions.filter((_, i) => i !== index).map((q, i) => ({ ...q, order_index: i + 1 })));
         setMessage(null);
+        setAdded(null);
+        // The row is replaced by its "removed · Undo" line; keep focus there
+        requestAnimationFrame(() => undoRef.current?.focus());
+    };
+
+    const undoRemove = () => {
+        if (!removed) return;
+        const next = [...questions];
+        next.splice(Math.min(removed.index, next.length), 0, removed.question);
+        onEdit(next.map((q, i) => ({ ...q, order_index: i + 1 })));
+        setRemoved(null);
+        // Focus returns to the restored question (its last control: remove)
+        const index = Math.min(removed.index, next.length - 1);
+        requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>(`[data-index="${index}"] button:last-of-type`)?.focus());
     };
 
     const save = async () => {
@@ -107,6 +141,8 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
             }));
             // Keep the returned ids so saving again updates instead of duplicating
             onSaved(await examService.syncQuestions(examId, payload));
+            setRemoved(null);
+            setAdded(null);
             await onRubricsChanged();
             setMessage({ kind: "success", text: "Questions saved. Changed rubrics are parsed in the background." });
         } catch (err) {
@@ -125,6 +161,7 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
             const created = await examService.importQuestions(examId, excelFile);
             const exam = await examService.getExam(examId);
             onSaved(exam.questions || []);
+            setRemoved(null);
             await onRubricsChanged();
             setImportOpen(false);
             setMessage({ kind: "success", text: `Imported ${created.length} ${created.length === 1 ? "question" : "questions"} from Excel.` });
@@ -137,14 +174,17 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
         }
     };
 
+    const empty = questions.length === 0;
+
     return (
         <SectionCard
+            id={id}
             step={1}
             icon={<ListChecks size={18} />}
             title="Questions & rubrics"
-            description={questions.length > 0
-                ? "Each question's rubric is parsed into criteria that both examiners grade against."
-                : "Add the exam's questions with their marks and rubric, or import them from Excel."}
+            description={empty
+                ? "Add the exam's questions with their marks and rubric, or import them from Excel."
+                : "Each question's rubric is parsed into criteria that both examiners grade against."}
             actions={
                 <Button variant="outline" size="sm" icon={<FileSpreadsheet size={16} aria-hidden="true" />}
                         aria-expanded={importOpen} aria-controls={importId} onClick={() => setImportOpen(!importOpen)}>
@@ -154,11 +194,19 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
             footer={
                 <>
                     <p className={cn(styles.saveState, dirty && styles.unsaved)}>
-                        {dirty ? <><span className={styles.dot} aria-hidden="true" />Unsaved changes</> : "Saving replaces the exam's question list."}
+                        {dirty ? (
+                            <><span className={styles.dot} aria-hidden="true" />Unsaved changes{changes && `: ${changes}`}</>
+                        ) : empty ? (
+                            "Add at least one question, then save the list."
+                        ) : (
+                            <><CheckCircle2 size={16} className={styles.savedIcon} aria-hidden="true" />
+                                Saved · {questions.length} {questions.length === 1 ? "question" : "questions"}, {totalMarks} {totalMarks === 1 ? "mark" : "marks"}</>
+                        )}
                     </p>
                     <div className={styles.saveActions}>
                         {message && <InlineMessage kind={message.kind} onDismiss={() => setMessage(null)}>{message.text}</InlineMessage>}
-                        <Button onClick={save} isLoading={saving} variant={dirty ? "primary" : "secondary"}>
+                        <Button onClick={save} isLoading={saving} disabled={!dirty} variant={dirty ? "primary" : "secondary"}
+                                title={dirty ? undefined : "Nothing to save yet"}>
                             Save questions
                         </Button>
                     </div>
@@ -171,7 +219,7 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
                         <h3 className={styles.subTitle}>Import questions from Excel (.xlsx)</h3>
                         <p className={styles.note}>
                             Required columns: <code>question_text</code> and <code>max_score</code>. Optional: <code>rubric_criteria</code> and{" "}
-                            <code>question_type</code>. Imported questions are added after the existing ones; if any row is invalid, nothing is imported.
+                            <code>question_type</code>. Imported questions are added after the saved ones and saved straight away; if any row is invalid, nothing is imported.
                         </p>
                     </div>
                     <div className={styles.importRow}>
@@ -187,16 +235,23 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
                         </div>
                         <Button onClick={importExcel} isLoading={importing} disabled={!excelFile}>Import</Button>
                     </div>
+                    {dirty && (
+                        <InlineMessage kind="info">
+                            Importing reloads the saved list, so your unsaved changes would be lost. Save them first.
+                        </InlineMessage>
+                    )}
                     {importError && <InlineMessage kind="error">{importError}</InlineMessage>}
                 </div>
             )}
 
-            {questions.length === 0 ? (
-                <div className={styles.empty}>
-                    <span className={styles.emptyIcon} aria-hidden="true"><ListChecks size={24} /></span>
-                    <p className={styles.emptyTitle}>No questions yet</p>
-                    <p className={styles.note}>Add the first one below, or import a spreadsheet.</p>
-                </div>
+            {empty && !removed ? (
+                !addOpen && (
+                    <div className={styles.empty}>
+                        <span className={styles.emptyIcon} aria-hidden="true"><ListChecks size={24} /></span>
+                        <p className={styles.emptyTitle}>No questions</p>
+                        <p className={styles.note}>Add one, or import a spreadsheet.</p>
+                    </div>
+                )
             ) : (
                 <div className={styles.list}>
                     <div className={styles.listHead} aria-hidden="true">
@@ -206,47 +261,62 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
                         <span>Rubric</span>
                         <span />
                     </div>
-                    <ol className={styles.rows} aria-label="Questions">
+                    <ol ref={listRef} className={styles.rows} aria-label="Questions">
                         {questions.map((q, idx) => {
                             const rubric = q.id ? rubricById.get(q.id) : undefined;
-                            const label = rubric?.label ?? `Q${idx + 1}`;
+                            // Unsaved questions get their number when the list is saved
+                            const label = !q.id ? "New" : rubric?.label ?? `Q${idx + 1}`;
+                            const name = q.id ? label : "the new question";
                             return (
-                                <li key={q.id ?? `new-${idx}`} className={styles.row}>
-                                    <span className={styles.label}>{label}</span>
-                                    <div className={styles.question}>
-                                        <p className={styles.questionText}>{q.question_text}</p>
-                                        {q.rubric_criteria && (
-                                            <p className={styles.rubricText}>
-                                                <ScrollText size={13} aria-hidden="true" />
-                                                <span><span className="sr-only">Rubric: </span>{q.rubric_criteria}</span>
-                                            </p>
-                                        )}
-                                    </div>
-                                    <p className={styles.marks}>
-                                        <span className={styles.marksNum}>{q.max_score}</span> {q.max_score === 1 ? "mark" : "marks"}
-                                    </p>
-                                    <div className={styles.status}>
-                                        {rubric ? <StatusBadge {...RUBRIC_BADGES[rubric.rubric_status]} />
-                                            : !q.id ? <StatusBadge status="PENDING" label="Not saved yet" /> : null}
-                                    </div>
-                                    <div className={styles.rowActions}>
-                                        {q.id && (
-                                            <Button size="sm" variant="secondary" className={styles.rowButton}
-                                                    icon={<ScrollText size={14} aria-hidden="true" />}
-                                                    onClick={() => onOpenRubric({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
-                                                Rubric
-                                            </Button>
-                                        )}
-                                        <button type="button" className={styles.iconButton} onClick={() => removeQuestion(idx)}
-                                                aria-label={`Remove ${label}`} title="Remove from the list">
-                                            <Trash2 size={16} aria-hidden="true" />
-                                        </button>
-                                    </div>
-                                </li>
+                                <React.Fragment key={q.id ?? `new-${idx}`}>
+                                    {removed && removed.index === idx && <RemovedRow removed={removed} onUndo={undoRemove} undoRef={undoRef} />}
+                                    <li className={cn(styles.row, !q.id && styles.rowNew)} data-index={idx}>
+                                        <span className={cn(styles.label, !q.id && styles.labelNew)} id={`${formId}-q${idx}`}>{label}</span>
+                                        <div className={styles.question}>
+                                            <p className={styles.questionText}>{q.question_text}</p>
+                                            {q.rubric_criteria && (
+                                                <p className={styles.rubricText}>
+                                                    <ScrollText size={13} aria-hidden="true" />
+                                                    <span><span className="sr-only">Rubric: </span>{q.rubric_criteria}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                        <p className={styles.marks}>
+                                            <span className={styles.marksNum}>{q.max_score}</span> {q.max_score === 1 ? "mark" : "marks"}
+                                        </p>
+                                        <div className={styles.status}>
+                                            {rubric ? <StatusBadge {...RUBRIC_BADGES[rubric.rubric_status]} />
+                                                : !q.id ? <StatusBadge status="PENDING" label="Not saved yet" /> : null}
+                                        </div>
+                                        <div className={styles.rowActions}>
+                                            {q.id && (
+                                                <Button size="sm" variant="secondary" className={styles.rowButton}
+                                                        icon={<ScrollText size={14} aria-hidden="true" />} aria-describedby={`${formId}-q${idx}`}
+                                                        onClick={() => onOpenRubric({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
+                                                    Rubric
+                                                </Button>
+                                            )}
+                                            <button type="button" className={styles.iconButton} onClick={() => removeQuestion(idx, name)}
+                                                    aria-label={`Remove ${name}`} title="Remove from the list">
+                                                <Trash2 size={16} aria-hidden="true" />
+                                            </button>
+                                        </div>
+                                    </li>
+                                </React.Fragment>
                             );
                         })}
+                        {removed && removed.index >= questions.length && <RemovedRow removed={removed} onUndo={undoRemove} undoRef={undoRef} />}
                     </ol>
                 </div>
+            )}
+            {!empty && (
+                <p className={styles.editNote}>
+                    <Info size={14} aria-hidden="true" />
+                    <span>
+                        Saved questions can&apos;t be edited here. To change how one is marked, open its <strong>Rubric</strong>;
+                        to change its wording or marks, remove it and add it again, then save.
+                    </span>
+                </p>
             )}
 
             {!addOpen ? (
@@ -254,8 +324,11 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
                     <Plus size={16} aria-hidden="true" /> Add a question
                 </button>
             ) : (
-            <form id={formId} className={styles.addForm} onSubmit={addQuestion} aria-labelledby={`${formId}-title`}>
-                <h3 id={`${formId}-title`} className={styles.subTitle}>Add a question</h3>
+            <form id={formId} className={cn(styles.addForm, empty && !removed && styles.addFormFirst)} onSubmit={addQuestion} aria-labelledby={`${formId}-title`}>
+                <div className={styles.addHead}>
+                    <h3 id={`${formId}-title`} className={styles.subTitle}>{empty ? "Add the first question" : "Add a question"}</h3>
+                    <p className={styles.help}>Add each question to the list, then save the list to start grading.</p>
+                </div>
                 <div className={styles.addGrid}>
                     <label className={cn(styles.field, styles.fieldText)}>
                         <span>Question text</span>
@@ -265,13 +338,14 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
                         <span>Marks</span>
                         <input type="number" min={0} value={newMaxScore} onChange={(e) => setNewMaxScore(Number(e.target.value))} />
                     </label>
-                    <label className={cn(styles.field, styles.fieldRubric)}>
-                        <span>Rubric <span className={styles.optional}>(optional)</span></span>
-                        <textarea rows={3} value={newRubric} onChange={(e) => setNewRubric(e.target.value)}
+                    {/* Help text outside the label: it describes the field, it isn't part of its name */}
+                    <div className={cn(styles.field, styles.fieldRubric)}>
+                        <label htmlFor={`${formId}-rubric`}>Rubric <span className={styles.optional}>(optional)</span></label>
+                        <textarea id={`${formId}-rubric`} rows={3} value={newRubric} onChange={(e) => setNewRubric(e.target.value)}
                                   placeholder={"Subtracts 3 from both sides (1)\nx = 4 (1)"}
                                   aria-describedby={`${formId}-rubric-help`} />
                         <small id={`${formId}-rubric-help`} className={styles.help}>One expected point per line, with its marks. Without a rubric, one is derived from the question.</small>
-                    </label>
+                    </div>
                 </div>
                 <div className={styles.addActions}>
                     <Button type="submit" variant="outline" icon={<Plus size={16} aria-hidden="true" />} disabled={!newText.trim()}>
@@ -282,9 +356,32 @@ export default function QuestionsSection({ examId, questions, dirty, rubrics, on
                             Done
                         </Button>
                     )}
+                    <p className={styles.addedNote} role="status">
+                        {added && <><CheckCircle2 size={14} aria-hidden="true" />{added}</>}
+                    </p>
                 </div>
             </form>
             )}
         </SectionCard>
+    );
+}
+
+/** Where a removed question was: the removal can be undone until the list is saved. */
+function RemovedRow({ removed, onUndo, undoRef }: {
+    removed: { question: QuestionSync; label: string };
+    onUndo: () => void;
+    undoRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+    const { question, label } = removed;
+    return (
+        <li className={styles.removedRow}>
+            <span role="status">
+                <Trash2 size={14} aria-hidden="true" />
+                {question.id ? `${label} removed from the list. It's deleted from the exam when you save.` : "The new question was removed from the list."}
+            </span>
+            <button ref={undoRef} type="button" className={styles.undo} onClick={onUndo}>
+                <RotateCcw size={14} aria-hidden="true" /> Undo<span className="sr-only"> removing {label}</span>
+            </button>
+        </li>
     );
 }

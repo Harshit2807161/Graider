@@ -64,31 +64,10 @@
     color: var(--color-surface);
 }
 
-/* Error */
-.errorBanner {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border: 1px solid var(--red-200);
-    border-radius: var(--radius-lg);
-    background-color: var(--red-50);
-    color: var(--status-failed-fg);
-}
-
-.errorBanner > svg {
-    flex-shrink: 0;
-    margin-top: 0.125rem;
-}
-
-.errorText {
-    flex: 1;
-    min-width: 0;
-    font-size: var(--text-base);
-}
-
-.errorTitle {
-    font-weight: 600;
+/* Not found: the way back sits under the banner */
+.backLink {
+    align-self: flex-start;
+    margin-top: var(--space-4);
 }
 
 /* Loading skeleton */

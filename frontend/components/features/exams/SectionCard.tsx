@@ -4,7 +4,9 @@ import styles from "./SectionCard.module.css";
 
 /** A section of the exam workspace: a card with an icon tile, a title, a one-line description
  *  and actions on the right, then the body. `step` adds a "Step n" eyebrow for workflow sections. */
-export default function SectionCard({ icon, title, description, step, actions, footer, className, children }: {
+export default function SectionCard({ id, icon, title, description, step, actions, footer, className, children }: {
+    /** Anchor for in-page links (the progress steps link to their section) */
+    id?: string;
     icon: ReactNode;
     title: string;
     description?: ReactNode;
@@ -16,7 +18,7 @@ export default function SectionCard({ icon, title, description, step, actions, f
 }) {
     const titleId = useId();
     return (
-        <section className={cn(styles.card, className)} aria-labelledby={titleId}>
+        <section id={id} className={cn(styles.card, className)} aria-labelledby={titleId} tabIndex={id ? -1 : undefined}>
             <header className={styles.header}>
                 <span className={styles.iconTile} aria-hidden="true">{icon}</span>
                 <div className={styles.titleBlock}>

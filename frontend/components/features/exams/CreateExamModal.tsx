@@ -8,13 +8,15 @@ import { cn } from "@/lib/utils";
 import { ExamCreate, ExamStatus } from "@/types/exam.types";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import InlineMessage from "./InlineMessage";
+import InlineMessage from "@/components/ui/InlineMessage";
 import styles from "./CreateExamModal.module.css";
 
 interface CreateExamModalProps {
     isOpen: boolean;
     onClose: () => void;
     selectedOrgId: string;
+    /** Called with the new exam's name once it's created (the list then points the way to it) */
+    onCreated?: (name: string) => void;
 }
 
 const STATUS_OPTIONS: { value: ExamStatus; label: string; hint: string; icon: React.ReactNode }[] = [
@@ -23,7 +25,7 @@ const STATUS_OPTIONS: { value: ExamStatus; label: string; hint: string; icon: Re
 ];
 
 /** Create an exam in the selected organization; questions are added on the exam's page. */
-export default function CreateExamModal({ isOpen, onClose, selectedOrgId }: CreateExamModalProps) {
+export default function CreateExamModal({ isOpen, onClose, selectedOrgId, onCreated }: CreateExamModalProps) {
     const { createExam } = useExamContext();
     const formId = useId();
 
@@ -49,6 +51,7 @@ export default function CreateExamModal({ isOpen, onClose, selectedOrgId }: Crea
             };
 
             await createExam(payload);
+            onCreated?.(name);
             setName("");
             setDescription("");
             setStatus("draft");

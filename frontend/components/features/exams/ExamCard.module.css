@@ -157,6 +157,15 @@
     color: var(--slate-400);
 }
 
+/* An exam that can't be graded yet */
+.statTodo {
+    color: var(--status-review-fg);
+}
+
+.statTodo svg {
+    color: currentColor;
+}
+
 .open {
     display: inline-flex;
     align-items: center;
@@ -173,4 +182,19 @@
 
 .card:hover .open svg {
     transform: translateX(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card,
+    .open svg {
+        transition: none;
+    }
+
+    .card:hover {
+        transform: none;
+    }
+
+    .card:hover .open svg {
+        transform: none;
+    }
 }
