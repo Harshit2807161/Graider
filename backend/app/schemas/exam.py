@@ -111,6 +111,7 @@ class SubmissionBase(BaseModel):
 
 class SubmissionRead(SubmissionBase):
     current_step: Optional[str] = None
+    student_name: Optional[str] = None  # filled in where the endpoint looks it up (exam lists)
     id: UUID
     created_at: datetime
     updated_at: datetime

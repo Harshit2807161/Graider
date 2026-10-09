@@ -361,3 +361,15 @@ async def test_students_see_only_their_own_published_scores_and_feedback(fake_ll
 
     full = client.get(url, headers=teacher).json()
     assert "original_file_url" in full and full["answers"][0]["reasoning"] and full["answers"][0]["status"] == "graded"
+
+
+async def test_the_exams_submission_list_names_each_student(fake_llm, db, school, tmp_path, client):
+    named = await graded(db, school, tmp_path)
+    row = db.get(Submission, named.id)
+    row.student_membership_id = school["student_m"].id
+    db.add(row)
+    db.commit()
+    await graded(db, school, tmp_path)  # no student assigned
+
+    listed = client.get(f"{API}/exams/{school['exam'].id}/submissions", headers=login(client, "teacher@school.test")).json()
+    assert sorted((s["student_name"] or "") for s in listed) == ["", "student"]

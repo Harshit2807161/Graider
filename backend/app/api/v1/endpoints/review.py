@@ -40,6 +40,7 @@ from app.schemas.review import (
     TranscriptionRead,
 )
 from app.services.labels import exam_labels
+from app.services.students import student_names
 from app.worker import grade_submission_task
 from app.workflow import actions
 
@@ -65,15 +66,6 @@ def exam_question(db: Session, exam: Exam, question_id: UUID) -> Question:
 def exam_labels_by_id(db: Session, exam: Exam) -> tuple[list[Question], dict[UUID, str]]:
     questions = crud.question.get_by_exam(db, exam_id=exam.id)
     return questions, {q.id: label for label, q in zip(exam_labels(questions), questions)}
-
-
-def student_names(db: Session, membership_ids: list[Optional[UUID]]) -> dict[UUID, str]:
-    ids = {i for i in membership_ids if i is not None}
-    if not ids:
-        return {}
-    rows = db.exec(select(Membership.id, User.full_name).join(User, col(User.id) == Membership.user_id)
-                   .where(col(Membership.id).in_(ids))).all()
-    return dict(rows)  # type: ignore[arg-type]
 
 
 def _actor(membership: Optional[Membership]) -> Optional[UUID]:
