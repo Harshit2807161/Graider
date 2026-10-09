@@ -1,0 +1,300 @@
+/* The review queue: answers to check across an exam. A table on wide screens, cards on narrow ones. */
+
+.segmented {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border-radius: 0.75rem;
+    background-color: var(--slate-100);
+}
+
+.segment {
+    height: 2.25rem;
+    padding: 0 var(--space-4);
+    border: none;
+    border-radius: var(--radius);
+    background: none;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--slate-600);
+    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.segment:hover { color: var(--foreground); }
+
+.segment[aria-pressed="true"] {
+    background-color: var(--card);
+    color: var(--foreground);
+    box-shadow: var(--shadow-sm), 0 0 0 1px var(--border);
+}
+
+/* ===== table ===== */
+.tableCard {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    transition: opacity 0.2s ease;
+}
+
+.stale { opacity: 0.6; }
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-base);
+}
+
+.table th,
+.table td {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.table thead th {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background-color: var(--slate-50);
+    border-bottom-color: var(--border);
+    white-space: nowrap;
+}
+
+.table tbody:last-child tr:last-child td { border-bottom: none; }
+
+.groupRow th {
+    padding-top: var(--space-4);
+    padding-bottom: var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    background-color: var(--card);
+}
+
+.groupCount {
+    display: inline-block;
+    margin-left: var(--space-2);
+    padding: 0 0.4375rem;
+    border-radius: 1rem;
+    background-color: var(--slate-100);
+    font-size: var(--text-xs);
+    line-height: 1.25rem;
+    color: var(--slate-600);
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.groupCountReview { background-color: var(--status-review-bg); color: var(--status-review-fg); }
+
+.row {
+    height: 3.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.row:hover { background-color: var(--slate-50); }
+
+.table .person { white-space: nowrap; }
+
+.person {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    font-weight: 500;
+    color: var(--foreground);
+}
+
+.avatar {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--slate-100);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--slate-600);
+}
+
+.noStudent { font-weight: 400; color: var(--muted-foreground); }
+
+.qLabel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 1.75rem;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius);
+    background-color: var(--primary-light);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--indigo-700);
+    white-space: nowrap;
+}
+
+.num {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.score strong { font-weight: 600; color: var(--foreground); }
+.score { color: var(--slate-500); }
+
+.agreement {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--slate-700);
+}
+
+.meter {
+    width: 3.5rem;
+    height: 6px;
+    border-radius: 999px;
+    background-color: var(--slate-100);
+    overflow: hidden;
+}
+
+.meter > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--indigo-400);
+}
+
+.open {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.openLink {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: 2rem;
+    padding: 0 var(--space-2) 0 var(--space-3);
+    border-radius: var(--radius);
+    font-weight: 600;
+    color: var(--indigo-700);
+    transition: background-color 0.2s ease;
+}
+
+.row:hover .openLink,
+.openLink:hover { background-color: var(--primary-light); }
+
+/* ===== cards (narrow) ===== */
+.cards {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.cardGroup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.cardGroupTitle {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.cardList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    list-style: none;
+}
+
+.card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-4);
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    border-color: var(--indigo-200);
+    box-shadow: var(--shadow-card-hover);
+}
+
+.cardMeta {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+}
+
+.cardWho {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.cardSub {
+    font-size: var(--text-sm);
+    font-weight: 400;
+    color: var(--muted-foreground);
+    font-variant-numeric: tabular-nums;
+}
+
+.cardOpen {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-weight: 600;
+    color: var(--indigo-700);
+}
+
+/* ===== loading ===== */
+.skeleton {
+    display: block;
+    border-radius: var(--radius);
+    background: linear-gradient(90deg, var(--slate-100) 25%, var(--slate-50) 50%, var(--slate-100) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+@container review (max-width: 60rem) {
+    .table th, .table td { padding-left: var(--space-3); padding-right: var(--space-3); }
+    .table .meter { display: none; }
+    .openText { display: none; }
+    .openLink { padding: 0 var(--space-2); }
+}
+
+@container review (max-width: 40rem) {
+    .tableCard { display: none; }
+    .cards { display: flex; }
+    .segmented { display: flex; width: 100%; }
+    .segment { flex: 1 1 auto; height: 2.5rem; }
+}

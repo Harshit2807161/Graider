@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertTriangle, Bot, Check, FileText, Pencil, SlidersHorizontal, UserCheck } from "lucide-react";
+import { AlertTriangle, Bot, Check, ChevronRight, FileText, History, MessagesSquare, Pencil, SlidersHorizontal, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
 import { AnswerGrade, QuestionReview, escalationText } from "@/types/review.types";
 import ExaminerRounds from "./ExaminerRounds";
 import HighlightedText from "./HighlightedText";
-import styles from "./review.module.css";
+import styles from "./QuestionCard.module.css";
 
 /** What the teacher can do about each kind of escalation. */
 const HINTS: Record<string, string> = {
@@ -31,11 +31,17 @@ function fmt(value: number | null | undefined): string {
     return value == null ? "–" : Number(value.toFixed(2)).toString();
 }
 
-function versionLine(grade: AnswerGrade): string {
-    const who = grade.source === "teacher" ? "teacher" : "model";
-    const what = grade.status === "escalated" ? `needs review (${escalationText(grade.escalation_reason).toLowerCase()})`
-        : grade.status === "not_attempted" ? "not attempted" : "graded";
-    return `v${grade.version} · ${who} · ${what} · ${fmt(grade.score)} / ${fmt(grade.max_score)}`;
+function when(iso: string): string {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+function versionStatus(grade: AnswerGrade): string {
+    return grade.status === "escalated" ? `Needs review: ${escalationText(grade.escalation_reason).toLowerCase()}`
+        : grade.status === "not_attempted" ? "Not attempted" : "Graded";
+}
+
+function plural(n: number, one: string, many: string): string {
+    return `${n} ${n === 1 ? one : many}`;
 }
 
 interface QuestionCardProps {
@@ -43,14 +49,24 @@ interface QuestionCardProps {
     canScore: boolean;
     canEditTranscript: boolean;
     busy: boolean;
+    /** The page the viewer shows, to mark this answer's page buttons */
+    currentPage?: number;
+    /** Writing the model couldn't place exists: a missing answer may be in it */
+    hasUnplaced?: boolean;
     onResolve: (q: QuestionReview) => void;
     onOverride: (q: QuestionReview) => void;
     onEditTranscript: (q: QuestionReview) => void;
     onShowPage: (page: number) => void;
 }
 
-export default function QuestionCard({ q, canScore, canEditTranscript, busy, onResolve, onOverride, onEditTranscript, onShowPage }: QuestionCardProps) {
-    const [activeCriterion, setActiveCriterion] = useState<string | null>(null);
+export default function QuestionCard({
+    q, canScore, canEditTranscript, busy, currentPage, hasUnplaced = false,
+    onResolve, onOverride, onEditTranscript, onShowPage,
+}: QuestionCardProps) {
+    // Hovering or focusing a criterion previews its quote; clicking the quote keeps it highlighted
+    const [hovered, setHovered] = useState<string | null>(null);
+    const [pinned, setPinned] = useState<string | null>(null);
+    const activeCriterion = hovered ?? pinned;
     const grade = q.grade;
     const transcript = q.transcription;
     const escalated = grade?.status === "escalated";
@@ -60,151 +76,235 @@ export default function QuestionCard({ q, canScore, canEditTranscript, busy, onR
     const rows = grade?.criteria.length ? grade.criteria : [];
     const pages = [...new Set((transcript?.segments ?? []).map((s) => s.page).filter((p): p is number => p != null))];
     const quotes = rows.filter((c) => c.score > 0 && c.evidence).map((c) => ({ text: c.evidence as string, criterionId: c.id }));
+    const quoted = new Set(quotes.map((x) => x.criterionId));
     const titleId = `q-title-${q.question_id}`;
+    const lastRound = grade?.rounds[grade.rounds.length - 1];
+
+    // One clear next step for an answer that needs review
+    const canAccept = canScore && escalated && grade?.score != null;
+    const transcriptFirst = escalated && grade?.escalation_reason === "no_answer_found" && hasUnplaced;
+    const primary: "accept" | "scores" | "transcript" | null = !escalated ? null
+        : canAccept ? "accept"
+        : transcriptFirst && canEditTranscript ? "transcript"
+        : canScore ? "scores" : null;
 
     return (
         <article id={`q-${q.question_id}`} tabIndex={-1} aria-labelledby={titleId}
-                 className={cn(styles.card, escalated && styles.cardEscalated, notAttempted && styles.cardMuted)}>
-            <header className={styles.cardHead}>
-                <h3 id={titleId} className={styles.cardTitle}>
-                    <span className={styles.qLabel}>{q.label}</span>
-                    <span>{q.text}</span>
-                </h3>
-                <div className={styles.scoreBox} aria-label={`Score ${fmt(grade?.score)} out of ${fmt(q.max_score)}`}>
-                    <strong>{fmt(grade?.score)}</strong>
-                    <span>/ {fmt(q.max_score)}</span>
-                </div>
-            </header>
-
-            <div className={styles.cardMeta}>
-                {grade ? <StatusBadge status={grade.status} /> : <span className={styles.chip}>Not graded yet</span>}
-                {grade?.source === "teacher" && (
-                    <span className={styles.chip}><UserCheck size={14} aria-hidden="true" /> Teacher&apos;s decision</span>
-                )}
-                {grade && !grade.counted && !notAttempted && (
-                    <span className={styles.chip}>Doesn&apos;t count: extra alternative</span>
-                )}
-                {grade?.fallback_used && <span className={styles.chip}><Bot size={14} aria-hidden="true" /> Graded by a fallback model</span>}
-                {q.choice_group && <span className={styles.chip}>Choice group {q.choice_group}</span>}
-            </div>
-
-            {escalated && (
-                <div className={styles.escalation} role="note">
-                    <AlertTriangle size={16} aria-hidden="true" />
-                    <div>
-                        <strong>{escalationText(grade?.escalation_reason)}</strong>
-                        <p>{hint(grade?.escalation_reason ?? null)}</p>
+                 className={cn(styles.card, escalated && styles.escalated, notAttempted && styles.muted)}>
+            <header className={styles.head}>
+                <span className={styles.labelTile} aria-hidden="true">{q.label}</span>
+                <div className={styles.headMain}>
+                    <h3 id={titleId} className={styles.title}><span className="sr-only">{q.label}: </span>{q.text}</h3>
+                    <div className={styles.meta}>
+                        {grade ? <StatusBadge status={grade.status} /> : <span className={styles.chip}>Not graded yet</span>}
+                        {grade?.source === "teacher" && (
+                            <span className={cn(styles.chip, styles.chipTeacher)}><UserCheck size={14} aria-hidden="true" /> Teacher&apos;s decision</span>
+                        )}
+                        {grade && !grade.counted && !notAttempted && (
+                            <span className={styles.chip}>Doesn&apos;t count: extra alternative</span>
+                        )}
+                        {grade?.fallback_used && <span className={styles.chip}><Bot size={14} aria-hidden="true" /> Graded by a fallback model</span>}
+                        {q.choice_group && <span className={styles.chip}>Choice group {q.choice_group}</span>}
                     </div>
                 </div>
-            )}
+                <p className={styles.score}>
+                    <span className={styles.scoreLabel}>Score</span>
+                    <span className={styles.scoreValue}>
+                        <strong>{fmt(grade?.score)}</strong> / {fmt(q.max_score)}
+                    </span>
+                </p>
+            </header>
 
-            {notAttempted ? (
-                <p className={styles.muted}>Not attempted: the student answered another alternative of this choice question.</p>
-            ) : (
-                <>
-                    <section className={styles.section} aria-label={`Transcript of ${q.label}`}>
-                        <div className={styles.sectionHead}>
-                            <h4>Transcript</h4>
-                            <span className={styles.sectionNote}>
-                                {transcript?.source === "teacher" ? "Corrected by a teacher"
-                                    : transcript?.confidence != null ? `Read by the model · confidence ${fmt(transcript.confidence)}` : ""}
-                            </span>
-                            {pages.map((p) => (
-                                <button key={p} type="button" className={styles.linkButton} onClick={() => onShowPage(p)}>
-                                    <FileText size={13} aria-hidden="true" /> Page {p}
-                                </button>
-                            ))}
+            <div className={styles.body}>
+                {escalated && (
+                    <div className={styles.callout} role="note">
+                        <AlertTriangle size={18} aria-hidden="true" />
+                        <div>
+                            <p className={styles.calloutTitle}>{escalationText(grade?.escalation_reason)}</p>
+                            <p className={styles.calloutText}>
+                                {hint(grade?.escalation_reason ?? null)}
+                                {transcriptFirst && " Some writing on the pages wasn't placed: it may be this answer."}
+                            </p>
                         </div>
-                        {transcript?.text ? (
-                            <pre className={styles.transcript}>
-                                <HighlightedText text={transcript.text} quotes={quotes} activeCriterion={activeCriterion} />
-                            </pre>
-                        ) : (
-                            <p className={styles.muted}>No answer was found for this question.</p>
+                    </div>
+                )}
+
+                {notAttempted ? (
+                    <p className={styles.empty}>Not attempted: the student answered another alternative of this choice question.</p>
+                ) : (
+                    <>
+                        <section className={styles.section} aria-labelledby={`${titleId}-transcript`}>
+                            <div className={styles.sectionHead}>
+                                <h4 id={`${titleId}-transcript`} className={styles.sectionTitle}>Transcript</h4>
+                                <span className={styles.sectionMeta}>
+                                    {transcript?.source === "teacher" ? "Corrected by a teacher"
+                                        : transcript?.confidence != null ? `Read by the model · confidence ${fmt(transcript.confidence)}` : ""}
+                                </span>
+                                {pages.length > 0 && (
+                                    <span className={styles.pageButtons}>
+                                        {pages.map((p) => (
+                                            <button key={p} type="button" onClick={() => onShowPage(p)}
+                                                    className={cn(styles.pageButton, p === currentPage && styles.pageButtonShown)}
+                                                    aria-current={p === currentPage ? "true" : undefined}>
+                                                <FileText size={13} aria-hidden="true" /> Page {p}
+                                                {p === currentPage && <span className="sr-only"> (shown)</span>}
+                                            </button>
+                                        ))}
+                                    </span>
+                                )}
+                            </div>
+                            {transcript?.text ? (
+                                <pre className={cn(styles.transcript, activeCriterion && quoted.has(activeCriterion) && styles.focusing)}>
+                                    <HighlightedText text={transcript.text} quotes={quotes} activeCriterion={activeCriterion} />
+                                </pre>
+                            ) : (
+                                <p className={styles.emptyBox}>No answer was found for this question.</p>
+                            )}
+                        </section>
+
+                        {rows.length > 0 ? (
+                            <section className={styles.section} aria-labelledby={`${titleId}-criteria`}>
+                                <div className={styles.sectionHead}>
+                                    <h4 id={`${titleId}-criteria`} className={styles.sectionTitle}>Criteria</h4>
+                                    {quotes.length > 0 && <span className={styles.sectionMeta}>Select a quote to find it in the transcript</span>}
+                                </div>
+                                <ul className={styles.criteria}>
+                                    {rows.map((c) => {
+                                        const points = describe.get(c.id)?.points;
+                                        const share = points ? Math.max(0, Math.min(1, c.score / points)) : 0;
+                                        return (
+                                            <li key={c.id} className={cn(styles.criterion, activeCriterion === c.id && styles.criterionActive)}
+                                                onMouseEnter={() => setHovered(c.id)} onMouseLeave={() => setHovered(null)}>
+                                                <p className={styles.criterionName}>
+                                                    <span className={styles.criterionId}>{c.id}</span>
+                                                    {describe.get(c.id)?.description ?? ""}
+                                                </p>
+                                                <p className={cn(styles.criterionScore,
+                                                    share >= 1 ? styles.scoreFull : share > 0 ? styles.scorePartial : styles.scoreZero)}>
+                                                    <span className="sr-only">Score </span>
+                                                    {fmt(c.score)} / {fmt(points)}
+                                                </p>
+                                                {(c.evidence || c.justification) && (
+                                                    <div className={styles.criterionDetail}>
+                                                        {c.evidence && (quoted.has(c.id) ? (
+                                                            <button type="button" className={styles.quote} aria-pressed={pinned === c.id}
+                                                                    title="Highlight in the transcript"
+                                                                    onClick={() => setPinned(pinned === c.id ? null : c.id)}
+                                                                    onFocus={() => setHovered(c.id)} onBlur={() => setHovered(null)}>
+                                                                <span className="sr-only">Highlight in the transcript: {c.evidence}</span>
+                                                                <span aria-hidden="true">“{c.evidence}”</span>
+                                                            </button>
+                                                        ) : (
+                                                            <q className={cn(styles.quote, styles.quoteStatic)}>{c.evidence}</q>
+                                                        ))}
+                                                        {c.justification && <p className={styles.justification}>{c.justification}</p>}
+                                                    </div>
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </section>
+                        ) : grade && !q.rubric_spec ? (
+                            <p className={styles.emptyBox}>This question has no rubric spec yet: fix the rubric on the exam page.</p>
+                        ) : null}
+
+                        {grade && grade.rounds.length > 0 && (
+                            <details className={styles.disclosure} open={grade.escalation_reason === "evaluator_disagreement"}>
+                                <summary>
+                                    <MessagesSquare size={16} aria-hidden="true" className={styles.summaryIcon} />
+                                    Examiner discussion
+                                    <span className={styles.summaryMeta}>
+                                        · {plural(grade.rounds.length, "round", "rounds")}
+                                        {lastRound && ` · agreement ${fmt(lastRound.effective_agreement)}`}
+                                    </span>
+                                    <ChevronRight size={16} aria-hidden="true" className={styles.chevron} />
+                                </summary>
+                                <div className={styles.disclosureBody}>
+                                    <ExaminerRounds rounds={grade.rounds} criteria={specCriteria} />
+                                </div>
+                            </details>
                         )}
-                    </section>
 
-                    {rows.length > 0 ? (
-                        <section className={styles.section} aria-label={`Criteria for ${q.label}`}>
-                            <h4 className={styles.sectionTitle}>Criteria</h4>
-                            <table className={styles.criteriaTable}>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Criterion</th>
-                                        <th scope="col" className={styles.num}>Score</th>
-                                        <th scope="col">Evidence and reasoning</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((c) => (
-                                        <tr key={c.id} onMouseEnter={() => setActiveCriterion(c.id)} onMouseLeave={() => setActiveCriterion(null)}
-                                            className={cn(activeCriterion === c.id && styles.rowActive)}>
-                                            <th scope="row">
-                                                <span className={styles.criterionId}>{c.id}</span>{" "}
-                                                {describe.get(c.id)?.description ?? ""}
-                                            </th>
-                                            <td className={styles.num}>{fmt(c.score)} / {fmt(describe.get(c.id)?.points)}</td>
-                                            <td>
-                                                {c.evidence && <q className={styles.quote}>{c.evidence}</q>}
-                                                {c.justification && <p className={styles.justification}>{c.justification}</p>}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </section>
-                    ) : grade && !q.rubric_spec ? (
-                        <p className={styles.muted}>This question has no rubric spec yet: fix the rubric on the exam page.</p>
-                    ) : null}
+                        {(grade?.feedback || grade?.override_reason) && (
+                            <section className={styles.section} aria-labelledby={`${titleId}-feedback`}>
+                                <div className={styles.sectionHead}>
+                                    <h4 id={`${titleId}-feedback`} className={styles.sectionTitle}>Feedback to the student</h4>
+                                </div>
+                                {grade?.feedback ? <p className={styles.feedback}>{grade.feedback}</p> : <p className={styles.empty}>No feedback.</p>}
+                                {grade?.override_reason && (
+                                    <p className={styles.reason}>
+                                        <UserCheck size={14} aria-hidden="true" />
+                                        <span><strong>Teacher&apos;s reason:</strong> {grade.override_reason}</span>
+                                    </p>
+                                )}
+                            </section>
+                        )}
+                    </>
+                )}
 
-                    {grade && grade.rounds.length > 0 && (
-                        <details className={styles.details} open={grade.escalation_reason === "evaluator_disagreement"}>
-                            <summary>Examiner discussion ({grade.rounds.length} {grade.rounds.length === 1 ? "round" : "rounds"})</summary>
-                            <ExaminerRounds rounds={grade.rounds} criteria={specCriteria} />
-                        </details>
-                    )}
-
-                    {grade?.feedback && (
-                        <section className={styles.section}>
-                            <h4 className={styles.sectionTitle}>Feedback to the student</h4>
-                            <p className={styles.feedback}>{grade.feedback}</p>
-                        </section>
-                    )}
-                    {grade?.override_reason && (
-                        <p className={styles.sectionNote}>Teacher&apos;s reason: {grade.override_reason}</p>
-                    )}
-                </>
-            )}
-
-            {q.previous_grades.length > 0 && (
-                <details className={styles.details}>
-                    <summary>Earlier versions ({q.previous_grades.length})</summary>
-                    <ul className={styles.history}>
-                        {q.previous_grades.map((g) => (
-                            <li key={g.id}>
-                                <span>{versionLine(g)}</span>
-                                <time dateTime={g.created_at}>{new Date(g.created_at).toLocaleString()}</time>
-                                {g.override_reason && <span className={styles.sectionNote}>Reason: {g.override_reason}</span>}
-                            </li>
-                        ))}
-                    </ul>
-                </details>
-            )}
+                {q.previous_grades.length > 0 && (
+                    <details className={styles.disclosure}>
+                        <summary>
+                            <History size={16} aria-hidden="true" className={styles.summaryIcon} />
+                            Earlier versions
+                            <span className={styles.count}>{q.previous_grades.length}</span>
+                            <ChevronRight size={16} aria-hidden="true" className={styles.chevron} />
+                        </summary>
+                        <div className={styles.disclosureBody}>
+                            <ul className={styles.versions}>
+                                {q.previous_grades.map((g) => (
+                                    <li key={g.id} className={styles.version}>
+                                        <p className={styles.versionHead}>
+                                            <span className={styles.versionTag}>v{g.version}</span>
+                                            <span>{g.source === "teacher" ? "Teacher" : "Model"} · {versionStatus(g)}</span>
+                                            <span className={styles.versionScore}>{fmt(g.score)} / {fmt(g.max_score)}</span>
+                                        </p>
+                                        <time className={styles.versionTime} dateTime={g.created_at}>{when(g.created_at)}</time>
+                                        {g.override_reason && (
+                                            <p className={styles.reason}>
+                                                <UserCheck size={14} aria-hidden="true" />
+                                                <span><strong>Reason:</strong> {g.override_reason}</span>
+                                            </p>
+                                        )}
+                                        {g.rounds.length > 0 && (
+                                            <details className={styles.nested}>
+                                                <summary>
+                                                    <MessagesSquare size={14} aria-hidden="true" className={styles.summaryIcon} />
+                                                    Examiner discussion
+                                                    <span className={styles.summaryMeta}>· {plural(g.rounds.length, "round", "rounds")}</span>
+                                                    <ChevronRight size={14} aria-hidden="true" className={styles.chevron} />
+                                                </summary>
+                                                <div><ExaminerRounds rounds={g.rounds} criteria={specCriteria} /></div>
+                                            </details>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </details>
+                )}
+            </div>
 
             {(canScore || canEditTranscript) && grade && !notAttempted && (
-                <div className={styles.cardActions}>
-                    {canScore && escalated && grade.score != null && (
+                <div className={styles.footer}>
+                    {canAccept && (
                         <Button size="sm" onClick={() => onResolve(q)} disabled={busy} icon={<Check size={14} aria-hidden="true" />}>
                             Accept {fmt(grade.score)} / {fmt(q.max_score)}
                         </Button>
                     )}
+                    {primary === "transcript" && (
+                        <Button size="sm" onClick={() => onEditTranscript(q)} disabled={busy} icon={<Pencil size={14} aria-hidden="true" />}>
+                            Correct transcript
+                        </Button>
+                    )}
                     {canScore && (
-                        <Button size="sm" variant="secondary" onClick={() => onOverride(q)} disabled={busy}
+                        <Button size="sm" variant={primary === "scores" ? "primary" : "secondary"} onClick={() => onOverride(q)} disabled={busy}
                                 icon={<SlidersHorizontal size={14} aria-hidden="true" />}>
                             Change scores
                         </Button>
                     )}
-                    {canEditTranscript && (
+                    {canEditTranscript && primary !== "transcript" && (
                         <Button size="sm" variant="ghost" onClick={() => onEditTranscript(q)} disabled={busy}
                                 icon={<Pencil size={14} aria-hidden="true" />}>
                             Correct transcript

@@ -1,6 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import styles from "./review.module.css";
+import styles from "./QuestionCard.module.css";
 
 export interface Quote {
     text: string;
@@ -34,7 +34,8 @@ function findRanges(text: string, quotes: Quote[]): { start: number; end: number
     return merged;
 }
 
-/** The student's text with the quoted evidence marked; the active criterion's quote stands out. */
+/** The student's text with the quoted evidence marked; the active criterion's quote stands out
+ *  (the wrapper gets `styles.focusing` from the card while a criterion is active). */
 export default function HighlightedText({ text, quotes, activeCriterion }: {
     text: string;
     quotes: Quote[];
@@ -43,10 +44,10 @@ export default function HighlightedText({ text, quotes, activeCriterion }: {
     const ranges = findRanges(text, quotes);
     const pieces: React.ReactNode[] = [];
     let at = 0;
-    ranges.forEach((range, i) => {
+    ranges.forEach((range) => {
         if (range.start > at) pieces.push(text.slice(at, range.start));
         pieces.push(
-            <mark key={i} className={cn(styles.evidence, activeCriterion && range.ids.includes(activeCriterion) && styles.evidenceActive)}
+            <mark key={range.start} className={cn(styles.evidence, activeCriterion && range.ids.includes(activeCriterion) && styles.evidenceActive)}
                   title={`Evidence for ${range.ids.join(", ")}`}>
                 {text.slice(range.start, range.end)}
             </mark>,
