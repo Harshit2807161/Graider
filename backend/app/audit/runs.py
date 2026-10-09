@@ -35,21 +35,24 @@ def _transition(run: GradingRun, to: str) -> None:
     run.status = to
 
 
-def config_snapshot() -> tuple[dict, str]:
-    """The model configuration this worker will use, and a short hash of it. Holds no secrets
-    (API keys live in app settings, not in LLM settings)."""
+def config_snapshot(exam_config: Optional[dict] = None) -> tuple[dict, str]:
+    """The model configuration this worker will use, with the grading settings (the exam's own where
+    it sets them), and a short hash of it. Holds no secrets (API keys live in app settings, not in
+    LLM settings)."""
     from app.core.config import settings
     from app.exam_drafts.extract import PROMPT_VERSION as EXAM_PAGE_PROMPT
     from app.grading.prompts import PROMPT_VERSION as GRADING_PROMPT
+    from app.grading.question import ExamSettings
     from app.rubrics.parser import PARSER_PROMPT_VERSION
 
     snapshot = get_llm_settings().model_dump(mode="json")
+    exam = ExamSettings.of(exam_config)
     snapshot["grading"] = {
-        "agreement_threshold": settings.GRADING_AGREEMENT_THRESHOLD,
+        "agreement_threshold": exam.agreement_threshold,
         "max_revisions": settings.GRADING_MAX_REVISIONS,
         "criterion_tolerance": settings.GRADING_CRITERION_TOLERANCE,
         "ocr_confidence_threshold": settings.GRADING_OCR_CONFIDENCE_THRESHOLD,
-        "spot_check_rate": settings.GRADING_SPOT_CHECK_RATE,
+        "spot_check_rate": exam.spot_check_rate,
     }
     snapshot["prompt_versions"] = {
         "grading": GRADING_PROMPT, "rubric_parser": PARSER_PROMPT_VERSION, "exam_page": EXAM_PAGE_PROMPT,
@@ -77,9 +80,9 @@ def create_run(
     return run
 
 
-def start_run(db: Session, run: GradingRun) -> None:
+def start_run(db: Session, run: GradingRun, exam_config: Optional[dict] = None) -> None:
     _transition(run, RunStatus.RUNNING)
-    run.config_snapshot, run.config_hash = config_snapshot()
+    run.config_snapshot, run.config_hash = config_snapshot(exam_config)
     run.code_version = settings.CODE_VERSION
     run.started_at = run.started_at or utcnow()
     db.add(run)

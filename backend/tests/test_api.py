@@ -424,3 +424,33 @@ def test_question_labels_must_be_unique(client, school):
                  {"question_text": "b", "order_index": 2, "max_score": 1, "label": "1"}]
     response = client.post(f"{API}/exams/{school['exam'].id}/questions", json=questions, headers=headers)
     assert response.status_code == 400 and "labels must be unique: 1" in response.json()["detail"]
+
+
+class TestGradingSettings:
+    def test_defaults_then_partial_updates_keep_the_rest_of_the_config(self, client, db, school):
+        exam = school["exam"]
+        exam.config = {"choice_groups": [{"id": "g1", "labels": ["Q1", "Q2"], "pick": 1}]}
+        db.add(exam)
+        db.commit()
+        headers = login(client, "teacher@school.test")
+        url = f"{API}/exams/{exam.id}/grading-settings"
+
+        assert client.get(url, headers=headers).json() == {
+            "agreement_threshold": 0.8, "spot_check_rate": 0.0, "choice_policy": "best"}
+        response = client.patch(url, json={"spot_check_rate": 0.1}, headers=headers)
+        assert response.json() == {"agreement_threshold": 0.8, "spot_check_rate": 0.1, "choice_policy": "best"}
+        db.refresh(exam)
+        assert exam.config["choice_groups"] and exam.config["spot_check_rate"] == 0.1
+
+    @pytest.mark.parametrize("body", [{"agreement_threshold": 0.3}, {"spot_check_rate": 1.5},
+                                      {"choice_policy": "worst"}, {"max_revisions": 5}])
+    def test_out_of_range_or_unknown_settings_are_rejected(self, client, school, body):
+        response = client.patch(f"{API}/exams/{school['exam'].id}/grading-settings", json=body,
+                                headers=login(client, "teacher@school.test"))
+        assert response.status_code == 422
+
+    def test_students_cannot_read_or_change_them(self, client, school):
+        url = f"{API}/exams/{school['exam'].id}/grading-settings"
+        headers = login(client, "student@school.test")
+        assert client.get(url, headers=headers).status_code == 403
+        assert client.patch(url, json={"spot_check_rate": 1.0}, headers=headers).status_code == 403

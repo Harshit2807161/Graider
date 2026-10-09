@@ -10,7 +10,7 @@ from langgraph.types import Send
 
 from app.core.config import settings
 from app.grading.choices import not_attempted
-from app.grading.question import QuestionInput, QuestionOutcome, grade_question
+from app.grading.question import ExamSettings, QuestionInput, QuestionOutcome, grade_question
 from app.grading.stitch import Stitched, stitch
 from app.grading.transcribe import SheetPage, transcribe_page
 from app.services.labels import ChoiceGroup
@@ -29,6 +29,7 @@ class GradingState(TypedDict, total=False):
     pages: list[SheetPage]
     questions: list[QuestionInfo]
     choice_groups: list[ChoiceGroup]
+    exam: ExamSettings
     skip: set[str]  # labels not to grade: unattempted alternatives of choice groups
     page_results: Annotated[list[tuple[int, dict]], operator.add]
     stitched: Optional[Stitched]
@@ -57,7 +58,7 @@ def stitch_pages(state: GradingState) -> dict:
 def _grade_questions(state: GradingState) -> list[Send]:
     stitched, skip = state["stitched"], state["skip"]
     sends = [
-        Send("grade", {"run_id": state["run_id"], "q": QuestionInput(
+        Send("grade", {"run_id": state["run_id"], "exam": state["exam"], "q": QuestionInput(
             q["question_id"], q["label"], q["text"], q["max_score"], q["spec"], stitched.answers.get(q["label"]))})
         for q in state["questions"] if q["label"] not in skip
     ]
@@ -65,7 +66,7 @@ def _grade_questions(state: GradingState) -> list[Send]:
 
 
 async def grade(piece: dict) -> dict:
-    return {"outcomes": [await grade_question(piece["q"], piece["run_id"])]}
+    return {"outcomes": [await grade_question(piece["q"], piece["run_id"], piece["exam"])]}
 
 
 def done(_: dict) -> dict:
@@ -90,7 +91,8 @@ _graph = None
 
 
 async def run_submission_graph(
-    run_id: UUID, pages: list[SheetPage], questions: list[QuestionInfo], choice_groups: list[ChoiceGroup]
+    run_id: UUID, pages: list[SheetPage], questions: list[QuestionInfo], choice_groups: list[ChoiceGroup],
+    exam: Optional[ExamSettings] = None,
 ) -> dict:
     """Read, stitch and grade. Returns the final state (stitched answers and one outcome per graded
     question). LLM errors while reading a page, and an exhausted budget, propagate."""
@@ -98,6 +100,7 @@ async def run_submission_graph(
     if _graph is None:
         _graph = build_graph()
     return await _graph.ainvoke(
-        {"run_id": run_id, "pages": pages, "questions": questions, "choice_groups": choice_groups},
+        {"run_id": run_id, "pages": pages, "questions": questions, "choice_groups": choice_groups,
+         "exam": exam or ExamSettings.of()},
         config={"max_concurrency": settings.GRADING_MAX_CONCURRENCY, "run_name": "grade_submission"},
     )
