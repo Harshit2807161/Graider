@@ -1,9 +1,10 @@
-/* The answer-sheet page viewer: sticky beside the answers on wide screens, above them on narrow ones. */
+/* The answer-sheet page viewer: in the sticky column beside the answers on wide screens (it shrinks to
+   the space left there), above the answers on narrow ones. */
 
 .viewer {
     display: flex;
     flex-direction: column;
-    max-height: calc(100dvh - 2rem);
+    min-height: 0;
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -98,6 +99,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-1);
+    margin-left: auto;   /* stays on the right when the bar wraps */
 }
 
 .toolButtonOn {
@@ -218,13 +220,19 @@
 }
 
 /* Stacked above the answers: keep the page from pushing them off screen */
-@container review (max-width: 56rem) {
-    .viewer { max-height: none; }
-    .frame { max-height: min(60vh, 34rem); }
+@container review (max-width: 41.99rem) {
+    .frame { max-height: min(55vh, 30rem); }
 }
 
 @container review (max-width: 40rem) {
     .pageTab, .stepButton, .toolButton { height: 2.5rem; }
     .pageTab { min-width: 2.5rem; }
     .stepButton, .toolButton { width: 2.5rem; }
+}
+
+/* A narrow column beside the answers: a tighter toolbar so it stays on one line */
+@container viewer (max-width: 24rem) {
+    .bar { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+    .stepButton { width: 2rem; }
+    .caption { padding: var(--space-2) var(--space-3); }
 }

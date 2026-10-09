@@ -264,7 +264,7 @@
 .roundSummary strong { font-weight: 600; color: var(--slate-700); }
 
 /* Small spaces: tighter cells and threads so the table fits without sideways scrolling */
-@container review (max-width: 40rem) {
+@container answers (max-width: 30rem) {
     .compare th,
     .compare td { padding: var(--space-2); }
     .compare thead th { white-space: normal; }

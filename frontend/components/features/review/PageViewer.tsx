@@ -18,7 +18,7 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
     page: number;
     onPageChange: (page: number) => void;
     captions?: Record<number, string>;
-    /** Pages with writing the model couldn't place: marked so the teacher looks there */
+    /** Pages with writing not matched to a question: marked so the teacher looks there */
     flagged?: number[];
 }) {
     const urls = useRef(new Map<number, string>());  // requested pages ("" while loading)
@@ -107,7 +107,7 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
                                 title={captions?.[p.number] ? `Page ${p.number}: ${captions[p.number]}` : `Page ${p.number}`}
                                 onClick={() => onPageChange(p.number)}>
                             <span className="sr-only">
-                                Page {p.number}{flagged.includes(p.number) && ", has writing the model couldn't place"}
+                                Page {p.number}{flagged.includes(p.number) && ", has writing not matched to a question"}
                             </span>
                             <span aria-hidden="true">{p.number}</span>
                             {flagged.includes(p.number) && <span className={styles.flag} aria-hidden="true" />}
@@ -149,7 +149,7 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
                 ) : !current?.has_image ? (
                     <div className={styles.message}>
                         <span className={styles.messageIcon} aria-hidden="true"><FileText size={22} /></span>
-                        <p>This page is typed text; its words are in the transcript.</p>
+                        <p>This page is typed text, so there is no image to show.</p>
                     </div>
                 ) : (
                     <div className={styles.sheet} style={{ aspectRatio: aspect }}>

@@ -8,6 +8,7 @@ import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { reviewService } from "@/services/review.service";
 import { TimelineEntry, escalationText } from "@/types/review.types";
+import { explainFailure } from "./failure";
 import styles from "./dialogs.module.css";
 
 const EVENT_TEXT: Record<string, string> = {
@@ -21,20 +22,38 @@ const EVENT_TEXT: Record<string, string> = {
     review_complete: "Review complete",
 };
 
+const RUN_TEXT: Record<string, string> = {
+    upload: "Grading after upload",
+    regrade: "Regrade",
+    transcript_edit: "Regrade after a transcript correction",
+};
+
+const RUN_STATUS: Record<string, string> = {
+    queued: "queued",
+    running: "in progress",
+    succeeded: "finished",
+    failed: "failed",
+};
+
 function fmt(value: unknown): string {
     return typeof value === "number" ? Number(value.toFixed(2)).toString() : "–";
 }
 
-function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string; detail?: string; tone?: string } {
+function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string; detail?: string; technical?: string; tone?: string } {
     const d = entry.data as Record<string, never>;
     const label = entry.question_label ? `${entry.question_label} · ` : "";
     switch (entry.type) {
-        case "run":
+        case "run": {
+            const failed = d.status === "failed";
+            const usage = `${d.llm_calls} model ${d.llm_calls === 1 ? "call" : "calls"} · $${Number(d.cost_usd ?? 0).toFixed(2)}`;
             return {
-                icon: <Play size={14} aria-hidden="true" />,
-                title: `Grading run (${String(d.trigger).replace("_", " ")}): ${d.status}`,
-                detail: [`${d.llm_calls} model calls`, `$${fmt(d.cost_usd)}`, d.error].filter(Boolean).join(" · "),
+                icon: failed ? <AlertCircle size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />,
+                title: `${RUN_TEXT[d.trigger] ?? "Grading run"} ${RUN_STATUS[d.status] ?? d.status}`,
+                detail: failed ? explainFailure(d.error).cause : usage,
+                technical: failed ? [d.error, usage].filter(Boolean).join(" · ") : undefined,
+                tone: failed ? "runFailed" : undefined,
             };
+        }
         case "llm_call":
             return {
                 icon: <Bot size={14} aria-hidden="true" />,
@@ -130,13 +149,14 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
                     <h3 className={styles.day}>{group.day}</h3>
                     <ol className={styles.timeline}>
                         {group.items.map((entry, i) => {
-                            const { icon, title, detail, tone } = describe(entry);
+                            const { icon, title, detail, technical, tone } = describe(entry);
                             return (
                                 <li key={`${entry.type}-${entry.at}-${i}`} className={cn(styles.entry, styles[`tl_${tone ?? entry.type}`])}>
                                     <span className={styles.entryIcon}>{icon}</span>
                                     <div>
                                         <p className={styles.entryTitle}>{title}</p>
                                         {detail && <p className={styles.entryDetail}>{detail}</p>}
+                                        {technical && <p className={styles.entryTech}>{technical}</p>}
                                     </div>
                                     <time className={styles.entryTime} dateTime={entry.at}>
                                         {new Date(entry.at).toLocaleTimeString(undefined, { timeStyle: "short" })}

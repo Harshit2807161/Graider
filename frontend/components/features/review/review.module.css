@@ -7,98 +7,43 @@
     container: review / inline-size;
     display: flex;
     flex-direction: column;
+    /* Where sticky things sit: under the phone/tablet top bar, or at the top on desktop */
+    --sticky-top: calc(3.5rem + var(--space-4));
+}
+
+@media (min-width: 1024px) {
+    .page { --sticky-top: var(--space-4); }
+}
+
+/* Below the shared PageHeader (which brings its own bottom margin), sections are 24px apart */
+.sections {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-6);
 }
 
-/* ===== breadcrumb ===== */
-.crumbs ol {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-1) var(--space-2);
-    list-style: none;
-    font-size: var(--text-base);
-    color: var(--muted-foreground);
+/* Phones: the header's buttons share the width, row by row (as on the exam page) */
+@media (max-width: 767px) {
+    .headerAction { flex: 1 1 auto; }
 }
 
-.crumbs li {
+/* The header's subtitle: status, then the sheet's facts, as on the exam page */
+.meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-5);
+    color: var(--slate-600);
+    font-variant-numeric: tabular-nums;
+}
+
+.meta > span:not(:first-child) {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
+    gap: 0.375rem;
 }
 
-.crumbs a,
-.crumbs [aria-current] {
-    max-width: 48ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.crumbs a {
-    color: var(--indigo-700);
-    font-weight: 500;
-    border-radius: var(--radius-sm);
-    transition: color 0.2s ease;
-}
-
-.crumbs a:hover {
-    color: var(--indigo-800);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-.crumbSep {
-    flex-shrink: 0;
-    color: var(--slate-400);
-}
-
-/* ===== page header ===== */
-.header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-}
-
-.titleRow {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-2) var(--space-3);
-}
-
-.title {
-    font-size: 1.875rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    color: var(--foreground);
-    overflow-wrap: anywhere;
-}
-
-.subtitle {
-    margin-top: var(--space-1);
-    font-size: 0.9375rem;
-    color: var(--muted-foreground);
-}
-
-.actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-@container review (min-width: 48rem) {
-    .header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: flex-end;
-    }
-
-    .actions { justify-content: flex-end; }
-}
+.meta svg { flex-shrink: 0; color: var(--slate-400); }
 
 /* ===== shared card + section header (icon tile, title, one line, actions) ===== */
 .card {
@@ -143,17 +88,38 @@
     color: var(--muted-foreground);
 }
 
-/* ===== summary: what needs doing, the answers at a glance, the total ===== */
+/* ===== summary: where the sheet stands, what to do next, the total ===== */
 .summary {
-    overflow: hidden;
-}
-
-.summaryMain {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: var(--space-4);
+    align-items: start;
+    gap: var(--space-3) var(--space-4);
     padding: var(--space-5) var(--space-6);
+    scroll-margin-top: var(--sticky-top);
+}
+
+/* Focus lands here after an action replaces the button that had it */
+.summary:focus { outline: none; }
+.summary:focus-visible { outline: 2px solid var(--indigo-600); outline-offset: 2px; }
+
+.summary .tileLg { align-self: start; }
+
+.summaryBody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    padding-top: 0.125rem;
+}
+
+/* Keep lines readable (about 75 characters) however wide the card is */
+.summaryBody > * { max-width: 46rem; }
+
+.summaryActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
 }
 
 .summaryTotal {
@@ -186,12 +152,14 @@
 }
 
 @container review (min-width: 40rem) {
-    .summaryMain { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .summaryWithTotal { grid-template-columns: auto minmax(0, 1fr) auto; }
 
     .summaryTotal {
         grid-column: auto;
+        align-self: stretch;
         flex-direction: column;
         align-items: flex-end;
+        justify-content: center;
         gap: 0;
         padding-left: var(--space-6);
         border-left: 1px solid var(--border-light);
@@ -204,24 +172,83 @@
 .tone_published .tile { background-color: var(--status-published-bg); color: var(--status-published-fg); }
 .tone_processing .tile { background-color: var(--status-processing-bg); color: var(--status-processing-fg); }
 .tone_failed .tile { background-color: var(--status-failed-bg); color: var(--status-failed-fg); }
+.tone_failed { border-color: var(--red-200); }
 
-.summaryNav {
+/* A failed sheet: what to try, in order, and the technical text out of the way */
+.steps {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+    padding-left: 1.25rem;
+    font-size: var(--text-base);
+    line-height: 1.55;
+    color: var(--slate-700);
+}
+
+.steps li::marker { font-weight: 600; color: var(--slate-500); }
+
+.technical {
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+}
+
+.technical > summary {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-6);
-    border-top: 1px solid var(--border-light);
+    gap: var(--space-1);
+    min-height: 2rem;
+    list-style: none;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    color: var(--slate-600);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.technical > summary::-webkit-details-marker { display: none; }
+
+.technicalChevron {
+    flex-shrink: 0;
+    color: var(--slate-400);
+    transition: transform 0.2s ease;
+}
+
+.technical[open] .technicalChevron { transform: rotate(90deg); }
+
+.technical > summary:hover { color: var(--slate-900); text-decoration: underline; text-underline-offset: 2px; }
+
+.technical > p {
+    margin-top: var(--space-1);
+    padding: var(--space-3);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
     background-color: var(--slate-50);
 }
 
-.answerNav {
+.technical code {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: var(--slate-700);
+    overflow-wrap: anywhere;
+}
+
+/* ===== the answer list: every answer at a glance, sticky with the page viewer on wide screens ===== */
+.navigator {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.navHead {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2) var(--space-3);
-    min-width: 0;
+    min-height: 2rem;
 }
 
 .navLabel {
@@ -232,7 +259,16 @@
     color: var(--text-tertiary);
 }
 
-.answerNav ul {
+.navCount {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--amber-800);
+    font-variant-numeric: tabular-nums;
+}
+
+.nextButton { margin-left: auto; }
+
+.chips {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
@@ -251,7 +287,7 @@
     font-size: var(--text-base);
     color: var(--slate-600);
     font-variant-numeric: tabular-nums;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .qChip:hover {
@@ -264,14 +300,21 @@
     color: var(--foreground);
 }
 
-.qChipIcon { flex-shrink: 0; }
+.qChipIcon { flex-shrink: 0; display: inline-flex; }
 .qChip_graded .qChipIcon { color: var(--status-graded-fg); }
 .qChip_review { border-color: var(--amber-200); background-color: var(--amber-50); }
 .qChip_review:hover { border-color: var(--amber-500); background-color: var(--amber-100); }
 .qChip_review .qChipIcon { color: var(--amber-700); }
 .qChip_muted .qChipIcon { color: var(--slate-400); }
 
-/* ===== the desk: page viewer beside the answers ===== */
+/* The answer in view: an indigo ring (shape and colour, plus aria-current) */
+.qChipActive,
+.qChipActive:hover {
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+/* ===== the desk: answer list + page viewer beside the answers ===== */
 .desk {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -280,27 +323,51 @@
 }
 
 .viewerColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
     min-width: 0;
-    scroll-margin-top: var(--space-4);
 }
 
+.viewerSlot {
+    container: viewer / inline-size;   /* the viewer's toolbar fits itself to the column */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    scroll-margin-top: var(--sticky-top);
+}
+
+/* Cards respond to the width of their column, not the page's */
 .answers {
+    container: answers / inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
     min-width: 0;
 }
 
-@container review (min-width: 56rem) {
-    .desk { grid-template-columns: minmax(20rem, 5fr) minmax(0, 6fr); }
+/* From small laptops up the page stays beside the answers, so checking one against the other
+   needs no scrolling; the column stays in view and the image shrinks to fit under the answer list */
+@container review (min-width: 42rem) {
+    .desk {
+        grid-template-columns: minmax(17rem, 5fr) minmax(0, 6fr);
+        gap: var(--space-4);
+    }
 
     .viewerColumn {
         position: sticky;
-        top: var(--space-4);
+        top: var(--sticky-top);
+        max-height: calc(100dvh - var(--sticky-top) - var(--space-4));
     }
+
+    .viewerSlot { flex: 0 1 auto; }
 }
 
-/* ===== writing the model couldn't place ===== */
+@container review (min-width: 56rem) {
+    .desk { gap: var(--space-6); }
+}
+
+/* ===== writing not matched to a question ===== */
 .unplaced {
     display: flex;
     flex-direction: column;
@@ -364,16 +431,16 @@
     background-color: var(--primary-light);
 }
 
-/* ===== states ===== */
+/* ===== states (as in the exams area) ===== */
 .errorBanner {
     display: flex;
     align-items: flex-start;
     gap: var(--space-3);
-    padding: var(--space-4) var(--space-5);
+    padding: var(--space-3) var(--space-4);
     background-color: var(--red-50);
     border: 1px solid var(--red-200);
     border-radius: var(--radius-lg);
-    color: var(--red-700);
+    color: var(--status-failed-fg);
     font-size: var(--text-base);
 }
 
@@ -381,6 +448,7 @@
 
 .errorBody {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -400,18 +468,19 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-8) var(--space-6);
+    justify-content: center;
+    gap: var(--space-2);
+    padding: 4rem var(--space-6);
     text-align: center;
     background-color: var(--card);
-    border: 1px dashed var(--border);
+    border: 1px dashed var(--slate-300);
     border-radius: var(--radius-lg);
 }
 
 .emptyIcon {
-    width: 64px;
-    height: 64px;
-    margin-bottom: var(--space-2);
+    width: 72px;
+    height: 72px;
+    margin-bottom: var(--space-3);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -419,6 +488,8 @@
     background-color: var(--primary-light);
     color: var(--primary);
 }
+
+.emptyIconDone { background-color: var(--status-graded-bg); color: var(--status-graded-fg); }
 
 .emptyTitle {
     font-size: var(--text-lg);
@@ -428,41 +499,16 @@
 
 .emptyText {
     max-width: 26rem;
+    margin-bottom: var(--space-3);
     font-size: var(--text-base);
     color: var(--muted-foreground);
 }
 
-.emptyAction { margin-top: var(--space-2); }
-
-/* a link that looks like a secondary button */
-.linkButton {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    height: 2.5rem;
-    padding: 0 var(--space-4);
-    border-radius: var(--radius);
-    background-color: var(--slate-100);
-    color: var(--slate-900);
-    font-size: var(--text-base);
-    font-weight: 500;
-    transition: background-color 0.2s ease;
-}
-
-.linkButton:hover,
-.linkButtonSm:hover { background-color: var(--slate-200); }
-
-.linkButtonSm {
-    display: inline-flex;
-    align-items: center;
-    height: 2rem;
-    padding: 0 var(--space-3);
-    border-radius: var(--radius);
-    background-color: transparent;
-    color: var(--slate-900);
-    font-size: var(--text-base);
-    font-weight: 500;
-    transition: background-color 0.2s ease;
+.skeletonHeader {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-8);
 }
 
 .skeleton {
@@ -492,7 +538,7 @@
 /* ===== toast: the result of an action, wherever the teacher is on the page ===== */
 .toastRegion {
     position: fixed;
-    z-index: 900;
+    z-index: var(--z-toast);
     right: var(--space-6);
     bottom: var(--space-6);
     left: var(--space-6);
@@ -545,13 +591,21 @@
 }
 
 /* ===== small spaces ===== */
-@container review (max-width: 40rem) {
-    .title { font-size: var(--text-2xl); }
-    .crumbs a, .crumbs [aria-current] { max-width: 24ch; }
-    .summaryMain { padding: var(--space-4); }
-    .summaryNav { padding: var(--space-3) var(--space-4); }
+@container answers (max-width: 30rem) {
     .unplaced { padding: var(--space-4); }
-    .actions > button { min-height: 2.5rem; }
-    .qChip { height: 2.5rem; }
     .pageLink { height: 2.25rem; padding: 0 var(--space-3); }
+}
+
+@container review (max-width: 40rem) {
+    .summary { padding: var(--space-4); gap: var(--space-3); }
+    .summary .tileLg { width: 40px; height: 40px; }
+    .navigator { padding: var(--space-3); }
+    .qChip { height: 2.5rem; }
+    .technical > summary { min-height: 2.5rem; }
+    .empty { padding: var(--space-8) var(--space-4); }
+}
+
+@media (max-width: 40rem) {
+    .toastRegion { right: var(--space-4); bottom: var(--space-4); left: var(--space-4); }
+    .toastClose { width: 2.5rem; height: 2.5rem; }
 }

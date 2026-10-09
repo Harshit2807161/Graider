@@ -9,7 +9,7 @@ import { QuestionReview, SubmissionReview } from "@/types/review.types";
 import styles from "./dialogs.module.css";
 
 /** Correct what was read for one answer. That question is graded again from the teacher's text.
- *  Writing the model couldn't place can be added with one click. */
+ *  Writing not matched to a question can be added with one click. */
 export default function TranscriptDialog({ q, approved, unplaced = [], onClose, onSubmit }: {
     q: QuestionReview;
     approved: boolean;
@@ -24,7 +24,7 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
     const [saving, setSaving] = useState(false);
     const ready = text.trim().length > 0 && reason.trim().length > 0 && !saving;
     const pieces = unplaced.filter((s) => s.text?.trim());
-    // No answer was read: the unplaced writing is the likeliest source, so it comes first
+    // No answer was read: the unmatched writing is the likeliest source, so it comes first
     const unplacedFirst = !(q.transcription?.text ?? "").trim();
 
     const add = (i: number, piece: string) => {
@@ -47,7 +47,7 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
 
     const unplacedSection = pieces.length > 0 && (
         <section className={styles.unplaced} aria-labelledby="unplaced-dialog-title">
-            <h3 id="unplaced-dialog-title" className={styles.unplacedTitle}>Writing the model couldn&apos;t place</h3>
+            <h3 id="unplaced-dialog-title" className={styles.unplacedTitle}>Writing not matched to a question</h3>
             <p className={styles.help}>If it belongs to {q.label}, add it to the transcript.</p>
             <ul className={styles.unplacedList}>
                 {pieces.map((s, i) => (

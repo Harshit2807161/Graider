@@ -51,8 +51,10 @@ interface QuestionCardProps {
     busy: boolean;
     /** The page the viewer shows, to mark this answer's page buttons */
     currentPage?: number;
-    /** Writing the model couldn't place exists: a missing answer may be in it */
+    /** Writing not matched to a question exists: a missing answer may be in it */
     hasUnplaced?: boolean;
+    /** Shown instead of the transcript while the answer has no grade and nothing was read */
+    ungradedText?: string;
     onResolve: (q: QuestionReview) => void;
     onOverride: (q: QuestionReview) => void;
     onEditTranscript: (q: QuestionReview) => void;
@@ -60,7 +62,7 @@ interface QuestionCardProps {
 }
 
 export default function QuestionCard({
-    q, canScore, canEditTranscript, busy, currentPage, hasUnplaced = false,
+    q, canScore, canEditTranscript, busy, currentPage, hasUnplaced = false, ungradedText = "Not graded yet.",
     onResolve, onOverride, onEditTranscript, onShowPage,
 }: QuestionCardProps) {
     // Hovering or focusing a criterion previews its quote; clicking the quote keeps it highlighted
@@ -79,6 +81,7 @@ export default function QuestionCard({
     const quoted = new Set(quotes.map((x) => x.criterionId));
     const titleId = `q-title-${q.question_id}`;
     const lastRound = grade?.rounds[grade.rounds.length - 1];
+    const unread = !grade && !transcript;
 
     // One clear next step for an answer that needs review
     const canAccept = canScore && escalated && grade?.score != null;
@@ -123,7 +126,7 @@ export default function QuestionCard({
                             <p className={styles.calloutTitle}>{escalationText(grade?.escalation_reason)}</p>
                             <p className={styles.calloutText}>
                                 {hint(grade?.escalation_reason ?? null)}
-                                {transcriptFirst && " Some writing on the pages wasn't placed: it may be this answer."}
+                                {transcriptFirst && " Some writing on the pages wasn't matched to a question: it may be this answer."}
                             </p>
                         </div>
                     </div>
@@ -131,6 +134,8 @@ export default function QuestionCard({
 
                 {notAttempted ? (
                     <p className={styles.empty}>Not attempted: the student answered another alternative of this choice question.</p>
+                ) : unread ? (
+                    <p className={styles.empty}>{ungradedText}</p>
                 ) : (
                     <>
                         <section className={styles.section} aria-labelledby={`${titleId}-transcript`}>
@@ -213,10 +218,12 @@ export default function QuestionCard({
                             <details className={styles.disclosure} open={grade.escalation_reason === "evaluator_disagreement"}>
                                 <summary>
                                     <MessagesSquare size={16} aria-hidden="true" className={styles.summaryIcon} />
-                                    Examiner discussion
-                                    <span className={styles.summaryMeta}>
-                                        · {plural(grade.rounds.length, "round", "rounds")}
-                                        {lastRound && ` · agreement ${fmt(lastRound.effective_agreement)}`}
+                                    <span className={styles.summaryText}>
+                                        Examiner discussion{" "}
+                                        <span className={styles.summaryMeta}>
+                                            · {plural(grade.rounds.length, "round", "rounds")}
+                                            {lastRound && ` · agreement ${fmt(lastRound.effective_agreement)}`}
+                                        </span>
                                     </span>
                                     <ChevronRight size={16} aria-hidden="true" className={styles.chevron} />
                                 </summary>
@@ -247,8 +254,9 @@ export default function QuestionCard({
                     <details className={styles.disclosure}>
                         <summary>
                             <History size={16} aria-hidden="true" className={styles.summaryIcon} />
-                            Earlier versions
-                            <span className={styles.count}>{q.previous_grades.length}</span>
+                            <span className={styles.summaryText}>
+                                Earlier versions <span className={styles.count}>{q.previous_grades.length}</span>
+                            </span>
                             <ChevronRight size={16} aria-hidden="true" className={styles.chevron} />
                         </summary>
                         <div className={styles.disclosureBody}>
@@ -271,8 +279,10 @@ export default function QuestionCard({
                                             <details className={styles.nested}>
                                                 <summary>
                                                     <MessagesSquare size={14} aria-hidden="true" className={styles.summaryIcon} />
-                                                    Examiner discussion
-                                                    <span className={styles.summaryMeta}>· {plural(g.rounds.length, "round", "rounds")}</span>
+                                                    <span className={styles.summaryText}>
+                                                        Examiner discussion{" "}
+                                                        <span className={styles.summaryMeta}>· {plural(g.rounds.length, "round", "rounds")}</span>
+                                                    </span>
                                                     <ChevronRight size={14} aria-hidden="true" className={styles.chevron} />
                                                 </summary>
                                                 <div><ExaminerRounds rounds={g.rounds} criteria={specCriteria} /></div>

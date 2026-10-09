@@ -6,7 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, ChevronRight, Inbox, RefreshCw } from "lucide-react";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
-import Breadcrumbs from "@/components/features/review/Breadcrumbs";
+import ButtonLink from "@/components/common/ButtonLink";
+import PageHeader from "@/components/common/PageHeader";
+import { plainError } from "@/components/features/review/failure";
 import queue from "@/components/features/review/ReviewQueue.module.css";
 import styles from "@/components/features/review/review.module.css";
 import { getErrorMessage } from "@/lib/api";
@@ -60,14 +62,17 @@ export default function ReviewQueuePage() {
     const sheets = new Set(toReview.map((i) => i.submission_id)).size;
     const groups = [
         { key: "review", title: "Needs review", items: toReview },
-        { key: "check", title: "Lowest agreement first", items: toCheck },
+        { key: "check", title: "Graded, lowest agreement first", items: toCheck },
     ].filter((g) => g.items.length > 0);
-    const subtitle = loading ? "Loading…"
-        : error ? "Answers to check for this exam."
-        : items.length === 0 ? (escalatedOnly ? "Nothing needs review." : "No graded answers yet.")
-        : result?.filter ? `${items.length} ${items.length === 1 ? "answer needs" : "answers need"} review`
-        : waiting === 0 ? `Nothing needs review. Below: the grades the examiners agreed on least.`
-        : `${waiting} ${waiting === 1 ? "answer needs" : "answers need"} review across ${sheets} answer ${sheets === 1 ? "sheet" : "sheets"}; then the grades the examiners agreed on least.`;
+    // Announced when the list changes (the filter, a retry)
+    const status = loading ? "Loading the review queue…"
+        : error ? ""
+        : items.length === 0 ? (escalatedOnly ? "Nothing needs review." : "Nothing to check yet.")
+        : waiting === 0 ? `Nothing needs review; ${items.length} graded ${items.length === 1 ? "answer" : "answers"} to check.`
+        : `${waiting} ${waiting === 1 ? "answer needs" : "answers need"} review across ${sheets} answer ${sheets === 1 ? "sheet" : "sheets"}`
+            + (toCheck.length > 0 ? `; ${toCheck.length} graded ${toCheck.length === 1 ? "answer" : "answers"} to check.` : ".");
+    // The filter only helps when there is something to filter
+    const showFilter = escalatedOnly || loading || items.length > 0;
     const hrefOf = (item: ReviewQueueItem) => `/dashboard/exams/${examId}/submissions/${item.submission_id}#q-${item.question_id}`;
     const retry = () => {
         setError(null);
@@ -76,178 +81,181 @@ export default function ReviewQueuePage() {
 
     return (
         <div className={styles.page}>
-            <Breadcrumbs items={[
-                { label: "Exams", href: "/dashboard/exams" },
-                { label: examName || "Exam", href: `/dashboard/exams/${examId}` },
-                { label: "Review queue" },
-            ]} />
-            <header className={styles.header}>
-                <div>
-                    <h1 className={styles.title}>Review queue</h1>
-                    <p className={styles.subtitle} aria-live="polite">{subtitle}</p>
-                </div>
-                <div className={queue.segmented} role="group" aria-label="Show">
-                    <button type="button" aria-pressed={!escalatedOnly} onClick={() => setEscalatedOnly(false)}
-                            className={queue.segment}>All to check</button>
-                    <button type="button" aria-pressed={escalatedOnly} onClick={() => setEscalatedOnly(true)}
-                            className={queue.segment}>Needs review only</button>
-                </div>
-            </header>
+            <PageHeader
+                breadcrumbs={[
+                    { label: "Exams", href: "/dashboard/exams" },
+                    { label: examName || "Exam", href: `/dashboard/exams/${examId}` },
+                    { label: "Review queue" },
+                ]}
+                title="Review queue"
+                subtitle="Flagged answers first, then the grades the AI was least sure of."
+                actions={showFilter && (
+                    <div className={queue.segmented} role="group" aria-label="Show">
+                        <button type="button" aria-pressed={!escalatedOnly} onClick={() => setEscalatedOnly(false)}
+                                className={queue.segment}>All to check</button>
+                        <button type="button" aria-pressed={escalatedOnly} onClick={() => setEscalatedOnly(true)}
+                                className={queue.segment}>Needs review only</button>
+                    </div>
+                )}
+            />
+            <p className="sr-only" role="status">{status}</p>
 
-            {error && (
-                <div className={styles.errorBanner} role="alert">
-                    <AlertCircle size={20} aria-hidden="true" />
-                    <div className={styles.errorBody}>
-                        <div>
-                            <p className={styles.errorTitle}>The review queue couldn&apos;t be loaded</p>
-                            {error !== QUEUE_ERROR && <p>{error}</p>}
+            <div className={styles.sections}>
+                {error && (
+                    <div className={styles.errorBanner} role="alert">
+                        <AlertCircle size={20} aria-hidden="true" />
+                        <div className={styles.errorBody}>
+                            <div>
+                                <p className={styles.errorTitle}>The review queue couldn&apos;t be loaded</p>
+                                <p>{error === QUEUE_ERROR ? "Check your connection and try again."
+                                    : plainError(error) ?? "Something went wrong on our side. Try again in a moment."}</p>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={retry} icon={<RefreshCw size={14} aria-hidden="true" />}>Try again</Button>
                         </div>
-                        <Button variant="secondary" size="sm" onClick={retry} icon={<RefreshCw size={14} aria-hidden="true" />}>Try again</Button>
                     </div>
-                </div>
-            )}
+                )}
 
-            {loading && items.length === 0 && (
-                <div className={queue.tableCard} aria-busy="true">
-                    <p className="sr-only" role="status">Loading the review queue…</p>
-                    <table className={queue.table} aria-hidden="true">
-                        <thead>
-                            <tr><th>Student</th><th>Question</th><th>Status</th><th>Score</th><th>Agreement</th><th /></tr>
-                        </thead>
-                        <tbody>
-                            {[0, 1, 2, 3, 4].map((i) => (
-                                <tr key={i} className={queue.row}>
-                                    <td><span className={queue.skeleton} style={{ width: "10rem", height: "1rem" }} /></td>
-                                    <td><span className={queue.skeleton} style={{ width: "2.5rem", height: "1rem" }} /></td>
-                                    <td><span className={queue.skeleton} style={{ width: "8rem", height: "1.25rem", borderRadius: "1rem" }} /></td>
-                                    <td><span className={queue.skeleton} style={{ width: "3rem", height: "1rem" }} /></td>
-                                    <td><span className={queue.skeleton} style={{ width: "5rem", height: "1rem" }} /></td>
-                                    <td />
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {!loading && !error && items.length === 0 && (
-                escalatedOnly ? (
-                    <div className={styles.empty}>
-                        <span className={styles.emptyIcon} aria-hidden="true"><CheckCircle2 size={28} /></span>
-                        <p className={styles.emptyTitle}>Nothing needs review</p>
-                        <p className={styles.emptyText}>Every answer the examiners flagged has been reviewed.</p>
-                        <Button variant="secondary" className={styles.emptyAction} onClick={() => setEscalatedOnly(false)}>
-                            Show all to check
-                        </Button>
-                    </div>
-                ) : (
-                    <div className={styles.empty}>
-                        <span className={styles.emptyIcon} aria-hidden="true"><Inbox size={28} /></span>
-                        <p className={styles.emptyTitle}>No graded answers to check yet</p>
-                        <p className={styles.emptyText}>Answers show up here once answer sheets are uploaded and graded.</p>
-                        <Link className={cn(styles.linkButton, styles.emptyAction)} href={`/dashboard/exams/${examId}`}>Go to the exam</Link>
-                    </div>
-                )
-            )}
-
-            {items.length > 0 && (
-                <>
-                    <div className={cn(queue.tableCard, loading && queue.stale)} aria-busy={loading}>
-                        <table className={queue.table}>
-                            <caption className="sr-only">Answers to review, most urgent first</caption>
+                {loading && items.length === 0 && (
+                    <div className={queue.tableCard} aria-busy="true">
+                        <table className={queue.table} aria-hidden="true">
                             <thead>
-                                <tr>
-                                    <th scope="col">Student</th>
-                                    <th scope="col">Question</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">Score</th>
-                                    <th scope="col">Agreement</th>
-                                    <th scope="col"><span className="sr-only">Open</span></th>
-                                </tr>
+                                <tr><th>Student</th><th>Question</th><th>Status</th><th>Score</th><th>Agreement</th><th /></tr>
                             </thead>
-                            {groups.map((group) => (
-                                <tbody key={group.key}>
-                                    <tr className={queue.groupRow}>
-                                        <th scope="colgroup" colSpan={6}>
-                                            {group.title}
-                                            <span className={cn(queue.groupCount, group.key === "review" && queue.groupCountReview)}>
-                                                {group.items.length}
-                                            </span>
-                                        </th>
+                            <tbody>
+                                {[0, 1, 2, 3, 4].map((i) => (
+                                    <tr key={i} className={queue.row}>
+                                        <td><span className={queue.skeleton} style={{ width: "10rem", height: "1rem" }} /></td>
+                                        <td><span className={queue.skeleton} style={{ width: "2.5rem", height: "1rem" }} /></td>
+                                        <td><span className={queue.skeleton} style={{ width: "8rem", height: "1.25rem", borderRadius: "1rem" }} /></td>
+                                        <td><span className={queue.skeleton} style={{ width: "3rem", height: "1rem" }} /></td>
+                                        <td><span className={queue.skeleton} style={{ width: "5rem", height: "1rem" }} /></td>
+                                        <td />
                                     </tr>
-                                    {group.items.map((item) => (
-                                        <tr key={item.grade_id} className={queue.row}
-                                            onClick={(e) => {
-                                                if (!(e.target as HTMLElement).closest("a")) router.push(hrefOf(item));
-                                            }}>
-                                            <td>
-                                                <span className={queue.person}>
-                                                    <span className={queue.avatar} aria-hidden="true">{initials(item.student_name)}</span>
-                                                    {item.student_name ?? <span className={queue.noStudent}>No student</span>}
-                                                </span>
-                                            </td>
-                                            <td><span className={queue.qLabel}>{item.question_label}</span></td>
-                                            <td>
-                                                <StatusBadge status={item.status}
-                                                             label={item.status === "escalated" ? escalationText(item.escalation_reason) : undefined} />
-                                            </td>
-                                            <td className={cn(queue.num, queue.score)}><strong>{fmt(item.score)}</strong> / {fmt(item.max_score)}</td>
-                                            <td className={queue.num}>
-                                                <span className={queue.agreement}>
-                                                    {item.agreement != null && (
-                                                        <span className={queue.meter} aria-hidden="true">
-                                                            <span style={{ width: `${Math.max(0, Math.min(1, item.agreement)) * 100}%` }} />
-                                                        </span>
-                                                    )}
-                                                    {fmt(item.agreement)}
-                                                </span>
-                                            </td>
-                                            <td className={queue.open}>
-                                                <Link className={queue.openLink} href={hrefOf(item)}
-                                                      aria-label={`Review ${item.question_label} of ${item.student_name ?? "this answer sheet"}`}>
-                                                    <span className={queue.openText}>Review</span> <ChevronRight size={16} aria-hidden="true" />
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            ))}
+                                ))}
+                            </tbody>
                         </table>
                     </div>
+                )}
 
-                    <div className={cn(queue.cards, loading && queue.stale)} aria-busy={loading}>
-                        {groups.map((group) => (
-                            <section key={group.key} className={queue.cardGroup} aria-labelledby={`group-${group.key}`}>
-                                <h2 id={`group-${group.key}`} className={queue.cardGroupTitle}>
-                                    {group.title}
-                                    <span className={cn(queue.groupCount, group.key === "review" && queue.groupCountReview)}>{group.items.length}</span>
-                                </h2>
-                                <ul className={queue.cardList}>
-                                    {group.items.map((item) => (
-                                        <li key={item.grade_id}>
-                                            <Link href={hrefOf(item)} className={queue.card}>
-                                                <span className={queue.person}>
-                                                    <span className={queue.avatar} aria-hidden="true">{initials(item.student_name)}</span>
-                                                    <span className={queue.cardWho}>
-                                                        <span>{item.student_name ?? "No student"} · {item.question_label}</span>
-                                                        <span className={queue.cardSub}>Agreement {fmt(item.agreement)}</span>
-                                                    </span>
+                {!loading && !error && items.length === 0 && (
+                    escalatedOnly ? (
+                        <div className={styles.empty}>
+                            <span className={cn(styles.emptyIcon, styles.emptyIconDone)} aria-hidden="true"><CheckCircle2 size={32} /></span>
+                            <h2 className={styles.emptyTitle}>Nothing needs review</h2>
+                            <p className={styles.emptyText}>Every answer the examiners flagged has been reviewed.</p>
+                            <Button variant="secondary" onClick={() => setEscalatedOnly(false)}>Show all to check</Button>
+                        </div>
+                    ) : (
+                        <div className={styles.empty}>
+                            <span className={styles.emptyIcon} aria-hidden="true"><Inbox size={32} /></span>
+                            <h2 className={styles.emptyTitle}>Nothing to check yet</h2>
+                            <p className={styles.emptyText}>
+                                Graded answers appear here, the ones that need you first. Upload answer sheets on the exam page to start grading.
+                            </p>
+                            <ButtonLink href={`/dashboard/exams/${examId}`} variant="secondary">Go to the exam</ButtonLink>
+                        </div>
+                    )
+                )}
+
+                {items.length > 0 && (
+                    <>
+                        <div className={cn(queue.tableCard, loading && queue.stale)} aria-busy={loading}>
+                            <table className={queue.table}>
+                                <caption className="sr-only">Answers to review, most urgent first</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Student</th>
+                                        <th scope="col">Question</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Score</th>
+                                        <th scope="col">Agreement</th>
+                                        <th scope="col"><span className="sr-only">Open</span></th>
+                                    </tr>
+                                </thead>
+                                {groups.map((group) => (
+                                    <tbody key={group.key}>
+                                        <tr className={queue.groupRow}>
+                                            <th scope="colgroup" colSpan={6}>
+                                                {group.title}
+                                                <span className={cn(queue.groupCount, group.key === "review" && queue.groupCountReview)}>
+                                                    {group.items.length}
                                                 </span>
-                                                <span className={cn(queue.num, queue.score)}><strong>{fmt(item.score)}</strong> / {fmt(item.max_score)}</span>
-                                                <span className={queue.cardMeta}>
+                                            </th>
+                                        </tr>
+                                        {group.items.map((item) => (
+                                            <tr key={item.grade_id} className={queue.row}
+                                                onClick={(e) => {
+                                                    if (!(e.target as HTMLElement).closest("a")) router.push(hrefOf(item));
+                                                }}>
+                                                <td>
+                                                    <span className={queue.person}>
+                                                        <span className={queue.avatar} aria-hidden="true">{initials(item.student_name)}</span>
+                                                        {item.student_name ?? <span className={queue.noStudent}>No student</span>}
+                                                    </span>
+                                                </td>
+                                                <td><span className={queue.qLabel}>{item.question_label}</span></td>
+                                                <td>
                                                     <StatusBadge status={item.status}
                                                                  label={item.status === "escalated" ? escalationText(item.escalation_reason) : undefined} />
-                                                    <span className={queue.cardOpen}>Review <ChevronRight size={16} aria-hidden="true" /></span>
-                                                </span>
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </section>
-                        ))}
-                    </div>
-                </>
-            )}
+                                                </td>
+                                                <td className={cn(queue.num, queue.score)}><strong>{fmt(item.score)}</strong> / {fmt(item.max_score)}</td>
+                                                <td className={queue.num}>
+                                                    <span className={queue.agreement}>
+                                                        {item.agreement != null && (
+                                                            <span className={queue.meter} aria-hidden="true">
+                                                                <span style={{ width: `${Math.max(0, Math.min(1, item.agreement)) * 100}%` }} />
+                                                            </span>
+                                                        )}
+                                                        {fmt(item.agreement)}
+                                                    </span>
+                                                </td>
+                                                <td className={queue.open}>
+                                                    <Link className={queue.openLink} href={hrefOf(item)}
+                                                          aria-label={`Review ${item.question_label} of ${item.student_name ?? "this answer sheet"}`}>
+                                                        <span className={queue.openText}>Review</span> <ChevronRight size={16} aria-hidden="true" />
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                ))}
+                            </table>
+                        </div>
+
+                        <div className={cn(queue.cards, loading && queue.stale)} aria-busy={loading}>
+                            {groups.map((group) => (
+                                <section key={group.key} className={queue.cardGroup} aria-labelledby={`group-${group.key}`}>
+                                    <h2 id={`group-${group.key}`} className={queue.cardGroupTitle}>
+                                        {group.title}
+                                        <span className={cn(queue.groupCount, group.key === "review" && queue.groupCountReview)}>{group.items.length}</span>
+                                    </h2>
+                                    <ul className={queue.cardList}>
+                                        {group.items.map((item) => (
+                                            <li key={item.grade_id}>
+                                                <Link href={hrefOf(item)} className={queue.card}>
+                                                    <span className={queue.person}>
+                                                        <span className={queue.avatar} aria-hidden="true">{initials(item.student_name)}</span>
+                                                        <span className={queue.cardWho}>
+                                                            <span>{item.student_name ?? "No student"} · {item.question_label}</span>
+                                                            <span className={queue.cardSub}>Agreement {fmt(item.agreement)}</span>
+                                                        </span>
+                                                    </span>
+                                                    <span className={cn(queue.num, queue.score)}><strong>{fmt(item.score)}</strong> / {fmt(item.max_score)}</span>
+                                                    <span className={queue.cardMeta}>
+                                                        <StatusBadge status={item.status}
+                                                                     label={item.status === "escalated" ? escalationText(item.escalation_reason) : undefined} />
+                                                        <span className={queue.cardOpen}>Review <ChevronRight size={16} aria-hidden="true" /></span>
+                                                    </span>
+                                                </Link>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </section>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

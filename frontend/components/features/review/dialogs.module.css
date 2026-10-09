@@ -402,6 +402,15 @@
     overflow-wrap: anywhere;
 }
 
+.entryTech {
+    margin-top: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: var(--slate-500);
+    overflow-wrap: anywhere;
+}
+
 .entryTime {
     padding-top: 0.375rem;
     font-size: var(--text-sm);
@@ -414,6 +423,7 @@
 .tl_grade .entryIcon { background-color: var(--status-graded-bg); color: var(--status-graded-fg); }
 .tl_gradeReview .entryIcon { background-color: var(--status-review-bg); color: var(--status-review-fg); }
 .tl_transcription .entryIcon { background-color: var(--status-processing-bg); color: var(--status-processing-fg); }
+.tl_runFailed .entryIcon { background-color: var(--status-failed-bg); color: var(--status-failed-fg); }
 .tl_llm_call .entryTitle { font-weight: 400; color: var(--slate-600); }
 
 .skeletonRow {
@@ -447,7 +457,17 @@
 }
 
 @media (max-width: 40rem) {
+    .mono { height: 12rem; }   /* leaves the reason field in reach on phones; still resizable */
     .criterionInputs { grid-template-columns: minmax(0, 1fr); }
     .entry { grid-template-columns: 2rem minmax(0, 1fr); row-gap: 0; }
-    .entryTime { grid-column: 2; padding-top: 0.125rem; }
+    .entryTech {
+    margin-top: var(--space-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: var(--slate-500);
+    overflow-wrap: anywhere;
+}
+
+.entryTime { grid-column: 2; padding-top: 0.125rem; }
 }
