@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     # Deployed code version (e.g. git SHA), recorded on every grading run for audit
     CODE_VERSION: Optional[str] = None
 
+    # Grading v2 (Proposal 002 §7)
+    GRADING_AGREEMENT_THRESHOLD: float = 0.8  # effective agreement needed to finalize a grade
+    GRADING_MAX_REVISIONS: int = 2  # grader revisions before escalating a disagreement
+    GRADING_CRITERION_TOLERANCE: float = 0.25  # per-criterion gap allowed, as a share of its points
+    GRADING_OCR_CONFIDENCE_THRESHOLD: float = 0.5  # lower transcription confidence escalates
+    GRADING_SPOT_CHECK_RATE: float = 0.0  # share of graded answers sent to the teacher anyway
+    GRADING_MAX_CONCURRENCY: int = 4  # pages read / questions graded in parallel
+
     # Optional Langfuse tracing (engineering observability, not the audit record). On only when
     # all three are set; see docs/observability.md
     LANGFUSE_BASE_URL: Optional[str] = None

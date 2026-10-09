@@ -1,23 +1,29 @@
-"""Grading pipeline tests against a real (SQLite) database with a fake LLM."""
+"""The grading pipeline end to end (pages -> answers -> grades -> saved versions) against a real
+database with fake models."""
 
-import json
 import shutil
-from app.models.base import utcnow
+from uuid import UUID
 
-import pytest
 from sqlmodel import Session, select
 
+from app.audit.runs import create_run
 from app.core.constants import SubmissionStatus
 from app.core.db import engine
-from app.models.exam import Question, Submission, SubmissionAnswer
-from app.audit.runs import create_run
+from app.models.audit import LLMCall
+from app.models.base import utcnow
+from app.models.exam import Exam, Question, Submission, SubmissionAnswer
+from app.models.grading import AnswerGrade, Transcription
 from app.services.grading_service import run_grading
+from tests import ingestion_fixtures as fx
 from tests.conftest import FakeInvoker, FIXTURES
 
 
-def make_submission(db: Session, exam, tmp_path) -> Submission:
-    sheet = tmp_path / "answer_sheet.png"
-    shutil.copy(FIXTURES / "test_answer.png", sheet)
+def make_submission(db: Session, exam, tmp_path, data: bytes = None, name="answer_sheet.png") -> Submission:
+    sheet = tmp_path / name
+    if data is None:
+        shutil.copy(FIXTURES / "test_answer.png", sheet)
+    else:
+        sheet.write_bytes(data)
     submission = Submission(exam_id=exam.id, original_file_url=str(sheet))
     db.add(submission)
     db.commit()
@@ -25,158 +31,244 @@ def make_submission(db: Session, exam, tmp_path) -> Submission:
     return submission
 
 
-async def grade(submission: Submission) -> None:
+async def grade(submission: Submission, **run) -> UUID:
     """Grade a submission the way the worker does: through a grading run."""
     with Session(engine) as db:
-        run = create_run(db, submission_id=submission.id, trigger="upload")
-    await run_grading(run.id)
+        run_row = create_run(db, submission_id=submission.id, trigger=run.pop("trigger", "upload"), **run)
+    await run_grading(run_row.id)
+    return run_row.id
 
 
 def load(submission_id):
     with Session(engine) as db:
         submission = db.get(Submission, submission_id)
         answers = db.exec(
-            select(SubmissionAnswer, Question)
-            .join(Question, Question.id == SubmissionAnswer.question_id)
-            .where(SubmissionAnswer.submission_id == submission_id)
-            .order_by(Question.order_index)
+            select(SubmissionAnswer, Question).join(Question, Question.id == SubmissionAnswer.question_id)
+            .where(SubmissionAnswer.submission_id == submission_id).order_by(Question.order_index)
         ).all()
         return submission, answers
 
 
-async def test_grades_each_question_and_saves_against_the_right_question(fake_llm, db, school, tmp_path):
+def versions(model, submission_id):
+    with Session(engine) as db:
+        rows = db.exec(select(model, Question).join(Question, Question.id == model.question_id)
+                       .where(model.submission_id == submission_id).order_by(Question.order_index, model.version)).all()
+        return [(q.order_index, row.version, row.is_current, row) for row, q in rows]
+
+
+def segment(label, text, starts=True, crossed=False, confidence=0.9):
+    return {"label": label, "label_as_written": label, "text": text, "starts_answer": starts,
+            "crossed_out": crossed, "confidence": confidence}
+
+
+def page(*segments, kind="answers"):
+    return {"page_kind": kind, "has_handwriting": True, "segments": list(segments)}
+
+
+async def test_grades_each_question_and_saves_versioned_records(fake_llm, db, school, tmp_path):
     submission = make_submission(db, school["exam"], tmp_path)
 
+    run_id = await grade(submission)
+
+    graded, answers = load(submission.id)
+    assert graded.status == SubmissionStatus.GRADED and (graded.total_score, graded.max_score) == (10, 10)
+    assert [(a.student_answer_text, a.score, a.status) for a, _ in answers] == [
+        ("student answer for Q1", 4, "graded"), ("student answer for Q2", 6, "graded")]
+    grades = versions(AnswerGrade, submission.id)
+    transcripts = versions(Transcription, submission.id)
+    assert [(i, v, cur) for i, v, cur, _ in grades] == [(1, 1, True), (2, 1, True)]
+    q1 = grades[0][3]
+    assert q1.rubric_spec_id and q1.transcription_id == transcripts[0][3].id and q1.run_id == run_id
+    assert q1.grader_model == "claude-sonnet-5-5" and q1.evaluator_model == "claude-opus-5-5" and len(q1.rounds) == 1
+    assert q1.criteria[0]["evidence"] == "student answer for Q1"
+    with Session(engine) as fresh:
+        purposes = {c.purpose for c in fresh.exec(select(LLMCall).where(LLMCall.run_id == run_id)).all()}
+    assert purposes == {"parse_rubric", "transcribe_page", "grade", "evaluate"}
+
+
+async def test_pages_are_read_with_the_exams_labels(fake_llm, db, school, tmp_path):
+    await grade(make_submission(db, school["exam"], tmp_path))
+    call = fake_llm.calls_of("transcribe")[0]
+    labels = call["request"].json_schema["properties"]["segments"]["items"]["properties"]["label"]["enum"]
+    assert labels == ["Q1", "Q2", "unassigned"] and "Q1: Solve 2x + 5 = 15" in call["prompt"]
+
+
+async def test_the_grader_gets_the_parsed_rubric(fake_llm, db, school, tmp_path):
+    fake_llm.parse_rubric = lambda p: FakeInvoker._default_parse_rubric(p) if "Subtract 5" not in p else {
+        "kind": "criteria", "subject": "math", "criteria_count": 2, "criteria": [
+            {"description": "Subtracts 5 from both sides", "points": 2, "expected_answer": "2x = 10", "notes": None},
+            {"description": "Divides by 2", "points": 2, "expected_answer": "x = 5", "notes": None}],
+        "grading_notes": None, "parser_warnings": []}
+
+    await grade(make_submission(db, school["exam"], tmp_path))
+
+    q1 = next(c["prompt"] for c in fake_llm.calls_of("grade_answer") if "2x + 5" in c["prompt"])
+    assert "[c1] Subtracts 5 from both sides (2 pts). Expected: 2x = 10" in q1 and "[c2] Divides by 2 (2 pts)" in q1
+
+
+async def test_answers_are_stitched_across_pages_and_out_of_order(fake_llm, db, school, tmp_path):
+    pages = iter([page(segment("Q2", "Plants use light"), segment("Q1", "2x = 10")),
+                  page(segment("unassigned", "x = 5", starts=False), segment("unassigned", "a doodle"))])
+    fake_llm.transcribe = lambda prompt: next(pages)
+
+    submission = make_submission(db, school["exam"], tmp_path, fx.scanned_pdf(pages=2), "sheet.pdf")
     await grade(submission)
 
     graded, answers = load(submission.id)
-    assert graded.status == SubmissionStatus.GRADED
-    assert graded.total_score == 5  # half of 4 + half of 6
-    assert graded.max_score == 10
-    assert graded.percentage == 50
-
-    assert [q.question_text for _, q in answers] == ["Solve 2x + 5 = 15", "Explain photosynthesis"]
-    # The transcribed answer is stored (it used to be overwritten with the question id)
-    assert [a.student_answer_text for a, _ in answers] == ["student answer for Q1", "student answer for Q2"]
-
-
-async def test_ocr_is_given_short_labels_not_database_ids(fake_llm, db, school, tmp_path):
-    submission = make_submission(db, school["exam"], tmp_path)
-    await grade(submission)
-
-    ocr_prompt = fake_llm.calls_of("ocr")[0]["prompt"]
-    assert "one of these ids: Q1, Q2" in ocr_prompt
-    for question in db.exec(select(Question)).all():
-        assert str(question.id) not in ocr_prompt
-
-
-async def test_teacher_rubric_reaches_the_grader_as_parsed_criteria(fake_llm, db, school, tmp_path):
-    def parse(prompt):
-        if "Subtract 5" not in prompt:
-            return FakeInvoker._default_parse_rubric(prompt)
-        return {"kind": "criteria", "subject": "math", "criteria_count": 2, "criteria": [
-            {"description": "Subtracts 5 from both sides", "points": 2, "expected_answer": "2x = 10", "notes": None},
-            {"description": "Divides by 2", "points": 2, "expected_answer": "x = 5", "notes": None},
-        ], "grading_notes": None, "parser_warnings": []}
-
-    fake_llm.parse_rubric = parse
-    submission = make_submission(db, school["exam"], tmp_path)
-    await grade(submission)
-
-    # The teacher's free text goes to the parser; the grader gets the checked criteria and points
-    assert any("Subtract 5\nDivide by 2" in c["prompt"] for c in fake_llm.calls_of("parse_rubric"))
-    q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade") if "2x + 5" in c["prompt"])
-    assert "[c1] Subtracts 5 from both sides (2 pts). Expected: 2x = 10" in q1_prompt
-    assert "[c2] Divides by 2 (2 pts). Expected: x = 5" in q1_prompt
-
-
-async def test_answers_are_matched_by_label_even_if_returned_out_of_order(fake_llm, db, school, tmp_path):
-    fake_llm.ocr = lambda p: json.dumps({"answers": [
-        {"question_id": "Q2", "text": "chlorophyll", "confidence": 0.9},
-        {"question_id": "Q1", "text": "x = 5", "confidence": 0.9},
-    ]})
-    submission = make_submission(db, school["exam"], tmp_path)
-    await grade(submission)
-
-    _, answers = load(submission.id)
-    by_question = {q.question_text: a.student_answer_text for a, q in answers}
-    assert by_question == {"Solve 2x + 5 = 15": "x = 5", "Explain photosynthesis": "chlorophyll"}
+    assert [a.student_answer_text for a, _ in answers] == ["2x = 10\nx = 5", "Plants use light"]
+    assert [s["text"] for s in graded.unassigned_segments] == ["a doodle"]  # kept for the teacher
 
 
 async def test_soft_deleted_questions_are_not_graded(fake_llm, db, school, tmp_path):
-    exam = school["exam"]
-    removed = db.exec(select(Question).where(Question.exam_id == exam.id).order_by(Question.order_index)).first()
-    removed.deleted_at = utcnow()
-    db.add(removed)
+    second = max(school["exam"].questions, key=lambda q: q.order_index)
+    second.deleted_at = utcnow()
+    db.add(second)
     db.commit()
 
-    submission = make_submission(db, exam, tmp_path)
+    submission = make_submission(db, school["exam"], tmp_path)
     await grade(submission)
 
     graded, answers = load(submission.id)
-    assert graded.max_score == 6
-    assert [q.question_text for _, q in answers] == ["Explain photosynthesis"]
+    assert [q.question_text for _, q in answers] == ["Solve 2x + 5 = 15"] and graded.max_score == 4
 
 
-@pytest.mark.parametrize("ocr_output", ["I can't read this", '{"answers": []}'])
-async def test_unreadable_answer_sheet_fails_instead_of_scoring_zero(fake_llm, db, school, tmp_path, ocr_output):
-    fake_llm.ocr = lambda p: ocr_output
+async def test_unreadable_pages_fail_instead_of_scoring_zero(fake_llm, db, school, tmp_path):
+    fake_llm.transcribe = lambda prompt: "not json"
     submission = make_submission(db, school["exam"], tmp_path)
 
     await grade(submission)
 
     graded, answers = load(submission.id)
-    assert graded.status == SubmissionStatus.FAILED
-    assert graded.current_step.startswith("Error:")
-    assert answers == []
+    assert graded.status == SubmissionStatus.FAILED and "couldn't be read" in graded.current_step and answers == []
 
 
-async def test_grader_failure_fails_the_submission(fake_llm, db, school, tmp_path):
-    fake_llm.grade = lambda p: "garbage"
+async def test_a_question_whose_models_fail_escalates_alone(fake_llm, db, school, tmp_path):
+    fake_llm.grade_answer = lambda p: "not json" if "photosynthesis" in p else FakeInvoker._default_grade_answer(p)
     submission = make_submission(db, school["exam"], tmp_path)
 
     await grade(submission)
 
     graded, answers = load(submission.id)
-    assert graded.status == SubmissionStatus.FAILED
-    assert answers == []
+    assert graded.status == SubmissionStatus.NEEDS_REVIEW and graded.total_score == 4
+    assert [(a.status, a.escalation_reason, a.score) for a, _ in answers] == [
+        ("graded", None, 4), ("escalated", "all_models_failed", None)]
 
 
-async def test_regrading_replaces_previous_answers(fake_llm, db, school, tmp_path):
+async def test_a_blank_answer_escalates_without_a_grader_call(fake_llm, db, school, tmp_path):
+    fake_llm.transcribe = lambda prompt: page(segment("Q1", "2x = 10, x = 5"))
+    submission = make_submission(db, school["exam"], tmp_path)
+
+    await grade(submission)
+
+    graded, answers = load(submission.id)
+    assert graded.status == SubmissionStatus.NEEDS_REVIEW
+    assert [(a.status, a.escalation_reason, a.score) for a, _ in answers] == [
+        ("graded", None, 4), ("escalated", "no_answer_found", None)]
+    assert not any("photosynthesis" in c["prompt"] for c in fake_llm.calls_of("grade_answer"))
+
+
+async def test_an_invalid_rubric_blocks_only_its_question(fake_llm, db, school, tmp_path):
+    fake_llm.parse_rubric = lambda p: FakeInvoker._default_parse_rubric(p) if "Subtract 5" not in p else {
+        "kind": "criteria", "subject": "math", "criteria_count": 1, "criteria": [
+            {"description": "Subtracts 5", "points": 3, "expected_answer": None, "notes": None}],
+        "grading_notes": None, "parser_warnings": []}  # 3 points on a 4-mark question
+    submission = make_submission(db, school["exam"], tmp_path)
+
+    await grade(submission)
+
+    graded, answers = load(submission.id)
+    assert [(a.status, a.escalation_reason) for a, _ in answers] == [("escalated", "rubric_invalid"), ("graded", None)]
+    assert not any("2x + 5" in c["prompt"] for c in fake_llm.calls_of("grade_answer"))
+
+
+async def test_regrading_adds_new_versions_and_replaces_the_projection(fake_llm, db, school, tmp_path):
     submission = make_submission(db, school["exam"], tmp_path)
     await grade(submission)
-    await grade(submission)
+    await grade(submission, trigger="regrade")
 
-    _, answers = load(submission.id)
-    assert len(answers) == 2
+    graded, answers = load(submission.id)
+    assert len(answers) == 2 and graded.status == SubmissionStatus.GRADED
+    assert [(i, v, cur) for i, v, cur, _ in versions(AnswerGrade, submission.id)] == [
+        (1, 1, False), (1, 2, True), (2, 1, False), (2, 2, True)]
 
 
-async def test_regrading_the_same_question_does_not_leak_state_between_runs(fake_llm, db, school, tmp_path):
-    # The old checkpointer keyed graph state by question id, so attempts accumulated across runs
-    from app.agents.orchestrator import get_orchestrator
+async def test_runs_do_not_leak_state_into_each_other(fake_llm, db, school, tmp_path):
+    await grade(make_submission(db, school["exam"], tmp_path))
+    first, parses = len(fake_llm.calls), len(fake_llm.calls_of("parse_rubric"))
 
-    first = make_submission(db, school["exam"], tmp_path)
-    await grade(first)
-    calls_first_run = len(fake_llm.calls)
-    rubric_parses = len(fake_llm.calls_of("parse_rubric"))
-
-    second = make_submission(db, school["exam"], tmp_path)
-    await grade(second)
+    await grade(make_submission(db, school["exam"], tmp_path))
 
     # Same work again, except the rubrics: parsed once, reused while the questions don't change
-    assert rubric_parses == 2 and len(fake_llm.calls_of("parse_rubric")) == rubric_parses
-    assert len(fake_llm.calls) - calls_first_run == calls_first_run - rubric_parses
-    assert get_orchestrator().compiled_graph.checkpointer is None
+    assert parses == 2 and len(fake_llm.calls_of("parse_rubric")) == 2
+    assert len(fake_llm.calls) - first == first - parses
 
 
 async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, monkeypatch):
     from app.llm.config import get_llm_settings
-    monkeypatch.setattr(get_llm_settings(), "max_calls_base", 2)
+    monkeypatch.setattr(get_llm_settings(), "max_calls_base", 1)
     monkeypatch.setattr(get_llm_settings(), "max_calls_per_question", 0)
     submission = make_submission(db, school["exam"], tmp_path)
 
     await grade(submission)
 
     graded, _ = load(submission.id)
-    assert graded.status == SubmissionStatus.FAILED
-    assert "budget" in graded.current_step
+    assert graded.status == SubmissionStatus.FAILED and "budget" in graded.current_step
+
+
+async def test_choice_groups_grade_the_attempted_alternative(fake_llm, db, school, tmp_path):
+    exam = db.get(Exam, school["exam"].id)
+    db.add(Question(exam_id=exam.id, order_index=3, question_text="Explain respiration", max_score=6))
+    exam.config = {"choice_groups": [{"id": "g1", "labels": ["Q2", "Q3"], "pick": 1, "note": "either"}]}
+    db.add(exam)
+    db.commit()
+    submission = make_submission(db, exam, tmp_path)
+    fake_llm.transcribe = lambda prompt: page(segment("Q1", "x = 5"), segment("Q2", "light and chlorophyll"))
+
+    await grade(submission)
+
+    graded, answers = load(submission.id)
+    assert graded.status == SubmissionStatus.GRADED and (graded.total_score, graded.max_score) == (10, 10)
+    assert [a.status for a, _ in answers] == ["graded", "graded", "not_attempted"]
+
+
+async def test_an_extra_alternative_does_not_count(fake_llm, db, school, tmp_path):
+    exam = db.get(Exam, school["exam"].id)
+    db.add(Question(exam_id=exam.id, order_index=3, question_text="Explain respiration", max_score=6))
+    exam.config = {"choice_groups": [{"id": "g1", "labels": ["Q2", "Q3"], "pick": 1}], "choice_policy": "best"}
+    db.add(exam)
+    db.commit()
+    fake_llm.grade_answer = lambda p: {**FakeInvoker._default_grade_answer(p), "criteria": [
+        {**c, "score": 1.0} for c in FakeInvoker._default_grade_answer(p)["criteria"]]} if "respiration" in p \
+        else FakeInvoker._default_grade_answer(p)
+    submission = make_submission(db, exam, tmp_path)
+
+    await grade(submission)
+
+    graded, _ = load(submission.id)
+    grades = {i: row for i, _, cur, row in versions(AnswerGrade, submission.id) if cur}
+    assert grades[3].counted is False and "extra_alternative_not_counted" in grades[3].flags
+    assert graded.total_score == 10  # Q1 4 + the better alternative (Q2, 6)
+
+
+async def test_a_transcript_edit_regrades_only_that_question(fake_llm, db, school, tmp_path):
+    submission = make_submission(db, school["exam"], tmp_path)
+    await grade(submission)
+    q1, q2 = sorted(school["exam"].questions, key=lambda q: q.order_index)
+    with Session(engine) as fresh:  # what the M6 transcript edit will do
+        old = fresh.exec(select(Transcription).where(Transcription.question_id == q1.id, Transcription.is_current == True)).one()  # noqa: E712
+        old.is_current = False
+        fresh.add(old)
+        fresh.flush()
+        fresh.add(Transcription(submission_id=submission.id, question_id=q1.id, version=2, source="teacher",
+                                text="2x = 10 so x = 5"))
+        fresh.commit()
+    calls_before = len(fake_llm.calls)
+
+    await grade(submission, trigger="transcript_edit", question_ids=[q1.id])
+
+    new_calls = fake_llm.calls[calls_before:]
+    assert [c["kind"] for c in new_calls] == ["grade_answer", "review"] and "2x = 10 so x = 5" in new_calls[0]["prompt"]
+    current = {i: (v, row.source if hasattr(row, "source") else None) for i, v, cur, row in versions(AnswerGrade, submission.id) if cur}
+    assert current == {1: (2, "ai"), 2: (1, "ai")}  # Q2 untouched
+    graded, answers = load(submission.id)
+    assert answers[0][0].student_answer_text == "2x = 10 so x = 5" and graded.status == SubmissionStatus.GRADED

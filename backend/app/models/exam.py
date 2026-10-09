@@ -72,6 +72,9 @@ class SubmissionAnswer(Base, table=True):
     score: Optional[float] = None
     feedback: Optional[str] = None
     reasoning: Optional[str] = None
+    # Projection of the current answer grade (app/models/grading.py)
+    status: Optional[str] = None  # graded / escalated / not_attempted
+    escalation_reason: Optional[str] = None
     
     created_at: datetime = Field(default_factory=utcnow)
 
@@ -94,7 +97,9 @@ class Submission(Base, table=True):
     percentage: Optional[float] = None
     
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING)
-    current_step: Optional[str] = Field(default=None) 
+    current_step: Optional[str] = Field(default=None)
+    # Answer segments the model couldn't place under a question, for the teacher (grading v2)
+    unassigned_segments: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

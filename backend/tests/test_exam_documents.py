@@ -41,9 +41,9 @@ async def test_grading_uses_the_papers_labels(fake_llm, db, school, tmp_path):
 
     await run_grading(new_run(db, school["exam"], tmp_path).id)
 
-    ocr_schema = fake_llm.calls_of("ocr")[0]["request"].json_schema
-    assert ocr_schema["properties"]["answers"]["items"]["properties"]["question_id"]["enum"] == ["1", "2(a)"]
-    assert {c["request"].trace_metadata.get("question") for c in fake_llm.calls_of("grade")} == {"1", "2(a)"}
+    read_schema = fake_llm.calls_of("transcribe")[0]["request"].json_schema
+    assert read_schema["properties"]["segments"]["items"]["properties"]["label"]["enum"] == ["1", "2(a)", "unassigned"]
+    assert {c["request"].trace_metadata.get("question") for c in fake_llm.calls_of("grade_answer")} == {"1", "2(a)"}
 
 
 # ===== merging pages and checking drafts (pure code) =====

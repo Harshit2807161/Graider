@@ -240,6 +240,11 @@ for round in 0..2:
 ### 7.3 Escalation reasons
 `no_answer_found`, `rubric_invalid`, `low_ocr_confidence`, `grader_flag:<flag>`, `check_failed`, `evaluator_disagreement`, `all_models_failed`, `spot_check`.
 
+### 7.3a As built (M5)
+- One LangGraph run per submission: pages read in parallel, answers stitched in code, questions graded in parallel; the per-question loop is plain async code inside the grade node.
+- Escalations keep a proposed score where one exists (low OCR confidence, repeated attempts, spot checks, evaluator disagreement); none for no answer, invalid rubric, failed checks or grader flags.
+- `grade_events` arrives with the human actions in M6.
+
 ### 7.4 Run-level failure policy
 - **Per-question problems** escalate that answer only.
 - **A whole submission is FAILED** only when:

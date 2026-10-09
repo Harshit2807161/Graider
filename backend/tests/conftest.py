@@ -35,14 +35,31 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 # Output schema title → short kind name used by tests
 SCHEMA_KINDS = {
-    "AnswerTranscription": "ocr",
-    "GradeOutput": "grade",
-    "TagOutput": "tag",
-    "EvaluationOutput": "evaluate",
     "ParsedRubric": "parse_rubric",
     "PageExtraction": "extract_page",
     "RubricLinks": "link_rubric",
+    # grading v2
+    "PageAnswers": "transcribe",
+    "GradeResult": "grade_answer",
+    "EvaluatorReview": "review",
+    "GradeRevision": "revise",
 }
+
+
+def answer_of(prompt: str) -> str:
+    """The transcribed answer in a grading prompt."""
+    return prompt.split("Student's answer (transcribed):\n", 1)[1].split("\n\n", 1)[0]
+
+
+def criteria_of(prompt: str) -> list[tuple[str, float]]:
+    """(id, points) of the rubric criteria listed in a grading prompt."""
+    return [(cid, float(pts)) for cid, pts in re.findall(r"\[(c\d+)\][^\n]*?\(([\d.]+) pts\)", prompt)]
+
+
+def grading_in(prompt: str, heading: str) -> list[dict]:
+    """The criteria JSON shown under a heading (e.g. "The grader's grading:")."""
+    start = prompt.index(heading) + len(heading)
+    return json.JSONDecoder().raw_decode(prompt[start:].lstrip())[0]["criteria"]
 
 
 class FakeInvoker:
@@ -50,47 +67,29 @@ class FakeInvoker:
     Scripted stand-in for the model invoker (the boundary below the router).
 
     Routes each call by output-schema title and records every request. Override a route by
-    assigning `fake.ocr` / `fake.grade` / `fake.evaluate` / `fake.tag` / `fake.parse_rubric` to a
-    callable that takes
-    the prompt text and returns either a dict (the structured output) or a string (raw model
-    text, parsed as JSON if possible, e.g. to simulate invalid output). A handler may also
-    return an InvokeResponse or raise/return an exception.
+    assigning `fake.transcribe` / `fake.grade_answer` / `fake.review` / `fake.revise` /
+    `fake.parse_rubric` / `fake.extract_page` / `fake.link_rubric` to a callable that takes the
+    prompt text and returns either a dict (the structured output) or a string (raw model text,
+    parsed as JSON if possible, e.g. to simulate invalid output). A handler may also return an
+    InvokeResponse or raise/return an exception.
     """
 
     def __init__(self):
         self.calls: list[dict[str, Any]] = []
-        self.ocr: Optional[Callable[[str], Any]] = None
-        self.grade: Optional[Callable[[str], Any]] = None
-        self.evaluate: Optional[Callable[[str], Any]] = None
-        self.tag: Optional[Callable[[str], Any]] = None
         self.parse_rubric: Optional[Callable[[str], Any]] = None
         self.extract_page: Optional[Callable[[str], Any]] = None  # exam document pages
         self.link_rubric: Optional[Callable[[str], Any]] = None
+        # grading v2: page transcription, grade, evaluator review, revision
+        self.transcribe: Optional[Callable[[str], Any]] = None
+        self.grade_answer: Optional[Callable[[str], Any]] = None
+        self.review: Optional[Callable[[str], Any]] = None
+        self.revise: Optional[Callable[[str], Any]] = None
 
     @staticmethod
     def prompt_of(req: InvokeRequest) -> str:
         return "\n".join(p.text for p in req.parts if isinstance(p, TextPart))
 
     # --- default behaviours ---
-    @staticmethod
-    def _default_ocr(req: InvokeRequest) -> dict:
-        labels = req.json_schema["properties"]["answers"]["items"]["properties"]["question_id"]["enum"]
-        return {
-            "answers": [
-                {"question_id": qid, "text": f"student answer for {qid}", "confidence": 0.9} for qid in labels
-            ]
-        }
-
-    @staticmethod
-    def _default_grade(prompt: str) -> dict:
-        max_score = float(re.search(r"Maximum Score: ([\d.]+)", prompt).group(1))
-        return {
-            "score": max_score / 2,
-            "reasoning": "Half the rubric points are covered.",
-            "feedback": "Cover the remaining points.",
-            "confidence": 0.9,
-        }
-
     @staticmethod
     def _default_parse_rubric(prompt: str) -> dict:
         """A valid spec: one criterion worth the question's full marks."""
@@ -105,17 +104,50 @@ class FakeInvoker:
             "parser_warnings": [],
         }
 
+    @staticmethod
+    def _default_transcribe(req: InvokeRequest) -> dict:
+        """Every question answered on the first page."""
+        props = req.json_schema["properties"]["segments"]["items"]["properties"]
+        labels = [label for label in props["label"]["enum"] if label != "unassigned"]
+        first_page = "This is page 1 of" in FakeInvoker.prompt_of(req)
+        return {"page_kind": "answers", "has_handwriting": True, "segments": [
+            {"label": label, "label_as_written": label, "text": f"student answer for {label}", "starts_answer": True,
+             "crossed_out": False, "confidence": 0.9} for label in labels] if first_page else []}
+
+    @staticmethod
+    def _default_grade_answer(prompt: str) -> dict:
+        """Full marks on every criterion, quoting the answer."""
+        quote = answer_of(prompt).splitlines()[0]
+        return {"criteria": [{"id": cid, "score": pts, "evidence": quote, "justification": "Meets the criterion."}
+                             for cid, pts in criteria_of(prompt)], "feedback": "Well done.", "flags": []}
+
+    @staticmethod
+    def _default_review(prompt: str) -> dict:
+        """Agrees with the grader."""
+        grader = grading_in(prompt, "The grader's grading:")
+        return {"own_assessment": [{"id": c["id"], "score": c["score"], "reason": "Agree."} for c in grader],
+                "agreement": 0.95, "feedback": [], "summary": "Agree."}
+
+    @staticmethod
+    def _default_revise(prompt: str) -> dict:
+        """Accepts every point and keeps its grading (tests script real revisions)."""
+        count = len(re.findall(r"^\d+\. \[c\d+\]", prompt.split("The second examiner's feedback:")[1], re.M))
+        return {"replies": [{"feedback_index": i, "decision": "accept", "rationale": "Agreed."} for i in range(count)],
+                "criteria": grading_in(prompt, "Your grading:"), "feedback": "Revised.", "flags": []}
+
     async def invoke(self, req: InvokeRequest) -> InvokeResponse:
         kind = SCHEMA_KINDS.get(req.json_schema.get("title"), "other")
         prompt = self.prompt_of(req)
         self.calls.append({"kind": kind, "system": req.system, "prompt": prompt, "request": req})
 
-        if kind == "ocr":
-            out = self.ocr(prompt) if self.ocr else self._default_ocr(req)
-        elif kind == "grade":
-            out = (self.grade or self._default_grade)(prompt)
-        elif kind == "tag":
-            out = self.tag(prompt) if self.tag else {"subject": "math", "question_type": "problem"}
+        if kind == "transcribe":
+            out = self.transcribe(prompt) if self.transcribe else self._default_transcribe(req)
+        elif kind == "grade_answer":
+            out = (self.grade_answer or self._default_grade_answer)(prompt)
+        elif kind == "review":
+            out = (self.review or self._default_review)(prompt)
+        elif kind == "revise":
+            out = (self.revise or self._default_revise)(prompt)
         elif kind == "extract_page":
             out = (self.extract_page or (lambda p: {
                 "page_kind": "other", "has_handwriting": False, "instructions": None, "total_marks": None,
@@ -125,10 +157,6 @@ class FakeInvoker:
             out = (self.link_rubric or (lambda p: {"links": []}))(prompt)
         elif kind == "parse_rubric":
             out = (self.parse_rubric or self._default_parse_rubric)(prompt)
-        elif kind == "evaluate":
-            out = self.evaluate(prompt) if self.evaluate else {
-                "is_acceptable": True, "concerns": "", "improvement_suggestions": ""
-            }
         else:
             raise AssertionError(f"unexpected schema {req.json_schema.get('title')}")
 
@@ -167,8 +195,6 @@ def fake_llm(monkeypatch) -> FakeInvoker:
     fake = FakeInvoker()
     monkeypatch.setattr(router_module, "_invoker_factory", lambda: fake)
 
-    import app.agents.orchestrator as orchestrator_module
-    monkeypatch.setattr(orchestrator_module, "_orchestrator", None)
     return fake
 
 

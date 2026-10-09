@@ -224,10 +224,10 @@ async def test_invalid_spec_never_reaches_the_grader(fake_llm, db, school, tmp_p
     await service_run(run.id)
 
     run, _, submission, answers = reload_run(run.id)
-    assert run.status == "failed" and submission.status == SubmissionStatus.FAILED and answers == []
-    assert "Q1: Criteria points add up to 3, but the question is worth 4." in run.error
-    # Stopped before reading the sheet: nothing was graded against the broken rubric
-    assert fake_llm.calls_of("ocr") == [] and fake_llm.calls_of("grade") == []
+    # Only that question escalates (for the teacher to fix its rubric); the other is graded
+    assert run.status == "succeeded" and submission.status == SubmissionStatus.NEEDS_REVIEW
+    assert sorted((a.status, a.escalation_reason) for a in answers) == [("escalated", "rubric_invalid"), ("graded", None)]
+    assert not any("2x + 5" in c["prompt"] for c in fake_llm.calls_of("grade_answer"))
 
 
 async def test_fixed_spec_lets_the_regrade_through(fake_llm, db, school, tmp_path):
@@ -248,7 +248,7 @@ async def test_fixed_spec_lets_the_regrade_through(fake_llm, db, school, tmp_pat
 
     run, _, submission, _ = reload_run(run.id)
     assert run.status == "succeeded" and submission.status == SubmissionStatus.GRADED
-    q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade") if "2x + 5" in c["prompt"])
+    q1_prompt = next(c["prompt"] for c in fake_llm.calls_of("grade_answer") if "2x + 5" in c["prompt"])
     assert "[c1] Subtracts 5 (2 pts)" in q1_prompt
 
 

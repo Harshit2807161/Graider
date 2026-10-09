@@ -1,7 +1,7 @@
 # Gr8r - AI-Powered Grading System
 
 ## Project Overview
-Gr8r grades handwritten exam answers. Teachers set up organizations, classes (batches) and exams with questions and rubrics, then upload a student's answer sheet (PDF or image). A background worker transcribes the sheet with a vision LLM and grades each answer with LangGraph agents.
+Gr8r grades handwritten exam answers. Teachers set up organizations, classes (batches) and exams with questions and rubrics, then upload a student's answer sheet (PDF or image). A background worker reads every page with a vision LLM, stitches each question's answer, and grades it against a checked rubric spec with an evaluator-optimizer loop (grader + independent evaluator, at most 2 revisions), escalating to the teacher whatever it can't decide.
 
 Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2 is accepted** in [docs/proposals/002-grading-v2-architecture.md](../docs/proposals/002-grading-v2-architecture.md) and is being built milestone by milestone; progress is tracked in [docs/grading-v2-checklist.md](../docs/grading-v2-checklist.md). Deferred items and edge cases go in [docs/v2-backlog.md](../docs/v2-backlog.md). Sections below describe the code as it is today; update them as milestones land.
 
@@ -18,7 +18,7 @@ Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2
 
 ### AI/ML
 - **Model router** (`app/llm/`): every LLM call goes through `get_router().call(LLMRequest[Schema](...))`. Roles `vision`, `rubric_parser`, `grader`, `evaluator`, each with a primary target + fallbacks (`LLM__<ROLE>__...` env). Providers: `anthropic` (ChatAnthropic, native structured outputs), `openai`, `openweight` (self-hosted vLLM/SGLang via ChatOpenAI + `base_url`). Defaults: Claude Opus 5.5 (vision, rubric_parser, evaluator), Sonnet 5.5 (grader). See [docs/deploy/open-weight.md](../docs/deploy/open-weight.md)
-- **Orchestration**: LangGraph, one graph run per question (no checkpointer)
+- **Orchestration**: LangGraph, one graph run per submission (pages read in parallel, then questions graded in parallel via `Send`; no checkpointer). The per-question loop is plain async code (`app/grading/question.py`)
 - AGNTCY / observability SDKs are not integrated yet
 
 ### Frontend (`frontend/`)
@@ -37,7 +37,7 @@ backend/
 │   ├── api/
 │   │   ├── deps.py                # current user, get_membership, require_org_role
 │   │   └── v1/endpoints/          # login, users, orgs, batches, exams, submissions
-│   ├── core/                      # config, db (engine, upgrade_to_head), security, constants, langgraph_setup
+│   ├── core/                      # config, db (engine, upgrade_to_head), security, constants
 │   ├── audit/                     # grading runs (lifecycle) + DbCallRecorder → llm_calls (append-only)
 │   ├── rubrics/                   # RubricSpec schema, validation, LLM parser, spec lifecycle
 │   ├── ingestion/                 # formats (detect + safety), pages (render), office (Gotenberg), service
@@ -48,11 +48,9 @@ backend/
 │   ├── crud/                      # data access (soft-delete aware)
 │   ├── models/                    # SQLModel tables (user, org, exam)
 │   ├── schemas/                   # Pydantic request/response + grading pipeline schemas
-│   ├── services/                  # grading_service (pipeline), ocr_service, pdf_service,
-│   │                              # triplet_service, enrollment_service, org_service
-│   └── agents/
-│       ├── orchestrator.py        # LangGraph graph: tag -> grader -> evaluator loop
-│       └── graders/               # base + math, english, science, history, general
+│   ├── grading/                   # grading v2: schemas, prompts, checks, stitch, choices, question loop,
+│   │                              # transcribe (pages), graph (LangGraph), persist (versions + totals)
+│   └── services/                  # grading_service (run lifecycle), labels, enrollment_service, org_service
 └── tests/                         # pytest suite (FakeLLM, SQLite or Postgres)
 frontend/
 ├── app/                           # (auth)/login, dashboard/{orgs,classes,exams,exams/[id]}
@@ -73,18 +71,19 @@ All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps a
 `Document` (`documents`: one uploaded file, its role, position in the submission, kind from its bytes) → `DocumentPage` (`document_pages`: page image + text layer; derived, re-makeable). A submission's answers are its documents in order; old submissions are adopted from `original_file_url`.
 Exam documents (question paper / rubric / both / blank copy) have no submission; `ExamDraft` (`exam_drafts`) is a versioned extraction of them that the teacher confirms into questions. Questions carry `label` (e.g. `2(b)`), `printed_label` and `choice_group` (groups in `exam.config["choice_groups"]`).
 
-Submission statuses: `PENDING → PROCESSING → GRADED | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet.
+`Transcription` / `AnswerGrade` (`transcriptions`, `answer_grades`): versioned per (submission, question), one current version, append-only except `is_current` (Postgres triggers). Grades keep criteria (score, quoted evidence, justification), every evaluator round, flags, escalation reason, models, the spec and transcription used, and whether they count (choice groups). `submission_answers` is the projection the UI reads; `submissions.unassigned_segments` holds answers the model couldn't place.
 
-## Grading Pipeline (`services/grading_service.py`)
-Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload/regrade) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots the model config, records every model call to `llm_calls` (append-only; a failed audit write fails the run), and finishes the run as succeeded/failed. See [docs/audit-trail.md](../docs/audit-trail.md).
-1. Load the exam's live questions in order and label them: the paper's labels (`2(b)`) if every question has a unique one, else `Q1..Qn` (labels, not DB UUIDs, are what the OCR model echoes back).
-2. **Rubric specs**: every question needs a *ready* spec for its current inputs. Missing ones are parsed now (`ensure_rubric_specs`); if any is invalid or couldn't be parsed, the run fails before OCR with the reasons (per-question escalation comes in M5). Specs are normally parsed in the background when questions are saved (`parse_rubric_task`, queue `rubric`); see `app/rubrics/`.
-3. **Pages + OCR**: the submission's files become pages (`submission_pages`, made once); each page's image (plus the typed text of digital PDF pages, as a hint) goes to the vision model in batches of 10, answers keyed by label.
-4. **Triplets**: pair each question with its answer and its spec's criteria (ids, points, expected answers, notes).
-5. **Grade**: per question, LangGraph tags the subject, routes to a subject grader, and an LLM evaluator may request up to 3 attempts.
-6. **Save**: all answers and totals in one transaction; status `GRADED`.
+Submission statuses: `PENDING → PROCESSING → GRADED | NEEDS_REVIEW | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet (M6).
 
-Failure rules: unparseable model output is retried once, then the submission is marked `FAILED` with the error in `current_step` — never record a made-up score. Each run has a call + USD budget (`LLM__MAX_CALLS_BASE`, `LLM__MAX_CALLS_PER_QUESTION`, `LLM__MAX_COST_USD_PER_SUBMISSION`).
+## Grading Pipeline (`services/grading_service.py`, `app/grading/`)
+Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload / regrade / transcript_edit, optionally scoped to some `question_ids`) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots models + thresholds + prompt versions, records every model call to `llm_calls` (append-only; a failed audit write fails the run). See [docs/audit-trail.md](../docs/audit-trail.md).
+1. Questions in order, labelled with the paper's labels (`2(b)`) if every question has a unique one, else `Q1..Qn`.
+2. **Rubric specs** (`ensure_rubric_specs`): parsed now if missing. A question without a *ready* spec escalates (`rubric_invalid`); the others are graded.
+3. **Pages** (`submission_pages`) are read in parallel (`transcribe_page`: segments labelled with the exam's labels or `unassigned`, student's own writing only) and **stitched** in code (unnumbered continuations join the previous answer, crossed-out work excluded, unplaced work kept for the teacher). Choice-group alternatives the student didn't answer aren't graded.
+4. **Each question** is graded in parallel (`grade_question`, Proposal 002 §7): no answer → escalate (`no_answer_found`, never auto-zero); grade with quoted evidence → code checks (+1 repair) → grader flags escalate → evaluator (own view first) → effective agreement = min(stated, score gap), any criterion beyond tolerance counts as disagreement → revise (accept/reject each point) ≤ `GRADING_MAX_REVISIONS` → finalize or escalate `evaluator_disagreement`. Low transcription confidence, repeated attempts and spot checks keep the proposed score but escalate. Grader and evaluator fallbacks avoid each other's model.
+5. **Save** in one transaction (`persist.save_results`): new transcription/grade versions, projection, totals (choice groups counted once; extra alternatives by `exam.config["choice_policy"]` best/first), status `GRADED` or `NEEDS_REVIEW`.
+
+Failure rules: the run is `FAILED` only when pages can't be read, the budget (`LLM__MAX_CALLS_*` + 2 per page, `LLM__MAX_COST_USD_PER_SUBMISSION`) runs out, or the exam has no questions — per-question problems escalate that answer. Never record a made-up score. Grading settings: `GRADING_AGREEMENT_THRESHOLD` (0.8), `GRADING_MAX_REVISIONS` (2), `GRADING_CRITERION_TOLERANCE` (0.25 of a criterion's points), `GRADING_OCR_CONFIDENCE_THRESHOLD` (0.5), `GRADING_SPOT_CHECK_RATE` (0), `GRADING_MAX_CONCURRENCY` (4).
 
 ## Development Commands
 
@@ -179,11 +178,13 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - Feature branches + PRs; don't commit directly to `master`
 - Small commits, one concern each, conventional messages (`fix(scope): ...`, `feat`, `refactor`, `test`, `docs`, `build`)
 - Run `pytest` and the frontend checks before pushing
+- Each milestone PR adds its entry to `CHANGELOG.md`
 
 ## Testing
-- `backend/tests/test_pipeline.py` — grading pipeline against a real DB with FakeLLM
+- `backend/tests/test_pipeline.py` — grading pipeline end to end against a real DB with fake models (versions, escalations, choice groups, scoped regrades)
 - `backend/tests/test_api.py` — auth, tenant isolation, question sync/import, uploads, submissions
-- `backend/tests/test_grading.py` — JSON extraction, grader retries, call budget
+- `backend/tests/test_grading_v2.py` — code checks, agreement, stitching, choice groups, the per-question loop (agree, revise, push back, escalate, repair, flags, fallbacks, budget)
+- `backend/tests/test_grading.py` — degraded-path JSON extraction, call/cost budget
 - `backend/tests/test_rubrics.py` — rubric spec validation, parsing lifecycle, grading against specs
 - `backend/tests/test_ingestion.py` — every file format (generated in `tests/ingestion_fixtures.py`), safety checks, pages, documents; real office conversion when `GOTENBERG_URL` is set (CI)
 - `backend/tests/test_audit.py`, `test_tracing.py` — audit rows, run lifecycle, Langfuse tracing
@@ -193,6 +194,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - No human review/approval flow yet (M6); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
 
 ## Key Documents
+- [Changelog](../CHANGELOG.md)
 - [Audit trail](../docs/audit-trail.md)
 - [Grading v2 architecture (Proposal 002, accepted)](../docs/proposals/002-grading-v2-architecture.md)
 - [Grading v2 feature checklist](../docs/grading-v2-checklist.md)
