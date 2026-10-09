@@ -117,6 +117,20 @@
   --primary-rgb: 79, 70, 229;
   --transition: all 0.2s ease;
 
+  /* Colours used on top of others */
+  --color-on-primary: #ffffff;
+  --color-error-hover: #e11d48;
+  --color-error-ring: #ffe4e6;
+  --overlay-scrim: rgba(15, 23, 42, 0.45);
+  --hover-overlay: rgba(15, 23, 42, 0.06);
+  --on-primary-subtle: rgba(255, 255, 255, 0.2);
+
+  /* Layers: top bar 40, drawer scrim 50, drawer 60, toasts 900, dialogs 1000, skip link 2000 */
+  --z-topbar: 40;
+  --z-drawer: 60;
+  --z-toast: 900;
+  --z-modal: 1000;
+
   /* Elevation and motion */
   --shadow-card-hover: 0 10px 25px -5px rgba(15, 23, 42, 0.06);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -126,6 +140,8 @@
   --radius-sm: 0.375rem;
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
+  --radius-tile: 0.75rem;  /* icon tiles, inputs in dialogs */
+  --text-title: 1.875rem;  /* page titles */
   --header-height: 4rem;
   --sidebar-width: 16rem;
 }
@@ -180,3 +196,13 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Phones zoom into fields smaller than 16px; keep form text at 16px there */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+

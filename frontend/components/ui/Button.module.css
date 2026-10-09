@@ -69,8 +69,7 @@
 }
 
 .danger:hover:not(:disabled) {
-    background-color: #e11d48;
-    /* Darker red */
+    background-color: var(--color-error-hover);
 }
 
 /* Sizes */
@@ -110,3 +109,11 @@
         transform: rotate(360deg);
     }
 }
+
+/* Touch screens: small buttons still get a comfortable target */
+@media (pointer: coarse) {
+    .sm {
+        height: 2.5rem;
+    }
+}
+

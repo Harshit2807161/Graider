@@ -7,12 +7,14 @@ import Modal from "./Modal";
 import styles from "./Modal.module.css";
 
 /** Ask before an action, optionally with a reason for the audit trail. */
-export default function ConfirmDialog({ title, message, confirmLabel, withReason = false, danger = false, onConfirm, onClose }: {
+export default function ConfirmDialog({ title, message, confirmLabel, withReason = false, danger = false, icon, onConfirm, onClose }: {
     title: string;
     message: ReactNode;
     confirmLabel: string;
     withReason?: boolean;
     danger?: boolean;
+    /** Shown in the dialog's header tile */
+    icon?: ReactNode;
     onConfirm: (reason: string) => Promise<void>;
     onClose: () => void;
 }) {
@@ -32,7 +34,7 @@ export default function ConfirmDialog({ title, message, confirmLabel, withReason
     };
 
     return (
-        <Modal open title={title} onClose={onClose} footer={
+        <Modal open title={title} onClose={onClose} icon={icon} footer={
             <>
                 <Button variant="secondary" onClick={onClose}>Cancel</Button>
                 <Button variant={danger ? "danger" : "primary"} onClick={confirm} isLoading={busy}>{confirmLabel}</Button>

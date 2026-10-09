@@ -1,6 +1,7 @@
 "use client";
 
 import React, { ReactNode, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import styles from "./Modal.module.css";
@@ -63,8 +64,9 @@ export default function Modal({ open, title, onClose, children, footer, size = "
         };
     }, [open]);
 
-    if (!open) return null;
-    return (
+    if (!open || typeof document === "undefined") return null;
+    // Rendered into <body> so a parent with containment or a transform can't trap the overlay
+    return createPortal(
         <div className={styles.overlay} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
             <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
                  className={cn(styles.dialog, styles[size])}>
@@ -83,6 +85,7 @@ export default function Modal({ open, title, onClose, children, footer, size = "
                 <div className={styles.body}>{children}</div>
                 {footer && <footer className={styles.footer}>{footer}</footer>}
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
