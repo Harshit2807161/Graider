@@ -154,6 +154,15 @@ def submission_documents(db: Session, submission: Submission) -> list[Document]:
     return [document]
 
 
+def stored_pages(db: Session, submission: Submission) -> list[DocumentPage]:
+    """The pages made so far, in the order grading numbers them (from 1). Never renders anything."""
+    documents = db.exec(
+        select(Document).where(Document.submission_id == submission.id).order_by(Document.position)
+    ).all()
+    return [page for document in documents if document.status == DocumentStatus.READY
+            for page in pages_of(db, document)]
+
+
 def submission_pages(db: Session, submission: Submission) -> list[DocumentPage]:
     """Every page of a submission, in order across its documents."""
     pages: list[DocumentPage] = []

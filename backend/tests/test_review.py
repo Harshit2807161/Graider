@@ -17,7 +17,7 @@ from app.models.exam import Exam, Question, Submission
 from app.models.grade_event import GradeEvent
 from app.models.grading import AnswerGrade, Transcription
 from app.services.grading_service import run_grading
-from tests.conftest import add_member, make_exam, make_org, make_user
+from tests.conftest import FakeInvoker, add_member, make_exam, make_org, make_user
 from tests.test_pipeline import grade, load, make_submission, page, segment
 
 API = settings.API_V1_STR
@@ -256,3 +256,81 @@ async def test_review_actions_are_for_staff_of_the_same_org(fake_llm, db, school
                            json={"expected_grade_id": str(current(submission.id, 1).id)})
     assert response.status_code == 404
     assert events(submission.id) == []
+
+
+# ===== what teachers review =====
+
+async def test_the_queue_puts_escalations_first_then_the_least_agreed_grades(fake_llm, db, school, tmp_path, client):
+    def review(prompt):
+        out = FakeInvoker._default_review(prompt)
+        return {**out, "agreement": 0.85} if "Question Q2 (" in prompt else out
+    fake_llm.review = review
+    first = await graded(db, school, tmp_path)  # Q1 agreed at 0.95, Q2 at 0.85
+    first_row = db.get(Submission, first.id)
+    first_row.student_membership_id = school["student_m"].id
+    db.add(first_row)
+    db.commit()
+    fake_llm.transcribe = lambda prompt: page(segment("Q1", "x = 5"))
+    second = await graded(db, school, tmp_path)  # Q2 blank: escalated
+    headers = login(client, "teacher@school.test")
+    override(client, headers, first, school, 1, 3)  # teacher decisions leave the queue
+
+    queue = client.get(f"{API}/exams/{school['exam'].id}/review-queue", headers=headers).json()
+    assert [(i["submission_id"], i["question_label"], i["status"], i["agreement"]) for i in queue] == [
+        (str(second.id), "Q2", "escalated", None), (str(first.id), "Q2", "graded", 0.85),
+        (str(second.id), "Q1", "graded", 0.95)]
+    assert queue[0]["escalation_reason"] == "no_answer_found" and queue[1]["student_name"] == "student"
+    escalated = client.get(f"{API}/exams/{school['exam'].id}/review-queue?escalated_only=true", headers=headers).json()
+    assert [i["question_label"] for i in escalated] == ["Q2"]
+    assert client.get(f"{API}/exams/{school['exam'].id}/review-queue",
+                      headers=login(client, "student@school.test")).status_code == 403
+
+
+async def test_the_review_shows_pages_spec_transcript_grade_and_earlier_versions(fake_llm, db, school, tmp_path, client):
+    submission = await graded(db, school, tmp_path)
+    headers = login(client, "teacher@school.test")
+    override(client, headers, submission, school, 1, 3)
+
+    review = client.get(f"{API}/submissions/{submission.id}/review", headers=headers).json()
+    assert review["pages"] == [{"number": 1, "document_id": review["pages"][0]["document_id"], "page_index": 0,
+                                "kind": review["pages"][0]["kind"], "width": review["pages"][0]["width"],
+                                "height": review["pages"][0]["height"], "has_image": True}]
+    q1, q2 = review["questions"]
+    assert (q1["label"], q1["max_score"], q1["transcription"]["text"]) == ("Q1", 4, "student answer for Q1")
+    assert [c["id"] for c in q1["rubric_spec"]["spec"]["criteria"]] == ["c1"]
+    assert (q1["grade"]["source"], q1["grade"]["score"]) == ("teacher", 3)
+    assert [(g["version"], g["source"], len(g["rounds"])) for g in q1["previous_grades"]] == [(1, "ai", 1)]
+    assert q2["previous_grades"] == [] and q2["grade"]["rounds"][0]["effective_agreement"] == 0.95
+    assert review["unassigned_segments"] == []
+
+
+async def test_page_images_are_served_to_staff_only(fake_llm, db, school, tmp_path, client):
+    submission = await graded(db, school, tmp_path)
+    url = f"{API}/submissions/{submission.id}/pages"
+    response = client.get(f"{url}/1/image", headers=login(client, "teacher@school.test"))
+    assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"
+    assert response.headers["cache-control"] == "private, no-store" and response.content[:2] == b"\xff\xd8"
+    assert client.get(f"{url}/2/image", headers=login(client, "teacher@school.test")).status_code == 404
+    assert client.get(f"{url}/1/image", headers=login(client, "student@school.test")).status_code == 403
+
+
+async def test_the_timeline_shows_runs_calls_versions_and_actions_in_order(fake_llm, db, school, tmp_path, client):
+    submission = await graded(db, school, tmp_path)
+    headers = login(client, "teacher@school.test")
+    override(client, headers, submission, school, 1, 3, reason="Final line wrong")
+
+    timeline = client.get(f"{API}/submissions/{submission.id}/timeline", headers=headers).json()
+    kinds = [(e["type"], e["question_label"]) for e in timeline]
+    assert kinds[0] == ("run", None) and kinds[-2:] == [("grade", "Q1"), ("event", "Q1")]
+    calls = [e["data"]["purpose"] for e in timeline if e["type"] == "llm_call"]
+    assert calls.count("transcribe_page") == 1 and calls.count("grade") == 2 and calls.count("evaluate") == 2
+    assert "request" not in timeline[1]["data"]
+    assert timeline[-1]["data"]["reason"] == "Final line wrong"
+    assert timeline[-1]["actor_membership_id"] == str(school["teacher_m"].id)
+
+    # Raw model requests and responses are for owners and admins
+    url = f"{API}/submissions/{submission.id}/timeline?bodies=true"
+    assert client.get(url, headers=headers).status_code == 403
+    add_member(db, make_user(db, "admin@school.test"), school["org"], Role.ADMIN)
+    calls = [e for e in client.get(url, headers=login(client, "admin@school.test")).json() if e["type"] == "llm_call"]
+    assert all("request" in e["data"] and "response" in e["data"] for e in calls)

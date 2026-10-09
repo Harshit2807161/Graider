@@ -106,3 +106,57 @@ class GradeActionResult(BaseModel):
 class PublishResult(BaseModel):
     published: int
     not_approved: int  # submissions still being graded, needing review, or not yet approved
+
+
+class ReviewQueueItem(BaseModel):
+    submission_id: UUID
+    submission_status: str
+    student_membership_id: Optional[UUID]
+    student_name: Optional[str]
+    question_id: UUID
+    question_label: str
+    grade_id: UUID
+    status: str
+    escalation_reason: Optional[str]
+    score: Optional[float]
+    max_score: float
+    agreement: Optional[float]  # the last evaluator round's effective agreement
+
+
+class PageRead(BaseModel):
+    number: int  # 1-based, as transcription segments refer to pages
+    document_id: UUID
+    page_index: int
+    kind: str
+    width: Optional[int]
+    height: Optional[int]
+    has_image: bool
+
+
+class QuestionReview(BaseModel):
+    question_id: UUID
+    label: str
+    printed_label: Optional[str]
+    text: str
+    max_score: float
+    choice_group: Optional[str]
+    rubric_spec: Optional[dict[str, Any]]  # the spec the current grade used (id, version, status, spec)
+    transcription: Optional[TranscriptionRead]
+    grade: Optional[AnswerGradeRead]
+    previous_grades: list[AnswerGradeRead]  # newest first
+
+
+class SubmissionReview(BaseModel):
+    submission: SubmissionRead
+    student_name: Optional[str]
+    pages: list[PageRead]
+    unassigned_segments: list[dict[str, Any]]  # answers the model couldn't place
+    questions: list[QuestionReview]
+
+
+class TimelineEntry(BaseModel):
+    at: datetime
+    type: str  # run | llm_call | transcription | grade | event
+    question_label: Optional[str]
+    actor_membership_id: Optional[UUID]
+    data: dict[str, Any]
