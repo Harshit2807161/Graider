@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/api";
 import { examService } from "@/services/exam.service";
 import { Exam, QuestionSync, Submission, SubmissionStatus } from "@/types/exam.types";
 import Button from "@/components/ui/Button";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 const IN_PROGRESS: SubmissionStatus[] = ["PENDING", "PROCESSING"];
 const POLL_INTERVAL_MS = 3000;
@@ -17,24 +18,6 @@ const panelStyle: React.CSSProperties = {
     border: "1px solid #e2e8f0",
     boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
 };
-
-const statusColors: Record<SubmissionStatus, { bg: string; fg: string }> = {
-    PENDING: { bg: "#f1f5f9", fg: "#475569" },
-    PROCESSING: { bg: "#e0f2fe", fg: "#0369a1" },
-    GRADED: { bg: "#dcfce7", fg: "#15803d" },
-    APPROVED: { bg: "#dcfce7", fg: "#15803d" },
-    PUBLISHED: { bg: "#ede9fe", fg: "#6d28d9" },
-    FAILED: { bg: "#fee2e2", fg: "#b91c1c" },
-};
-
-function StatusBadge({ status }: { status: SubmissionStatus }) {
-    const { bg, fg } = statusColors[status] ?? statusColors.PENDING;
-    return (
-        <span style={{ backgroundColor: bg, color: fg, padding: "0.2rem 0.6rem", borderRadius: "999px", fontSize: "0.8rem", fontWeight: 600 }}>
-            {status.toLowerCase()}
-        </span>
-    );
-}
 
 export default function ExamDetailsPage() {
     const params = useParams();

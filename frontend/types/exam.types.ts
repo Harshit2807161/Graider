@@ -1,6 +1,6 @@
 export type ExamStatus = 'draft' | 'published' | 'archived';
 // Matches the backend enum values (uppercase)
-export type SubmissionStatus = 'PENDING' | 'PROCESSING' | 'GRADED' | 'APPROVED' | 'PUBLISHED' | 'FAILED';
+export type SubmissionStatus = 'PENDING' | 'PROCESSING' | 'GRADED' | 'NEEDS_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'FAILED';
 export type QuestionType = 'descriptive' | 'mcq' | 'problem';
 
 export interface Question {
@@ -11,6 +11,9 @@ export interface Question {
     max_score: number;
     rubric_criteria?: string;
     question_type: QuestionType;
+    label?: string | null;
+    printed_label?: string | null;
+    choice_group?: string | null;
     created_at: string;
 }
 
@@ -37,6 +40,8 @@ export interface SubmissionAnswer {
     score?: number;
     feedback?: string;
     reasoning?: string;
+    status?: "graded" | "escalated" | "not_attempted" | null;
+    escalation_reason?: string | null;
     created_at: string;
 }
 
