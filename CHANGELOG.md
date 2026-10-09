@@ -6,9 +6,24 @@ Notable changes to Gr8r, newest first.
 
 ## [Unreleased]
 
-### M5: Grading v2 ([#13](https://github.com/Harshit2807161/Graider/pull/13), in review)
+### M6: Review workflow API ([#14](https://github.com/Harshit2807161/Graider/pull/14), in review)
 
 #### Added
+- **Teacher actions on grades**, each recorded as a grade event (who, why, before and after) and saved as a new version, never a change:
+  - **override** every criterion's score, with a mandatory reason; the scores pass the same checks as the model's, and a stale edit is refused instead of overwriting someone else's;
+  - **resolve** an escalated answer by accepting its proposed score;
+  - **correct a transcript** (mandatory reason), which regrades only that question from the teacher's text;
+  - **regrade**, **approve** (refused while answers still need review), **unapprove**, and **publish** an exam's approved submissions.
+- **Submission state machine** (Proposal 002 §9): moves the current state doesn't allow are refused (409); published results are final.
+- **Review endpoints:** review queue (escalated first, then lowest evaluator agreement), review detail (pages, rubric spec, transcript, grade with every evaluator round, earlier versions), page images, and an audit timeline (runs, model calls, versions, actions; raw model requests and responses for owners and admins).
+- **Per-exam grading settings:** agreement threshold, spot-check rate, choice policy.
+
+#### Fixed
+- **Students see only their own published results,** reduced to scores and feedback. Before, they could read transcripts and grading details as soon as grading finished.
+
+## M5: Grading v2 ([#13](https://github.com/Harshit2807161/Graider/pull/13), 2026-10-09)
+
+### Added
 - **Page reading and stitching:**
   - Pages are read in parallel into answer segments labelled with the exam's labels, or `unassigned`.
   - Code stitches them into one answer per question: continued text joined across pages, crossed-out work left out of the answer, unplaced work kept for the teacher (`submissions.unassigned_segments`).
@@ -26,11 +41,11 @@ Notable changes to Gr8r, newest first.
 - **Scoped runs** (`question_ids`, trigger `transcript_edit`) regrade only some questions from their current transcripts.
 - **Run config snapshot** now also records the grading thresholds and the prompt versions.
 
-#### Changed
+### Changed
 - **A whole submission fails only** when its pages can't be read, the budget runs out, or there are no questions. Everything else escalates that one answer.
 - **The question's subject** comes from its rubric spec; the tagging call is gone.
 
-#### Removed
+### Removed
 - The old tagger, subject graders and LangGraph orchestrator (`app/agents/`), plus the triplet and OCR services and the legacy grading schemas.
 
 ## M4c: Exam documents ([#12](https://github.com/Harshit2807161/Graider/pull/12), 2026-10-07)

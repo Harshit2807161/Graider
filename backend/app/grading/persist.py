@@ -110,7 +110,7 @@ def save_results(
         )
         db.add(grade)
         new_grades[q.id] = grade
-        _project(db, submission.id, q.id, grade, transcript)  # type: ignore[arg-type]
+        project(db, submission.id, q.id, grade, transcript)  # type: ignore[arg-type]
 
     # Totals over every question's current grade (including ones this run didn't touch)
     grades = [new_grades.get(q.id) or old_grades.get(q.id) for _, q in questions]
@@ -128,7 +128,7 @@ def save_results(
     db.commit()
 
 
-def _project(db: Session, submission_id: UUID, question_id: UUID, grade: AnswerGrade,
+def project(db: Session, submission_id: UUID, question_id: UUID, grade: AnswerGrade,
              transcript: Optional[Transcription]) -> None:
     """Keep submission_answers (what the UI reads) in step with the current grade."""
     row = db.exec(select(SubmissionAnswer).where(

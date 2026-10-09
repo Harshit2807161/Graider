@@ -15,6 +15,8 @@ from app.schemas.exam import (
     ExamUpdate,
     ExamRead,
     ExamWithQuestions,
+    GradingSettings,
+    GradingSettingsUpdate,
     QuestionCreate,
     QuestionRead,
     QuestionSync,
@@ -25,6 +27,7 @@ from app.models.exam import Question
 from app.rubrics import service as rubric_service
 from app.rubrics.schema import RubricSpec
 from app.api.v1.endpoints.rubrics import enqueue_parses
+from app.grading.question import ExamSettings
 from app.services.labels import duplicate_labels
 
 router = APIRouter()
@@ -170,6 +173,45 @@ def update_exam(
 
     exam = crud.exam.update(db, db_obj=exam, obj_in=exam_in)
     return exam
+
+def _grading_settings(exam: Exam) -> GradingSettings:
+    config = exam.config or {}
+    effective = ExamSettings.of(config)
+    return GradingSettings(agreement_threshold=effective.agreement_threshold, spot_check_rate=effective.spot_check_rate,
+                           choice_policy=config.get("choice_policy", "best"))
+
+
+@router.get("/{exam_id}/grading-settings", response_model=GradingSettings)
+def read_grading_settings(
+    *,
+    db: Session = Depends(deps.get_session),
+    exam_id: UUID,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """The exam's grading settings: agreement threshold, spot-check rate, choice policy."""
+    exam = _get_exam_or_404(db, exam_id)
+    deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
+    return _grading_settings(exam)
+
+
+@router.patch("/{exam_id}/grading-settings", response_model=GradingSettings)
+def update_grading_settings(
+    *,
+    db: Session = Depends(deps.get_session),
+    exam_id: UUID,
+    settings_in: GradingSettingsUpdate,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """Change the exam's grading settings; the next grading run uses them (and records them)."""
+    exam = _get_exam_or_404(db, exam_id)
+    deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
+    exam.config = {**(exam.config or {}), **settings_in.model_dump(exclude_unset=True)}
+    exam.updated_at = utcnow()
+    db.add(exam)
+    db.commit()
+    db.refresh(exam)
+    return _grading_settings(exam)
+
 
 @router.delete("/{exam_id}")
 def delete_exam(

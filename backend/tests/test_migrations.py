@@ -163,3 +163,19 @@ def test_transcriptions_and_grades_only_switch_their_current_version(alembic_con
             with pytest.raises(Exception, match="append-only"):
                 with engine.begin() as conn:
                     conn.execute(text(statement))
+
+
+def test_grade_events_are_append_only(alembic_config, engine):
+    command.downgrade(alembic_config, "base")
+    command.upgrade(alembic_config, "head")
+    question_id = make_question(engine)
+    with engine.begin() as conn:
+        exam_id = conn.execute(text("SELECT exam_id FROM questions WHERE id = :q"), {"q": question_id}).scalar()
+        submission_id = conn.execute(text(
+            "INSERT INTO submissions (id, exam_id, original_file_url, status, created_at, updated_at) "
+            "VALUES (gen_random_uuid(), :e, 'x', 'GRADED', now(), now()) RETURNING id"), {"e": exam_id}).scalar()
+    insert = (
+        "INSERT INTO grade_events (id, submission_id, kind, before, after, created_at) VALUES "
+        "(gen_random_uuid(), :submission_id, 'approve', '{}', '{}', now())"
+    )
+    assert_append_only(engine, "grade_events", insert, {"submission_id": submission_id})

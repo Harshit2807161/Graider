@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from app.audit.runs import create_run
 from app.core.constants import SubmissionStatus
 from app.core.db import engine
-from app.models.audit import LLMCall
+from app.models.audit import GradingRun, LLMCall
 from app.models.base import utcnow
 from app.models.exam import Exam, Question, Submission, SubmissionAnswer
 from app.models.grading import AnswerGrade, Transcription
@@ -272,3 +272,33 @@ async def test_a_transcript_edit_regrades_only_that_question(fake_llm, db, schoo
     assert current == {1: (2, "ai"), 2: (1, "ai")}  # Q2 untouched
     graded, answers = load(submission.id)
     assert answers[0][0].student_answer_text == "2x = 10 so x = 5" and graded.status == SubmissionStatus.GRADED
+
+
+def set_config(db, exam, **config):
+    exam = db.get(Exam, exam.id)
+    exam.config = {**(exam.config or {}), **config}
+    db.add(exam)
+    db.commit()
+    return exam
+
+
+async def test_an_exams_agreement_threshold_is_used_and_recorded(fake_llm, db, school, tmp_path):
+    exam = set_config(db, school["exam"], agreement_threshold=0.97)
+    run_id = await grade(make_submission(db, exam, tmp_path))
+
+    # The evaluator agrees at 0.95 (the default fake): enough by default, not for this exam
+    _, answers = load(db.exec(select(Submission)).one().id)
+    assert [a.escalation_reason for a, _ in answers] == ["evaluator_disagreement"] * 2
+    assert len(fake_llm.calls_of("revise")) == 4
+    with Session(engine) as s:
+        assert s.get(GradingRun, run_id).config_snapshot["grading"]["agreement_threshold"] == 0.97
+
+
+async def test_an_exams_spot_check_rate_sends_confident_answers_to_review(fake_llm, db, school, tmp_path):
+    exam = set_config(db, school["exam"], spot_check_rate=1.0)
+    submission = make_submission(db, exam, tmp_path)
+    await grade(submission)
+
+    submission, answers = load(submission.id)
+    assert submission.status == SubmissionStatus.NEEDS_REVIEW
+    assert [(a.escalation_reason, a.score) for a, _ in answers] == [("spot_check", 4), ("spot_check", 6)]

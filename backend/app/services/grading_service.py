@@ -14,7 +14,7 @@ from app.core.constants import SubmissionStatus
 from app.core.db import engine
 from app.grading import persist
 from app.grading.graph import QuestionInfo, run_submission_graph
-from app.grading.question import QuestionInput, grade_question
+from app.grading.question import ExamSettings, QuestionInput, grade_question
 from app.grading.stitch import StitchedAnswer
 from app.grading.transcribe import SheetPage
 from app.ingestion.pages import DocumentError
@@ -75,7 +75,8 @@ async def run_grading(run_id: UUID) -> None:
             finish_run(db, run, error="Submission not found")
             return
 
-        start_run(db, run)
+        exam = db.get(Exam, submission.exam_id)
+        start_run(db, run, exam_config=exam.config if exam else None)
         error: Optional[str] = None
         try:
             questions = crud.question.get_by_exam(db, exam_id=submission.exam_id)
@@ -114,6 +115,7 @@ async def _grade(db: Session, submission: Submission, run: GradingRun, questions
     exam = db.get(Exam, submission.exam_id)
     config = (exam.config if exam else None) or {}
     groups = choice_groups(config)
+    exam_settings = ExamSettings.of(config)
 
     # Rubric specs: parsed now if missing; a question without a ready spec escalates (never graded
     # against an unchecked rubric)
@@ -140,12 +142,13 @@ async def _grade(db: Session, submission: Submission, run: GradingRun, questions
                 answer = StitchedAnswer(info["label"], parts=[transcript.text], starts=1,  # type: ignore[attr-defined]
                                         segments=[{"confidence": confidence, "crossed_out": False}])
             outcomes.append(await grade_question(QuestionInput(
-                info["question_id"], info["label"], info["text"], info["max_score"], info["spec"], answer), run.id))
+                info["question_id"], info["label"], info["text"], info["max_score"], info["spec"], answer),
+                run.id, exam_settings))
         stitched, skip = None, set()
     else:
         _set_progress(db, submission, f"Reading {len(pages)} page(s) for {len(questions)} questions...")
         try:
-            state = await run_submission_graph(run.id, pages, infos, groups)
+            state = await run_submission_graph(run.id, pages, infos, groups, exam_settings)
         except LLMBudgetExceeded:
             raise
         except LLMError as e:

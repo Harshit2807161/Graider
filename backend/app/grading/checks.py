@@ -19,28 +19,41 @@ def evidence_found(evidence: str, answer: str) -> bool:
     return bool(evidence.strip()) and _normalise(evidence) in _normalise(answer)
 
 
-def check_grade(criteria: list[dict[str, Any]], spec: RubricSpec, answer: str) -> list[str]:
-    """Reasons the grading can't be accepted as it is (empty when it can)."""
+def check_scores(criteria: list[dict[str, Any]], spec: RubricSpec) -> list[str]:
+    """Every criterion scored exactly once, within its points; pass/fail all or nothing."""
     errors: list[str] = []
     points = {c.id: c.points for c in spec.criteria}
     ids = [c["id"] for c in criteria]
     missing = [i for i in points if i not in ids]
     repeated = sorted({i for i in ids if ids.count(i) > 1})
+    unknown = sorted({i for i in ids if i not in points})
     if missing:
         errors.append(f"Score every criterion: missing {', '.join(missing)}.")
     if repeated:
         errors.append(f"Score each criterion once: {', '.join(repeated)} appear more than once.")
+    if unknown:
+        errors.append(f"Unknown criteria: {', '.join(unknown)}.")
     for c in criteria:
         cid, score, top = c["id"], c["score"], points.get(c["id"], 0.0)
+        if cid not in points:
+            continue
         if not -EPSILON <= score <= top + EPSILON:
             errors.append(f"{cid}: score {score:g} is outside 0..{top:g}.")
         elif spec.kind == "pass_fail" and not (abs(score) < EPSILON or abs(score - top) < EPSILON):
             errors.append(f"{cid}: a pass/fail criterion scores 0 or {top:g}, not {score:g}.")
-        if score > EPSILON and not evidence_found(c.get("evidence", ""), answer):
-            errors.append(f"{cid}: quote the student's exact words as evidence for a score above 0 "
+    return errors
+
+
+def check_grade(criteria: list[dict[str, Any]], spec: RubricSpec, answer: str) -> list[str]:
+    """Reasons a model's grading can't be accepted as it is (empty when it can): the score checks,
+    plus quoted evidence for every score above 0 and a justification for every criterion."""
+    errors = check_scores(criteria, spec)
+    for c in criteria:
+        if c["score"] > EPSILON and not evidence_found(c.get("evidence", ""), answer):
+            errors.append(f"{c['id']}: quote the student's exact words as evidence for a score above 0 "
                           f"(not found in the answer: {c.get('evidence', '')!r}).")
         if not c.get("justification", "").strip():
-            errors.append(f"{cid}: give a justification.")
+            errors.append(f"{c['id']}: give a justification.")
     return errors
 
 

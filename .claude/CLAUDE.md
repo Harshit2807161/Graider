@@ -50,6 +50,8 @@ backend/
 │   ├── schemas/                   # Pydantic request/response + grading pipeline schemas
 │   ├── grading/                   # grading v2: schemas, prompts, checks, stitch, choices, question loop,
 │   │                              # transcribe (pages), graph (LangGraph), persist (versions + totals)
+│   ├── workflow/                  # state.py (submission status edges + grade events), actions.py (teacher
+│   │                              # actions: override, resolve, transcript edit, regrade, approve, publish)
 │   └── services/                  # grading_service (run lifecycle), labels, enrollment_service, org_service
 └── tests/                         # pytest suite (FakeLLM, SQLite or Postgres)
 frontend/
@@ -73,7 +75,9 @@ Exam documents (question paper / rubric / both / blank copy) have no submission;
 
 `Transcription` / `AnswerGrade` (`transcriptions`, `answer_grades`): versioned per (submission, question), one current version, append-only except `is_current` (Postgres triggers). Grades keep criteria (score, quoted evidence, justification), every evaluator round, flags, escalation reason, models, the spec and transcription used, and whether they count (choice groups). `submission_answers` is the projection the UI reads; `submissions.unassigned_segments` holds answers the model couldn't place.
 
-Submission statuses: `PENDING → PROCESSING → GRADED | NEEDS_REVIEW | FAILED`. `APPROVED` / `PUBLISHED` exist in the enum but nothing sets them yet (M6).
+`GradeEvent` (`grade_events`, append-only): every teacher action on a submission (override, resolve, transcript edit, regrade, approve, unapprove, publish, review complete) with actor, reason, before and after. Runs, model calls, versions and events together are the submission's audit timeline.
+
+Submission statuses (`app/workflow/state.py`, Proposal 002 §9): the worker moves `PENDING → PROCESSING → GRADED | NEEDS_REVIEW | FAILED`; teachers move `NEEDS_REVIEW → GRADED` (last escalation resolved), `GRADED ⇄ APPROVED` (approve / unapprove; refused while answers need review), `APPROVED → PUBLISHED` (exam-level publish; final), and `GRADED | NEEDS_REVIEW | APPROVED | FAILED → PENDING` (regrade or transcript edit; clears an approval). Teacher actions go through `app/workflow/actions.py` (one transaction, submission row locked, a grade event, new versions instead of changes); a move the state doesn't allow is a 409. Students see only their own `PUBLISHED` submissions, reduced to scores and feedback.
 
 ## Grading Pipeline (`services/grading_service.py`, `app/grading/`)
 Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload / regrade / transcript_edit, optionally scoped to some `question_ids`) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots models + thresholds + prompt versions, records every model call to `llm_calls` (append-only; a failed audit write fails the run). See [docs/audit-trail.md](../docs/audit-trail.md).
@@ -159,8 +163,17 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | GET, PUT | /exams/{id}/questions/{qid}/rubric-spec | staff — current parsed rubric; replace with a teacher's version (422 if it fails the checks) |
 | POST | /exams/{id}/questions/{qid}/rubric-spec/reparse | staff — queue a fresh parse |
 | GET, POST | /exams/{id}/submissions | staff — list / upload a student's answers: `file` or several `files` (PDF, Word/ODT/RTF/PPTX, JPEG/PNG/WebP/HEIC/TIFF/GIF/BMP, text); queues grading |
-| GET | /submissions/{id} | member (students: own only) |
-| POST | /submissions/{id}/regrade | staff |
+| GET, PATCH | /exams/{id}/grading-settings | staff — agreement threshold (0.5–1), spot-check rate (0–1), choice policy (best/first) |
+| GET | /exams/{id}/review-queue | staff — answers to review: escalated first, then lowest evaluator agreement (`escalated_only`) |
+| POST | /exams/{id}/publish | staff — publish the approved submissions |
+| GET | /submissions/{id} | staff: full; students: own and published only, scores and feedback |
+| GET | /submissions/{id}/review | staff — pages, and per question spec, transcript, current grade with evaluator rounds, earlier versions |
+| GET | /submissions/{id}/pages/{n}/image | staff — page image as the model saw it |
+| GET | /submissions/{id}/timeline | staff — runs, model calls, versions, actions; `bodies=true` raw model I/O for owner/admin |
+| POST | /submissions/{id}/answers/{qid}/override | staff — set every criterion's score; `expected_grade_id`, mandatory `reason` (409 stale, 422 failed checks) |
+| POST | /submissions/{id}/answers/{qid}/resolve | staff — accept an escalated answer's proposed grade |
+| PATCH | /submissions/{id}/answers/{qid}/transcript | staff — correct a transcript (mandatory `reason`); regrades that question |
+| POST | /submissions/{id}/regrade, /approve, /unapprove | staff — optional `reason` |
 | GET | /health | anyone |
 
 "Staff" = owner, admin or teacher. Use `deps.require_org_role(...)` for every org-scoped check.
@@ -185,13 +198,14 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - `backend/tests/test_api.py` — auth, tenant isolation, question sync/import, uploads, submissions
 - `backend/tests/test_grading_v2.py` — code checks, agreement, stitching, choice groups, the per-question loop (agree, revise, push back, escalate, repair, flags, fallbacks, budget)
 - `backend/tests/test_grading.py` — degraded-path JSON extraction, call/cost budget
+- `backend/tests/test_workflow.py` — the status edges; `backend/tests/test_review.py` — review API end to end (overrides, resolve, transcript edit, approve, publish, queue, detail, images, timeline, student view, tenancy)
 - `backend/tests/test_rubrics.py` — rubric spec validation, parsing lifecycle, grading against specs
 - `backend/tests/test_ingestion.py` — every file format (generated in `tests/ingestion_fixtures.py`), safety checks, pages, documents; real office conversion when `GOTENBERG_URL` is set (CI)
 - `backend/tests/test_audit.py`, `test_tracing.py` — audit rows, run lifecycle, Langfuse tracing
 
 ## Known Gaps
 - Frontend lint has existing `any` / hook warnings
-- No human review/approval flow yet (M6); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
+- Review workflow is API-only until M7 (UI); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
 
 ## Key Documents
 - [Changelog](../CHANGELOG.md)

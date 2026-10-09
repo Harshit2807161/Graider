@@ -6,6 +6,10 @@ from app.api.v1.router import api_router
 import time
 import structlog
 from fastapi import Request
+from fastapi.responses import JSONResponse
+
+from app.workflow.actions import InvalidScores
+from app.workflow.state import WorkflowError
 
 logger = structlog.get_logger(__name__)
 
@@ -43,6 +47,17 @@ async def log_requests(request: Request, call_next):
     return response
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.exception_handler(WorkflowError)
+async def workflow_conflict(request: Request, exc: WorkflowError) -> JSONResponse:
+    """An action the submission's current state doesn't allow, or a stale grade."""
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidScores)
+async def invalid_scores(request: Request, exc: InvalidScores) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": exc.errors})
 
 
 @app.get("/health")

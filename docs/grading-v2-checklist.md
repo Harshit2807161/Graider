@@ -26,8 +26,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M4 | Rubric parser | `feat/rubric-parser` | M3 | [#9](https://github.com/Harshit2807161/Graider/pull/9) | Merged |
 | M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | Merged |
 | M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | [#12](https://github.com/Harshit2807161/Graider/pull/12) | Merged |
-| M5 | Grading graph v2 | `feat/grading-graph-v2` | M4c | [#13](https://github.com/Harshit2807161/Graider/pull/13) | In review |
-| M6 | Review workflow API | `feat/review-workflow-api` | M5 | – | Not started |
+| M5 | Grading graph v2 | `feat/grading-graph-v2` | M4c | [#13](https://github.com/Harshit2807161/Graider/pull/13) | Merged |
+| M6 | Review workflow API | `feat/review-workflow-api` | M5 | [#14](https://github.com/Harshit2807161/Graider/pull/14) | In review |
 | M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
 | M8 | Eval harness | `feat/eval-harness` | M5 | – | Not started |
 | M9 | Public eval sets | `feat/eval-datasets` | M8 | – | Not started |
@@ -181,25 +181,18 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 **Acceptance:** an end-to-end fake run produces full audit rows and correct statuses. ✔
 
 ## M6: Review workflow API
-- [ ] `app/workflow/` state machine: every transition writes a grade event; invalid transitions return 409
-- [ ] Endpoints:
-  - Review queue; review detail; page image (authorized)
-  - Transcript edit with reason ⇒ regrade of that question
-  - Per-criterion override: mandatory reason, same checks, optimistic concurrency
-  - Resolve; approve/unapprove; exam-level publish
-  - Audit timeline (raw request and response bodies for admins only)
-  - Exam config: threshold, spot-check %
-- [ ] Fix: students see only PUBLISHED submissions, in a reduced view
-- [ ] Tests:
-  - State table
-  - Override validation
-  - Approve is blocked while reviews are open
-  - Publish affects only approved submissions
-  - Student visibility
-  - Tenancy
-  - Previous versions are preserved
+- [x] `grade_events` (append-only on Postgres) and `app/workflow/state.py`: the allowed status edges; `transition()` moves a submission and records the event in one transaction; any other move is a 409
+- [x] Teacher actions (`app/workflow/actions.py`; submission row locked, one transaction, new versions instead of changes):
+  - [x] Per-criterion override: every criterion scored, mandatory reason, the model's score checks (bounds, pass/fail, each criterion once; no evidence quote required), optimistic concurrency with `expected_grade_id` (409 when stale)
+  - [x] Resolve: accept an escalated answer's proposed score; the last resolution moves NEEDS_REVIEW to GRADED
+  - [x] Transcript edit with reason ⇒ teacher transcription version + a run scoped to that question (approval cleared)
+  - [x] Regrade through the workflow; approve (blocked while reviews are open) / unapprove; exam-level publish (approved only; published is final)
+- [x] Endpoints: review queue (escalated first, then lowest effective agreement), review detail (pages, spec, transcript, current grade with rounds, earlier versions, unassigned work), page image (staff, inside `UPLOAD_DIR`, no-store), audit timeline (raw model I/O for owners/admins with `bodies=true`), exam grading settings (agreement threshold, spot-check rate, choice policy), used by grading and recorded in the run snapshot
+- [x] Fix: students see only their own PUBLISHED submissions, reduced to scores and feedback
+- [x] Tests: state table (every pair); override validation (bounds, unknown and repeated criteria, blank reason, stale grade); resolve rules; approve blocked while reviews are open; publish affects only approved and is final; transcript edit regrades only that question from the teacher's text; nothing changes while grading; tenancy and roles; previous versions kept; queue order; review detail; page images; timeline order and admin-only bodies; student visibility; per-exam settings; grade events append-only (Postgres)
+- Changes from the plan: grade events record people's actions; the worker's own status changes are recorded by its grading run (the timeline shows both). An approved submission must be unapproved before scores change (a transcript edit or regrade clears the approval itself)
 
-**Acceptance:** a teacher can resolve every escalation and publish using the API alone.
+**Acceptance:** a teacher can resolve every escalation and publish using the API alone. ✔
 
 ## M7: Review UI
 - [ ] Design pass first, with the available skills:

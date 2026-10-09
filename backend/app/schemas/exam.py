@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from app.core.constants import ExamStatus, SubmissionStatus, QuestionType
 
 # --- Question Schemas ---
@@ -92,6 +92,8 @@ class SubmissionAnswerBase(BaseModel):
 class SubmissionAnswerRead(SubmissionAnswerBase):
     id: UUID
     submission_id: UUID
+    status: Optional[str] = None  # graded / escalated / not_attempted
+    escalation_reason: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -118,3 +120,41 @@ class SubmissionRead(SubmissionBase):
 
 class SubmissionWithAnswers(SubmissionRead):
     answers: List[SubmissionAnswerRead] = []
+
+
+class GradingSettings(BaseModel):
+    """An exam's grading settings (stored in `exam.config`; the GRADING_* settings until changed)."""
+    # An answer is final once grader and evaluator agree at least this much; below 0.5 the evaluator
+    # would no longer be a check
+    agreement_threshold: float = Field(ge=0.5, le=1.0)
+    spot_check_rate: float = Field(ge=0.0, le=1.0)  # share of confident answers sent to review anyway
+    choice_policy: Literal["best", "first"]  # which extra alternative of a choice group counts
+
+
+class GradingSettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    agreement_threshold: Optional[float] = Field(default=None, ge=0.5, le=1.0)
+    spot_check_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    choice_policy: Optional[Literal["best", "first"]] = None
+
+
+class StudentAnswerView(BaseModel):
+    question_id: UUID
+    label: str
+    question_text: str
+    score: Optional[float] = None
+    max_score: float
+    counted: bool = True  # False for an extra alternative of a choice question
+    feedback: Optional[str] = None
+
+
+class StudentSubmissionView(BaseModel):
+    """What a student sees of their own published submission: scores and feedback, not the grading
+    internals (transcripts, evaluator rounds, escalations, models)."""
+    id: UUID
+    exam_id: UUID
+    status: SubmissionStatus
+    total_score: Optional[float] = None
+    max_score: Optional[float] = None
+    percentage: Optional[float] = None
+    answers: List[StudentAnswerView] = []

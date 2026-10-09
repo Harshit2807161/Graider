@@ -31,6 +31,21 @@ from app.rubrics.schema import RubricSpec
 logger = structlog.get_logger(__name__)
 
 
+@dataclass(frozen=True)
+class ExamSettings:
+    """Grading settings an exam can set for itself (`exam.config`); the GRADING_* settings otherwise."""
+    agreement_threshold: float
+    spot_check_rate: float
+
+    @classmethod
+    def of(cls, config: Optional[dict[str, Any]] = None) -> "ExamSettings":
+        config = config or {}
+        return cls(
+            agreement_threshold=float(config.get("agreement_threshold", settings.GRADING_AGREEMENT_THRESHOLD)),
+            spot_check_rate=float(config.get("spot_check_rate", settings.GRADING_SPOT_CHECK_RATE)),
+        )
+
+
 @dataclass
 class QuestionInput:
     question_id: UUID
@@ -146,7 +161,8 @@ class _Grading:
         raise _Escalate(EscalationReason.CHECK_FAILED)
 
 
-async def grade_question(q: QuestionInput, run_id: UUID) -> QuestionOutcome:
+async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSettings] = None) -> QuestionOutcome:
+    exam = exam or ExamSettings.of()
     outcome = QuestionOutcome(q.question_id, q.label, AnswerStatus.GRADED, q.max_score)
     if q.answer is None or not q.answer.text:
         return outcome.escalate(EscalationReason.NO_ANSWER_FOUND, keep_score=False)
@@ -156,7 +172,7 @@ async def grade_question(q: QuestionInput, run_id: UUID) -> QuestionOutcome:
     grading = _Grading(q, outcome)
     try:
         await grading.grade()
-        threshold = settings.GRADING_AGREEMENT_THRESHOLD
+        threshold = exam.agreement_threshold
         for round_no in range(settings.GRADING_MAX_REVISIONS + 1):
             review = await grading.evaluate(round_no)
             effective, apart = effective_agreement(
@@ -190,6 +206,6 @@ async def grade_question(q: QuestionInput, run_id: UUID) -> QuestionOutcome:
     confidence = q.answer.confidence
     if confidence is not None and confidence < settings.GRADING_OCR_CONFIDENCE_THRESHOLD:
         return outcome.escalate(EscalationReason.LOW_OCR_CONFIDENCE)
-    if spot_check(run_id, q.question_id, settings.GRADING_SPOT_CHECK_RATE):
+    if spot_check(run_id, q.question_id, exam.spot_check_rate):
         return outcome.escalate(EscalationReason.SPOT_CHECK)
     return outcome
