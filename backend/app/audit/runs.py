@@ -69,14 +69,30 @@ def create_run(
     created_by_membership_id: Optional[UUID] = None,
     question_ids: Optional[list[UUID]] = None,
 ) -> GradingRun:
-    """A queued grading run; `question_ids` limits it to those questions (e.g. a transcript edit)."""
+    """A queued grading run, committed; `question_ids` limits it to those questions."""
+    run = new_run(db, submission_id=submission_id, trigger=trigger, created_by_membership_id=created_by_membership_id,
+                  question_ids=question_ids)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def new_run(
+    db: Session,
+    *,
+    submission_id: UUID,
+    trigger: str,
+    created_by_membership_id: Optional[UUID] = None,
+    question_ids: Optional[list[UUID]] = None,
+) -> GradingRun:
+    """A queued grading run, added to the session but not committed (it commits with the action that
+    starts it, e.g. a teacher's transcript edit)."""
     run = GradingRun(
         submission_id=submission_id, trigger=trigger, created_by_membership_id=created_by_membership_id,
         question_ids=[str(q) for q in question_ids] if question_ids else None,
     )
     db.add(run)
-    db.commit()
-    db.refresh(run)
+    db.flush()
     return run
 
 

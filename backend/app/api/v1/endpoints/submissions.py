@@ -15,7 +15,9 @@ from app.audit.runs import create_run
 from app.api.uploads import validated
 from app.ingestion.service import store_upload
 from app.models.document import DocumentRole
+from app.schemas.review import ActionReason
 from app.worker import grade_submission_task
+from app.workflow import actions
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -161,10 +163,12 @@ def regrade_submission(
     *,
     db: Session = Depends(deps.get_session),
     submission_id: UUID,
+    body: Optional[ActionReason] = None,
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """
-    Re-run the grading pipeline for a submission (e.g. after a failure or a rubric change).
+    Grade the submission again (e.g. after a failure or a rubric change). Teacher transcripts are
+    kept; an approval is cleared; published results can't be regraded.
     """
     submission = crud.submission.get(db, id=submission_id)
     if not submission:
@@ -174,17 +178,8 @@ def regrade_submission(
         raise HTTPException(status_code=404, detail="Submission not found")
     membership = deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
 
-    if submission.status in (SubmissionStatus.PENDING, SubmissionStatus.PROCESSING):
-        raise HTTPException(status_code=409, detail="Submission is already being graded")
-
-    submission = crud.submission.update(
-        db,
-        db_obj=submission,
-        obj_in={"status": SubmissionStatus.PENDING, "current_step": "Queued for regrading"},
-    )
-    run = create_run(
-        db, submission_id=submission.id, trigger="regrade",
-        created_by_membership_id=membership.id if membership else None,
-    )
+    run = actions.request_regrade(db, submission, reason=body.reason if body else None,
+                                  actor=membership.id if membership else None)
     grade_submission_task.delay(str(run.id))
+    db.refresh(submission)
     return submission

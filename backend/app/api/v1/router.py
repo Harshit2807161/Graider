@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import login, users, orgs, batches, exams, exam_documents, rubrics, submissions
+from app.api.v1.endpoints import login, users, orgs, batches, exams, exam_documents, rubrics, submissions, review
 
 api_router = APIRouter()
 api_router.include_router(login.router, prefix="/auth", tags=["auth"])
@@ -10,3 +10,4 @@ api_router.include_router(exams.router, prefix="/exams", tags=["exams"])
 api_router.include_router(rubrics.router, prefix="/exams", tags=["rubrics"])
 api_router.include_router(exam_documents.router, prefix="/exams", tags=["exam documents"])
 api_router.include_router(submissions.router, prefix="", tags=["submissions"])
+api_router.include_router(review.router, prefix="", tags=["review"])
