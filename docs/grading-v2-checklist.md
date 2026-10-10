@@ -28,7 +28,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | [#12](https://github.com/Harshit2807161/Graider/pull/12) | Merged |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4c | [#13](https://github.com/Harshit2807161/Graider/pull/13) | Merged |
 | M6 | Review workflow API | `feat/review-workflow-api` | M5 | [#14](https://github.com/Harshit2807161/Graider/pull/14) | Merged |
-| M7 | Review UI | `feat/review-ui` | M6 | – | In review |
+| M7 | Review UI | `feat/review-ui` | M6 | [#15](https://github.com/Harshit2807161/Graider/pull/15) | In review |
 | M8 | Eval harness | `feat/eval-harness` | M5 | – | Not started |
 | M9 | Public eval sets | `feat/eval-datasets` | M8 | – | Not started |
 | M10 | Hardening | `chore/hardening` | M3, M6 | – | Not started |

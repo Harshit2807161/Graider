@@ -6,7 +6,7 @@ Notable changes to Gr8r, newest first.
 
 ## [Unreleased]
 
-### M7: Review UI (in review)
+### M7: Review UI ([#15](https://github.com/Harshit2807161/Graider/pull/15), in review)
 
 #### Added
 - **Review screen** for one answer sheet: the page images beside the answers; for each answer the reason it needs review and what to do, the transcript with the evidence highlighted, the criteria, both examiners' positions and replies, earlier versions; accept, change scores, correct the transcript, approve, regrade, history.
