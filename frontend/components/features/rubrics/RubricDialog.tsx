@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, ChevronDown, Plus, RotateCcw, ScrollText, Trash2 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import InlineMessage from "@/components/ui/InlineMessage";
 import { getErrorMessage } from "@/lib/api";
+import { actionError } from "@/components/features/exams/actionError";
+import { plainError } from "@/components/features/review/failure";
 import { cn } from "@/lib/utils";
 import { rubricService } from "@/services/rubric.service";
 import { Criterion, QuestionRubricStatus, RubricKind, RubricSpecRecord, Subject } from "@/types/review.types";
@@ -24,22 +26,34 @@ interface QuestionInfo {
 }
 
 /** The parsed rubric of one question: what grading checks each answer against. The teacher can
- *  edit it (same checks as a parsed one) or have the model parse the rubric text again. */
-export default function RubricDialog({ examId, question, status, onClose, onChanged }: {
+ *  edit it (same checks as a parsed one) or have the rubric text parsed again. */
+export default function RubricDialog({ examId, question, status, onClose, onChanged, onDirtyChange }: {
     examId: string;
     question: QuestionInfo;
     status?: QuestionRubricStatus;
     onClose: () => void;
     onChanged: () => void;
+    /** Told when the editor starts or stops having unsaved edits (the page warns before the tab closes) */
+    onDirtyChange?: (dirty: boolean) => void;
 }) {
     const [record, setRecord] = useState<RubricSpecRecord | null | undefined>(undefined);
     const [error, setError] = useState<string | null>(null);
     const [reparsing, setReparsing] = useState(false);
+    // A save makes a new version (a fresh editor): it still says "Saved"
+    const [savedId, setSavedId] = useState<string | null>(null);
+    // Closing with unsaved edits (X, Escape, a click outside) asks first, in the editor's action bar
+    const [edited, setEdited] = useState(false);
+    const [closeRequested, setCloseRequested] = useState(false);
+    const requestClose = () => (edited ? setCloseRequested(true) : onClose());
+
+    useEffect(() => {
+        onDirtyChange?.(edited);
+    }, [edited, onDirtyChange]);
 
     useEffect(() => {
         rubricService.getSpec(examId, question.id)
             .then(setRecord)
-            .catch((err) => setError(getErrorMessage(err, "The rubric couldn't be loaded")));
+            .catch((err) => setError(actionError(err, "The rubric couldn't be loaded")));
     }, [examId, question.id]);
 
     const reparse = async () => {
@@ -50,18 +64,19 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
             onChanged();
             onClose();
         } catch (err) {
-            setError(getErrorMessage(err, "The rubric couldn't be parsed again"));
+            setError(actionError(err, "The rubric couldn't be parsed again"));
             setReparsing(false);
         }
     };
 
     return (
-        <Modal open title={`Rubric · ${question.label}`} onClose={onClose} size="lg" icon={<ScrollText size={18} />}
-               description={<span className={styles.questionText}>{question.text} <span className={styles.marks}>({question.maxScore} marks)</span></span>}>
+        <Modal open title={`Rubric · ${question.label}`} onClose={requestClose} size="lg" icon={<ScrollText size={18} />}
+               description={<span className={styles.questionText}>{question.text}{" "}
+                   <span className={styles.marks}>({question.maxScore} {question.maxScore === 1 ? "mark" : "marks"})</span></span>}>
             {error && <InlineMessage kind="error" className={styles.topMessage}>{error}</InlineMessage>}
             {record === undefined && !error && (
                 <div className={styles.loading} aria-busy="true">
-                    <span className="sr-only" role="status">Loading…</span>
+                    <span className="sr-only" role="status">Loading the rubric…</span>
                     <span className={styles.skeleton} />
                     <span className={styles.skeleton} />
                     <span className={styles.skeleton} />
@@ -72,9 +87,13 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
                     <span className={styles.emptyIcon} aria-hidden="true"><ScrollText size={22} /></span>
                     <p>
                         {status?.rubric_status === "pending" ? "The rubric is being parsed. Check back in a moment."
-                            : status?.rubric_status === "error" ? `Parsing failed: ${status.rubric_error ?? "unknown error"}`
+                            : status?.rubric_status === "error" ? "The rubric couldn't be turned into criteria. Parse it again; if that fails too, check the rubric text."
                             : "This rubric hasn't been parsed yet. It will be parsed when grading starts, or now:"}
                     </p>
+                    {/* What went wrong, for whoever looks into it: secondary to the sentence above */}
+                    {status?.rubric_status === "error" && status.rubric_error && (
+                        <p className={styles.errorDetail}>{status.rubric_error}</p>
+                    )}
                     <Button size="sm" variant="secondary" onClick={reparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}>
                         Parse now
                     </Button>
@@ -82,7 +101,10 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
             )}
             {record && (
                 <RubricEditor key={record.id} examId={examId} question={question} record={record} onReparse={reparse} reparsing={reparsing}
+                              justSaved={savedId === record.id} onEditedChange={setEdited}
+                              closeRequested={closeRequested} onKeepEditing={() => setCloseRequested(false)} onDiscard={onClose}
                               onSaved={(saved) => {
+                                  setSavedId(saved.id);
                                   setRecord(saved);
                                   onChanged();
                               }} />
@@ -91,13 +113,20 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
     );
 }
 
-function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing }: {
+function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing, justSaved, onEditedChange, closeRequested, onKeepEditing, onDiscard }: {
     examId: string;
     question: QuestionInfo;
     record: RubricSpecRecord;
     onSaved: (record: RubricSpecRecord) => void;
     onReparse: () => Promise<void>;
     reparsing: boolean;
+    /** This version was just saved from this dialog */
+    justSaved: boolean;
+    onEditedChange: (edited: boolean) => void;
+    /** The dialog is being closed with unsaved edits: ask in the action bar */
+    closeRequested: boolean;
+    onKeepEditing: () => void;
+    onDiscard: () => void;
 }) {
     const [kind, setKind] = useState<RubricKind>(record.spec.kind);
     const [subject, setSubject] = useState<Subject>(record.spec.subject);
@@ -105,7 +134,41 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
     const [notes, setNotes] = useState(record.spec.grading_notes ?? "");
     const [errors, setErrors] = useState<string[]>(record.status === "invalid" ? record.validation_errors : []);
     const [saving, setSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
+    const [saved, setSaved] = useState(justSaved);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    // Parsing again replaces this version: asked first when that would lose a teacher's work
+    const [confirmReparse, setConfirmReparse] = useState(false);
+    const versionRowRef = useRef<HTMLDivElement>(null);
+    const confirmBoxRef = useRef<HTMLDivElement>(null);
+    const edited = kind !== record.spec.kind || subject !== record.spec.subject || notes !== (record.spec.grading_notes ?? "")
+        || JSON.stringify(criteria) !== JSON.stringify(record.spec.criteria);
+    const teacherVersion = record.source === "teacher";
+    const actionsRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        onEditedChange(edited);
+    }, [edited, onEditedChange]);
+
+    // The safe choice takes focus when the dialog asks before closing
+    useEffect(() => {
+        if (closeRequested) actionsRef.current?.querySelector<HTMLElement>("[data-keep]")?.focus();
+    }, [closeRequested]);
+    const keepEditing = () => {
+        onKeepEditing();
+        requestAnimationFrame(() => actionsRef.current?.querySelector<HTMLElement>("[data-save]")?.focus());
+    };
+    const askReparse = () => {
+        if (!teacherVersion && !edited) {
+            onReparse();
+            return;
+        }
+        setConfirmReparse(true);
+        requestAnimationFrame(() => confirmBoxRef.current?.querySelector<HTMLElement>("[data-confirm]")?.focus());
+    };
+    const keepVersion = () => {
+        setConfirmReparse(false);
+        requestAnimationFrame(() => versionRowRef.current?.querySelector<HTMLElement>("[data-reparse]")?.focus());
+    };
 
     const sum = criteria.reduce((total, c) => total + (Number(c.points) || 0), 0);
     const sumOk = Math.abs(sum - question.maxScore) < 1e-6;
@@ -123,6 +186,7 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
     const save = async () => {
         setSaving(true);
         setErrors([]);
+        setSaveError(null);
         try {
             const result = await rubricService.saveSpec(examId, question.id, {
                 kind, subject, grading_notes: notes.trim() || null,
@@ -131,7 +195,10 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
             setSaved(true);
             onSaved(result);
         } catch (err) {
-            setErrors(getErrorMessage(err, "The rubric couldn't be saved").split("\n"));
+            // The checks' findings are listed; anything else (e.g. no connection) is one plain sentence
+            const detail = plainError(getErrorMessage(err, ""));
+            if (detail) setErrors(detail.split("\n"));
+            else setSaveError(actionError(err, "The rubric couldn't be saved"));
         } finally {
             setSaving(false);
         }
@@ -139,20 +206,37 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
 
     return (
         <div className={styles.form}>
-            <div className={styles.versionRow}>
+            <div ref={versionRowRef} className={styles.versionRow}>
                 <p className={styles.version}>
                     <span className={cn(styles.source, record.source === "teacher" && styles.sourceTeacher)}>
                         {record.source === "teacher" ? "Teacher edit" : "AI parsed"}
                     </span>
-                    Version {record.version}{record.source !== "teacher" && record.model ? ` · ${record.model}` : ""}
-                    {record.spec.derived && " · derived from the question (no rubric text)"}
+                    Version {record.version}
+                    {record.spec.derived && " · made from the question (it has no rubric text)"}
                 </p>
                 {/* A new version from the rubric text: it belongs with the version, away from Save */}
-                <Button variant="ghost" size="sm" onClick={onReparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}
-                        title="Replaces the current version, including teacher edits" className={styles.reparse}>
-                    Parse again with the model
+                <Button data-reparse variant="ghost" size="sm" onClick={askReparse} isLoading={reparsing && !confirmReparse}
+                        icon={<RotateCcw size={14} aria-hidden="true" />} aria-expanded={confirmReparse}
+                        title="Reads the rubric text again and replaces this version" className={styles.reparse}>
+                    Parse again
                 </Button>
             </div>
+            {confirmReparse && (
+                <div ref={confirmBoxRef} className={styles.confirm} role="group" aria-label="Parse the rubric again?">
+                    <AlertTriangle size={16} aria-hidden="true" className={styles.confirmIcon} />
+                    <p className={styles.confirmText}>
+                        Parsing again replaces this version
+                        {teacherVersion && edited ? ", including the edits saved in it and the changes you haven't saved."
+                            : teacherVersion ? ", including the edits saved in it."
+                            : " and drops the changes you haven't saved."}
+                    </p>
+                    <div className={styles.confirmActions}>
+                        <Button size="sm" variant="secondary" onClick={keepVersion} disabled={reparsing}>Keep this version</Button>
+                        <Button data-confirm size="sm" variant="outline" className={styles.destructive} onClick={onReparse}
+                                isLoading={reparsing}>Replace this version</Button>
+                    </div>
+                </div>
+            )}
             {record.spec.parser_warnings.length > 0 && (
                 <div className={styles.warnings}>
                     <AlertTriangle size={16} aria-hidden="true" />
@@ -233,20 +317,34 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing 
                     </div>
                 </div>
             )}
+            {saveError && <InlineMessage kind="error" onDismiss={() => setSaveError(null)}>{saveError}</InlineMessage>}
 
             {/* Sticky: the points total stays in view while editing any criterion */}
-            <div className={styles.actions}>
-                <div className={styles.saveGroup}>
-                    {saved && <p className={styles.saved} role="status"><CheckCircle2 size={16} aria-hidden="true" /> Saved. New grading runs use this rubric.</p>}
-                    <p className={cn(styles.sum, sumOk ? styles.sumOk : styles.sumBad)} aria-live="polite">
-                        {sumOk ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertTriangle size={16} aria-hidden="true" />}
-                        <span>
-                            Points <strong>{Number(sum.toFixed(2))} of {question.maxScore}</strong>
-                            {!sumOk && <span className={styles.sumNote}> · must add up to the question&apos;s marks</span>}
-                        </span>
-                    </p>
-                    <Button onClick={save} isLoading={saving} disabled={criteria.length === 0}>Save rubric</Button>
-                </div>
+            <div ref={actionsRef} className={styles.actions}>
+                {closeRequested ? (
+                    <div className={styles.closeConfirm} role="group" aria-labelledby="rubric-close-question">
+                        <p id="rubric-close-question" className={styles.closeText}>
+                            <AlertTriangle size={16} aria-hidden="true" />
+                            Close without saving? Your changes to this rubric will be lost.
+                        </p>
+                        <div className={styles.confirmActions}>
+                            <Button data-keep variant="secondary" onClick={keepEditing}>Keep editing</Button>
+                            <Button variant="outline" className={styles.destructive} onClick={onDiscard}>Discard changes</Button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className={styles.saveGroup}>
+                        {saved && !edited && <p className={styles.saved} role="status"><CheckCircle2 size={16} aria-hidden="true" /> Saved. Answer sheets graded from now on use this rubric.</p>}
+                        <p className={cn(styles.sum, sumOk ? styles.sumOk : styles.sumBad)} aria-live="polite">
+                            {sumOk ? <CheckCircle2 size={16} aria-hidden="true" /> : <AlertTriangle size={16} aria-hidden="true" />}
+                            <span>
+                                Points <strong>{Number(sum.toFixed(2))} of {question.maxScore}</strong>
+                                {!sumOk && <span className={styles.sumNote}> · must add up to the question&apos;s marks</span>}
+                            </span>
+                        </p>
+                        <Button data-save onClick={save} isLoading={saving} disabled={criteria.length === 0}>Save rubric</Button>
+                    </div>
+                )}
             </div>
         </div>
     );

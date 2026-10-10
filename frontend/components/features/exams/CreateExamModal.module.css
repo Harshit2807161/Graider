@@ -169,6 +169,11 @@
     color: var(--muted-foreground);
 }
 
+/* On the indigo-50 of the chosen option, slate-500 drops to 4.3:1; slate-600 keeps it above 4.5:1 */
+.active .statusHint {
+    color: var(--text-secondary);
+}
+
 @media (max-width: 480px) {
     .statusOptions {
         grid-template-columns: 1fr;

@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useId, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, Info, ListChecks, Plus, RotateCcw, ScrollText, Trash2, Upload } from "lucide-react";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { getErrorMessage } from "@/lib/api";
+import { plainError } from "@/components/features/review/failure";
 import { cn } from "@/lib/utils";
 import { examService } from "@/services/exam.service";
 import { QuestionSync, SubmissionStatus } from "@/types/exam.types";
 import { QuestionRubricStatus } from "@/types/review.types";
 import InlineMessage, { Message } from "@/components/ui/InlineMessage";
 import SectionCard from "./SectionCard";
+import { actionError } from "./actionError";
 import styles from "./QuestionsSection.module.css";
 
 /** A question's rubric state, in the same badge language as submissions. */
@@ -32,7 +34,7 @@ export interface RubricTarget {
 /** Step 1: the exam's questions and their rubrics. Questions are added to and removed from the list
  *  locally; "Save questions" sends the full list (existing questions keep their id; missing ones are
  *  removed). A saved question's wording and marks can't be edited in place, its rubric can. */
-export default function QuestionsSection({ id, examId, questions, saved, dirty, rubrics, onEdit, onSaved, onRubricsChanged, onOpenRubric }: {
+export default function QuestionsSection({ id, examId, questions, saved, dirty, rubrics, onEdit, onSaved, onRubricsChanged, onOpenRubric, onDraftChange }: {
     /** Anchor for in-page links */
     id?: string;
     examId: string;
@@ -47,6 +49,8 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
     onSaved: (questions: QuestionSync[]) => void;
     onRubricsChanged: () => Promise<void>;
     onOpenRubric: (question: RubricTarget) => void;
+    /** Told when a question typed into the add form (not yet added to the list) appears or goes */
+    onDraftChange?: (hasDraft: boolean) => void;
 }) {
     const formId = useId();
     const importId = useId();
@@ -87,6 +91,12 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
         setAddOpen(false);
         requestAnimationFrame(() => toggleRef.current?.focus());
     };
+
+    // Words typed into the open add form are unsaved work too
+    const hasDraft = addOpen && (newText.trim() !== "" || newRubric.trim() !== "");
+    useEffect(() => {
+        onDraftChange?.(hasDraft);
+    }, [hasDraft, onDraftChange]);
 
     const addQuestion = (e: React.FormEvent) => {
         e.preventDefault();
@@ -146,7 +156,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
             await onRubricsChanged();
             setMessage({ kind: "success", text: "Questions saved. Changed rubrics are parsed in the background." });
         } catch (err) {
-            setMessage({ kind: "error", text: `Questions couldn't be saved: ${getErrorMessage(err)}` });
+            setMessage({ kind: "error", text: actionError(err, "The questions couldn't be saved") });
         } finally {
             setSaving(false);
         }
@@ -166,7 +176,9 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
             setImportOpen(false);
             setMessage({ kind: "success", text: `Imported ${created.length} ${created.length === 1 ? "question" : "questions"} from Excel.` });
         } catch (err) {
-            setImportError(`Nothing was imported:\n${getErrorMessage(err)}`);
+            // The server lists the rows it couldn't use; network noise becomes a plain sentence
+            const detail = plainError(getErrorMessage(err, ""));
+            setImportError(detail ? `Nothing was imported:\n${detail}` : "Nothing was imported. Check your connection, then try again.");
         } finally {
             setImporting(false);
             setExcelFile(null);
@@ -187,6 +199,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
                 : "Each question's rubric is parsed into criteria that both examiners grade against."}
             actions={
                 <Button variant="outline" size="sm" icon={<FileSpreadsheet size={16} aria-hidden="true" />}
+                        className={cn(importOpen && styles.toggleOpen)}
                         aria-expanded={importOpen} aria-controls={importId} onClick={() => setImportOpen(!importOpen)}>
                     Import from Excel
                 </Button>
@@ -284,22 +297,25 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
                                         <p className={styles.marks}>
                                             <span className={styles.marksNum}>{q.max_score}</span> {q.max_score === 1 ? "mark" : "marks"}
                                         </p>
-                                        <div className={styles.status}>
-                                            {rubric ? <StatusBadge {...RUBRIC_BADGES[rubric.rubric_status]} />
-                                                : !q.id ? <StatusBadge status="PENDING" label="Not saved yet" /> : null}
-                                        </div>
-                                        <div className={styles.rowActions}>
-                                            {q.id && (
-                                                <Button size="sm" variant="secondary" className={styles.rowButton}
-                                                        icon={<ScrollText size={14} aria-hidden="true" />} aria-describedby={`${formId}-q${idx}`}
-                                                        onClick={() => onOpenRubric({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
-                                                    Rubric
-                                                </Button>
-                                            )}
-                                            <button type="button" className={styles.iconButton} onClick={() => removeQuestion(idx, name)}
-                                                    aria-label={`Remove ${name}`} title="Remove from the list">
-                                                <Trash2 size={16} aria-hidden="true" />
-                                            </button>
+                                        {/* Columns on wide cards (the wrapper takes no box); one wrapping line on phones */}
+                                        <div className={styles.meta}>
+                                            <div className={styles.status}>
+                                                {rubric ? <StatusBadge {...RUBRIC_BADGES[rubric.rubric_status]} />
+                                                    : !q.id ? <StatusBadge status="PENDING" label="Not saved yet" /> : null}
+                                            </div>
+                                            <div className={styles.rowActions}>
+                                                {q.id && (
+                                                    <Button size="sm" variant="secondary" className={styles.rowButton}
+                                                            icon={<ScrollText size={14} aria-hidden="true" />} aria-describedby={`${formId}-q${idx}`}
+                                                            onClick={() => onOpenRubric({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
+                                                        Rubric
+                                                    </Button>
+                                                )}
+                                                <button type="button" className={styles.iconButton} onClick={() => removeQuestion(idx, name)}
+                                                        aria-label={`Remove ${name}`} title="Remove from the list">
+                                                    <Trash2 size={16} aria-hidden="true" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </li>
                                 </React.Fragment>

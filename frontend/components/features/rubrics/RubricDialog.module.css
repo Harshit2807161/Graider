@@ -107,6 +107,63 @@
     color: var(--teal-700);
 }
 
+/* "Parse again?" asked in place, under the version it would replace */
+.confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--amber-200);
+    border-radius: var(--radius);
+    background-color: var(--amber-50);
+    animation: reveal 0.2s var(--ease-out);
+}
+
+@keyframes reveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+
+.confirmIcon {
+    flex-shrink: 0;
+    color: var(--amber-700);
+}
+
+.confirmText {
+    flex: 1 1 16rem;
+    min-width: 0;
+    font-size: var(--text-base);
+    color: var(--amber-800);
+}
+
+.confirmActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+/* Destructive, as an outline: red-700 on white is 6.5:1 (the shared filled red is below AA) */
+.form .destructive {
+    border-color: var(--red-200);
+    background-color: var(--color-surface);
+    color: var(--red-700);
+}
+
+.form .destructive:hover:not(:disabled) {
+    border-color: var(--red-600);
+    background-color: var(--red-50);
+}
+
+/* A failed parse: the technical detail under the plain sentence */
+.errorDetail {
+    max-width: 32rem;
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+}
+
 .warnings {
     display: flex;
     gap: var(--space-2);
@@ -383,6 +440,34 @@
     background-color: var(--secondary);
 }
 
+/* Closing with unsaved edits: the question replaces the save group in the sticky bar */
+.closeConfirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    width: 100%;
+    animation: reveal 0.2s var(--ease-out);
+}
+
+.closeText {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    flex: 1 1 18rem;
+    min-width: 0;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--amber-800);
+}
+
+.closeText svg {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+    color: var(--amber-700);
+}
+
 .saveGroup {
     display: flex;
     flex-wrap: wrap;
@@ -443,5 +528,18 @@
     .row {
         grid-template-columns: 1fr;
         gap: var(--space-3);
+    }
+}
+
+/* Touch screens: remove buttons are full-size targets at every width */
+@media (pointer: coarse) {
+    .iconButton {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .criterion > .iconButton {
+        top: var(--space-1);
+        right: var(--space-1);
     }
 }

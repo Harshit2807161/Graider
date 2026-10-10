@@ -21,7 +21,12 @@
     color: var(--slate-700);
 }
 
-/* Excel import (disclosure) */
+/* Excel import (disclosure); its toggle reads as pressed while the panel is open */
+button.toggleOpen {
+    border-color: var(--slate-300);
+    background-color: var(--slate-100);
+}
+
 .importPanel {
     display: flex;
     flex-direction: column;
@@ -320,6 +325,11 @@
     min-width: 0;
 }
 
+/* Status + actions: plain grid cells on wide cards (no box of its own), a wrapping line on phones */
+.meta {
+    display: contents;
+}
+
 .rowActions {
     display: flex;
     align-items: center;
@@ -573,17 +583,53 @@
     .status { align-self: center; }
 }
 
-/* Small: the question gets the full width; badge + marks, then the actions, under it */
+/* Small: the question takes the width next to its number, with the marks under the number (like the
+   margin of a printed paper); the rubric state and the actions share one line under it, so a row is
+   its text plus one line of controls */
 @container section (max-width: 32rem) {
     .row {
-        grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+        grid-template-columns: 2.5rem minmax(0, 1fr);
         grid-template-areas:
-            "label question question"
-            ". status marks"
-            ". actions actions";
+            "label question"
+            "meta meta";
+        column-gap: var(--space-3);
+        row-gap: var(--space-3);
+        padding: var(--space-3);
     }
 
-    .marks { align-self: center; }
+    .marks {
+        grid-area: label;
+        align-self: start;
+        justify-self: start;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 2.25rem;
+        /* Under the 1.5rem number chip */
+        margin-top: 1.875rem;
+        font-size: var(--text-xs);
+        line-height: 1.25;
+        text-align: center;
+        white-space: normal;
+    }
+
+    .marksNum {
+        font-size: var(--text-md);
+    }
+
+    .meta {
+        grid-area: meta;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
+        min-width: 0;
+    }
+
+    .rowActions {
+        margin-left: auto;
+    }
 
     .addGrid {
         grid-template-columns: 1fr;
@@ -613,7 +659,6 @@
     }
 
     .rowButton {
-        flex: 1;
         min-height: 2.5rem;
     }
 
@@ -625,5 +670,27 @@
 
     .importRow > button {
         width: 100%;
+    }
+}
+
+/* The narrowest phones: the Rubric button drops its icon so the controls stay on one line */
+@container section (max-width: 17rem) {
+    .rowButton > span:has(> svg) {
+        display: none;
+    }
+}
+
+/* Touch screens: the remove button is a full-size target at every width */
+@media (pointer: coarse) {
+    .iconButton {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}
+
+/* Phones and touch screens: the file picker's button is a full-size target */
+@media (max-width: 767px), (pointer: coarse) {
+    .fileButton {
+        height: 2.5rem;
     }
 }

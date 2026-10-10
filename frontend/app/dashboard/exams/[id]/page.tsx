@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Calendar, ClipboardCheck, ListChecks, Send, SlidersHorizontal, Trophy } from "lucide-react";
+import { ArrowLeft, Calendar, ClipboardCheck, ListChecks, LogOut, Send, SlidersHorizontal, Trophy } from "lucide-react";
 import type { AxiosError } from "axios";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -17,10 +17,12 @@ import ButtonLink from "@/components/common/ButtonLink";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import PageHeader from "@/components/common/PageHeader";
 import AnswerSheetsSection from "@/components/features/exams/AnswerSheetsSection";
+import { actionError } from "@/components/features/exams/actionError";
 import ExamProgress from "@/components/features/exams/ExamProgress";
 import InlineMessage from "@/components/ui/InlineMessage";
 import QuestionsSection, { RubricTarget } from "@/components/features/exams/QuestionsSection";
 import SectionCard from "@/components/features/exams/SectionCard";
+import { useUnsavedChangesGuard } from "@/components/features/exams/useUnsavedChangesGuard";
 import GradingSettingsPanel from "@/components/features/review/GradingSettingsPanel";
 import RubricDialog from "@/components/features/rubrics/RubricDialog";
 import styles from "./page.module.css";
@@ -53,6 +55,14 @@ export default function ExamDetailsPage() {
     const [rubricQuestion, setRubricQuestion] = useState<RubricTarget | null>(null);
     const [confirmPublish, setConfirmPublish] = useState(false);
     const [publishMessage, setPublishMessage] = useState<string | null>(null);
+
+    // Unsaved work: the question list (or a question typed but not added yet) and the grading settings
+    const [questionDraft, setQuestionDraft] = useState(false);
+    const [settingsDirty, setSettingsDirty] = useState(false);
+    const [rubricDirty, setRubricDirty] = useState(false);
+    const unsaved = [(dirty || questionDraft) && "questions", rubricDirty && "rubric", settingsDirty && "grading settings"]
+        .filter(Boolean) as string[];
+    const guard = useUnsavedChangesGuard(unsaved.length > 0);
 
     const loadExam = useCallback(async () => {
         if (!examId) return;
@@ -149,7 +159,8 @@ export default function ExamDetailsPage() {
                                  onRetry={() => { setLoading(true); loadExam(); }} />
                 )}
                 {(notFound || !errorDetails) && (
-                    <ButtonLink href="/dashboard/exams" variant="outline" className={styles.backLink}>Back to exams</ButtonLink>
+                    <ButtonLink href="/dashboard/exams" variant="outline" className={styles.backLink}
+                                icon={<ArrowLeft size={16} aria-hidden="true" />}>Back to exams</ButtonLink>
                 )}
             </div>
         );
@@ -158,7 +169,7 @@ export default function ExamDetailsPage() {
     const approvedCount = submissions.filter((s) => s.status === "APPROVED").length;
     const reviewCount = submissions.filter((s) => s.status === "NEEDS_REVIEW").length;
     const totalMarks = questions.reduce((t, q) => t + (Number(q.max_score) || 0), 0);
-    const created = new Date(exam.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+    const created = new Date(exam.created_at).toLocaleDateString(undefined, { dateStyle: "medium" });
 
     return (
         <div className={styles.page}>
@@ -167,7 +178,7 @@ export default function ExamDetailsPage() {
                 title={exam.name}
                 subtitle={
                     <>
-                        {exam.description}
+                        {exam.description && <span className={styles.description}>{exam.description}</span>}
                         <span className={styles.meta}>
                             <span><ListChecks size={15} aria-hidden="true" />{questions.length} {questions.length === 1 ? "question" : "questions"}</span>
                             <span><Trophy size={15} aria-hidden="true" />{totalMarks} {totalMarks === 1 ? "mark" : "marks"}</span>
@@ -178,7 +189,7 @@ export default function ExamDetailsPage() {
                 actions={
                     <>
                         <ButtonLink href={`/dashboard/exams/${examId}/review`} variant="outline" icon={<ClipboardCheck size={16} />} className={styles.headerAction}>
-                            Review queue
+                            Review queue{" "}
                             {reviewCount > 0 && <span className={styles.countReview}><span className="sr-only">(</span>{reviewCount}<span className="sr-only">)</span></span>}
                         </ButtonLink>
                         {/* Nothing to publish before any answer sheet is graded */}
@@ -213,20 +224,22 @@ export default function ExamDetailsPage() {
                 onSaved={(next) => { setQuestions(next); setSavedQuestions(next); setDirty(false); }}
                 onRubricsChanged={refreshRubrics}
                 onOpenRubric={setRubricQuestion}
+                onDraftChange={setQuestionDraft}
             />
 
             <AnswerSheetsSection id={SHEETS_ID} examId={examId} submissions={submissions} canUpload={savedQuestions.length > 0}
                                  listState={sheetsState} onChanged={refreshSubmissions} />
 
             <SectionCard icon={<SlidersHorizontal size={18} />} title="Grading settings"
-                         description="New grading runs use these settings; answer sheets already graded keep their grades.">
-                <GradingSettingsPanel examId={examId} />
+                         description="Answer sheets graded from now on use these settings; sheets already graded keep their grades.">
+                <GradingSettingsPanel examId={examId} onDirtyChange={setSettingsDirty} />
             </SectionCard>
             </div>
 
             {rubricQuestion && (
                 <RubricDialog examId={examId} question={rubricQuestion} status={rubricStatus.find((r) => r.question_id === rubricQuestion.id)}
-                              onClose={() => setRubricQuestion(null)} onChanged={refreshRubrics} />
+                              onClose={() => { setRubricQuestion(null); setRubricDirty(false); }} onChanged={refreshRubrics}
+                              onDirtyChange={setRubricDirty} />
             )}
             {confirmPublish && (
                 <ConfirmDialog title={`Publish ${approvedCount} approved ${approvedCount === 1 ? "result" : "results"}?`}
@@ -235,11 +248,23 @@ export default function ExamDetailsPage() {
                                    answer sheets that aren&apos;t approved yet stay unpublished.</>}
                                onClose={() => setConfirmPublish(false)}
                                onConfirm={async () => {
-                                   const result = await reviewService.publishExam(examId);
+                                   // The dialog shows what this throws: a plain sentence, not "Network Error"
+                                   const result = await reviewService.publishExam(examId).catch((err) => {
+                                       throw new Error(actionError(err, "Nothing was published"));
+                                   });
                                    setConfirmPublish(false);
-                                   setPublishMessage(`Published ${result.published}. ${result.not_approved} not approved yet.`);
+                                   const waiting = result.not_approved;
+                                   setPublishMessage(`Published ${result.published} ${result.published === 1 ? "result" : "results"}.`
+                                       + (waiting > 0 ? ` ${waiting} ${waiting === 1 ? "answer sheet isn't" : "answer sheets aren't"} approved yet.` : ""));
                                    await refreshSubmissions();
                                }} />
+            )}
+            {guard.pendingHref && (
+                // Not `danger`: the shared red button is 3.7:1 on white (below AA); the icon tile carries the meaning
+                <ConfirmDialog title="Leave without saving?" confirmLabel="Leave without saving" danger icon={<LogOut size={18} />}
+                               message={<>Your changes to the {unsaved.length > 1 ? `${unsaved.slice(0, -1).join(", ")} and ${unsaved[unsaved.length - 1]}` : unsaved[0]} aren&apos;t saved yet. If you leave this page, they&apos;re lost.</>}
+                               onClose={guard.stay}
+                               onConfirm={async () => guard.leave()} />
             )}
         </div>
     );

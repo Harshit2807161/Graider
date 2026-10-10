@@ -458,7 +458,32 @@
     gap: var(--space-1);
 }
 
-/* The open link covers the whole row; Regrade sits above it */
+/* The student's name is the row's link and covers the whole row; Regrade sits above it */
+.rowTarget {
+    color: inherit;
+}
+
+.rowTarget::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.rowTarget:focus-visible {
+    outline: none;
+}
+
+.rowTarget:focus-visible::after {
+    outline: 2px solid var(--indigo-600);
+    outline-offset: -2px;
+    border-radius: 0.75rem;
+}
+
+.rowLink:hover .rowTarget {
+    color: var(--indigo-700);
+}
+
+/* "Review ›" / "Open ›": where the row leads (decoration; the name is the link) */
 .open {
     display: inline-flex;
     align-items: center;
@@ -474,25 +499,10 @@
     transition: var(--transition);
 }
 
-.open::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-}
-
 .rowLink:hover .open {
     background-color: var(--primary-light);
 }
 
-.open:focus-visible {
-    outline: none;
-}
-
-.open:focus-visible::after {
-    outline: 2px solid var(--indigo-600);
-    outline-offset: -2px;
-    border-radius: 0.75rem;
-}
 
 .regrade {
     position: relative;
@@ -524,6 +534,21 @@
 
     .noScore {
         padding-right: 0;
+    }
+
+    /* Narrower rows: a long name wraps onto a second line (then ends in an ellipsis; the full
+       name is its tooltip) rather than losing most of its letters on one */
+    .name {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+
+    .uploaded {
+        white-space: normal;
     }
 }
 
@@ -558,6 +583,10 @@
     .open {
         padding: 0;
         min-width: 2.5rem;
+        min-height: 2.5rem;
+    }
+
+    .regrade {
         min-height: 2.5rem;
     }
 

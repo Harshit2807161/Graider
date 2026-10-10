@@ -14,7 +14,12 @@
     gap: var(--space-6);
 }
 
-/* Header extras: meta line under the description, counts in the action buttons */
+/* Header extras: the description (long words wrap instead of widening the page), the meta line
+   under it, counts in the action buttons */
+.description {
+    overflow-wrap: anywhere;
+}
+
 .meta {
     display: flex;
     flex-wrap: wrap;
@@ -59,9 +64,10 @@
     color: var(--status-review-fg);
 }
 
+/* A white pill on the indigo button: indigo-700 on white is 7.9:1 (white on a 20% white tint was 4.2:1) */
 .countPrimary {
-    background-color: var(--on-primary-subtle);
-    color: var(--color-surface);
+    background-color: var(--color-surface);
+    color: var(--indigo-700);
 }
 
 /* Not found: the way back sits under the banner */

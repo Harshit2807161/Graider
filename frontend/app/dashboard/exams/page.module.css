@@ -140,6 +140,7 @@
 
 .grid > li {
     display: flex;
+    min-width: 0;
 }
 
 .skeletonCard {
@@ -147,9 +148,16 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border);
     background-color: var(--card);
-    background-image: linear-gradient(var(--slate-100), var(--slate-100));
-    background-size: 48px 48px;
-    background-position: 1.5rem 1.5rem;
+    /* The card's outline drawn in place: icon tile, two title lines, description, divider, footer */
+    background-image:
+        linear-gradient(var(--slate-100), var(--slate-100)),
+        linear-gradient(var(--slate-200), var(--slate-200)),
+        linear-gradient(var(--slate-200), var(--slate-200)),
+        linear-gradient(var(--slate-100), var(--slate-100)),
+        linear-gradient(var(--border-light), var(--border-light)),
+        linear-gradient(var(--slate-100), var(--slate-100));
+    background-size: 48px 48px, 70% 1rem, 45% 1rem, 60% 0.75rem, calc(100% - 3rem) 1px, 50% 0.75rem;
+    background-position: 1.5rem 1.5rem, 1.5rem 6.5rem, 1.5rem 8rem, 1.5rem 9.75rem, 1.5rem 11.25rem, 1.5rem 13rem;
     background-repeat: no-repeat;
     animation: pulse 1.4s ease-in-out infinite;
 }

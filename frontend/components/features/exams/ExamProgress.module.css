@@ -223,6 +223,13 @@
     .skeleton { animation: none; }
 }
 
+/* Phones and touch screens: the step links are full-size tap targets */
+@media (max-width: 767px), (pointer: coarse) {
+    .action {
+        min-height: 2.5rem;
+    }
+}
+
 @container progress (max-width: 40rem) {
     .steps {
         grid-template-columns: repeat(2, minmax(0, 1fr));

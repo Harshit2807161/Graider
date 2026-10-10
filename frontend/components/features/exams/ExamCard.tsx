@@ -36,7 +36,8 @@ export default function ExamCard({ exam }: ExamCardProps) {
                 <h2 className={styles.title}>
                     <Link href={`/dashboard/exams/${exam.id}`} className={styles.link}>{exam.name}</Link>
                 </h2>
-                <p className={cn(styles.description, !exam.description && styles.descriptionEmpty)}>
+                {/* Two lines at most; the full text is in the tooltip and on the exam's page */}
+                <p className={cn(styles.description, !exam.description && styles.descriptionEmpty)} title={exam.description || undefined}>
                     {exam.description || "No description"}
                 </p>
             </div>
@@ -50,7 +51,7 @@ export default function ExamCard({ exam }: ExamCardProps) {
                     <li className={styles.stat}>
                         <Calendar size={15} aria-hidden="true" />
                         <time dateTime={exam.created_at}>
-                            {new Date(exam.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                            {new Date(exam.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
                         </time>
                     </li>
                 </ul>

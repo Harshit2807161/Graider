@@ -6,16 +6,24 @@ import Button from "@/components/ui/Button";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import InlineMessage from "@/components/ui/InlineMessage";
 import { getErrorMessage } from "@/lib/api";
+import { actionError } from "@/components/features/exams/actionError";
 import { reviewService } from "@/services/review.service";
 import { GradingSettings } from "@/types/review.types";
 import styles from "./GradingSettingsPanel.module.css";
 
-/** An exam's grading settings; new grading runs use them. Laid out as settings rows:
+/** Fractions from the API are shown and edited as whole percentages (0.8 → 80). */
+const toPercent = (fraction: number): string => String(Math.round(fraction * 100));
+
+/** An exam's grading settings; answer sheets graded from now on use them. Laid out as settings rows:
  *  what the setting means on the left, its control on the right. */
-export default function GradingSettingsPanel({ examId }: { examId: string }) {
+export default function GradingSettingsPanel({ examId, onDirtyChange }: {
+    examId: string;
+    /** Told when the form starts or stops having unsaved changes (the page guards navigation) */
+    onDirtyChange?: (dirty: boolean) => void;
+}) {
     const id = useId();
     const [saved, setSaved] = useState<GradingSettings | null>(null);
-    const [draft, setDraft] = useState<{ threshold: string; spotPercent: string; policy: "best" | "first" } | null>(null);
+    const [draft, setDraft] = useState<{ agreementPercent: string; spotPercent: string; policy: "best" | "first" } | null>(null);
     const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
     const [saving, setSaving] = useState(false);
     // Bumped by "Try again" to load the settings once more
@@ -25,10 +33,19 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
         reviewService.getGradingSettings(examId)
             .then((s) => {
                 setSaved(s);
-                setDraft({ threshold: String(s.agreement_threshold), spotPercent: String(Math.round(s.spot_check_rate * 100)), policy: s.choice_policy });
+                setDraft({ agreementPercent: toPercent(s.agreement_threshold), spotPercent: toPercent(s.spot_check_rate), policy: s.choice_policy });
             })
             .catch((err) => setMessage({ kind: "error", text: getErrorMessage(err, "Settings couldn't be loaded") }));
     }, [examId, attempt]);
+
+    const agreement = Number(draft?.agreementPercent);
+    const spot = Number(draft?.spotPercent);
+    const changed = !!draft && !!saved && (agreement !== Number(toPercent(saved.agreement_threshold))
+        || spot !== Number(toPercent(saved.spot_check_rate)) || draft.policy !== saved.choice_policy);
+
+    useEffect(() => {
+        onDirtyChange?.(changed);
+    }, [changed, onDirtyChange]);
 
     if (!draft || !saved) {
         return message
@@ -42,12 +59,9 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
             );
     }
 
-    const threshold = Number(draft.threshold);
-    const spot = Number(draft.spotPercent);
-    const thresholdOk = draft.threshold !== "" && threshold >= 0.5 && threshold <= 1;
+    const agreementOk = draft.agreementPercent !== "" && agreement >= 50 && agreement <= 100;
     const spotOk = draft.spotPercent !== "" && spot >= 0 && spot <= 100;
-    const valid = thresholdOk && spotOk;
-    const changed = threshold !== saved.agreement_threshold || spot / 100 !== saved.spot_check_rate || draft.policy !== saved.choice_policy;
+    const valid = agreementOk && spotOk;
 
     const save = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -55,12 +69,14 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
         setMessage(null);
         try {
             const s = await reviewService.updateGradingSettings(examId, {
-                agreement_threshold: threshold, spot_check_rate: spot / 100, choice_policy: draft.policy,
+                agreement_threshold: agreement / 100, spot_check_rate: spot / 100, choice_policy: draft.policy,
             });
             setSaved(s);
+            // What the server kept (e.g. rounded), so the form reads as saved
+            setDraft({ agreementPercent: toPercent(s.agreement_threshold), spotPercent: toPercent(s.spot_check_rate), policy: s.choice_policy });
             setMessage({ kind: "ok", text: "Saved. Answer sheets graded from now on use these settings." });
         } catch (err) {
-            setMessage({ kind: "error", text: getErrorMessage(err, "Settings couldn't be saved") });
+            setMessage({ kind: "error", text: actionError(err, "The settings couldn't be saved") });
         } finally {
             setSaving(false);
         }
@@ -71,17 +87,20 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
             <div className={styles.rows}>
                 <div className={styles.row}>
                     <div className={styles.labelBlock}>
-                        <label htmlFor={`${id}-threshold`} className={styles.label}>Agreement needed (0.5 to 1)</label>
-                        <p id={`${id}-threshold-help`} className={styles.help}>
+                        <label htmlFor={`${id}-agreement`} className={styles.label}>Agreement needed (50 to 100%)</label>
+                        <p id={`${id}-agreement-help`} className={styles.help}>
                             A grade is final when the two examiners agree at least this much; below it, they discuss, then the answer comes to you.
                         </p>
                     </div>
                     <div className={styles.control}>
-                        <input id={`${id}-threshold`} type="number" min={0.5} max={1} step={0.05} value={draft.threshold}
-                               className={styles.input} aria-invalid={!thresholdOk}
-                               aria-describedby={`${id}-threshold-help${thresholdOk ? "" : ` ${id}-threshold-error`}`}
-                               onChange={(e) => setDraft({ ...draft, threshold: e.target.value })} />
-                        {!thresholdOk && <p id={`${id}-threshold-error`} className={styles.fieldError}>Enter a number from 0.5 to 1.</p>}
+                        <div className={styles.suffixWrap}>
+                            <input id={`${id}-agreement`} type="number" inputMode="numeric" min={50} max={100} step={5} value={draft.agreementPercent}
+                                   className={styles.input} aria-invalid={!agreementOk}
+                                   aria-describedby={`${id}-agreement-help${agreementOk ? "" : ` ${id}-agreement-error`}`}
+                                   onChange={(e) => setDraft({ ...draft, agreementPercent: e.target.value })} />
+                            <span className={styles.suffix} aria-hidden="true">%</span>
+                        </div>
+                        {!agreementOk && <p id={`${id}-agreement-error`} className={styles.fieldError}>Enter a percentage from 50 to 100.</p>}
                     </div>
                 </div>
                 <div className={styles.row}>
@@ -91,7 +110,7 @@ export default function GradingSettingsPanel({ examId }: { examId: string }) {
                     </div>
                     <div className={styles.control}>
                         <div className={styles.suffixWrap}>
-                            <input id={`${id}-spot`} type="number" min={0} max={100} step={1} value={draft.spotPercent}
+                            <input id={`${id}-spot`} type="number" inputMode="numeric" min={0} max={100} step={1} value={draft.spotPercent}
                                    className={styles.input} aria-invalid={!spotOk}
                                    aria-describedby={`${id}-spot-help${spotOk ? "" : ` ${id}-spot-error`}`}
                                    onChange={(e) => setDraft({ ...draft, spotPercent: e.target.value })} />

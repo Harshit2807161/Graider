@@ -113,13 +113,16 @@ export default function ExamsPage() {
                     </div>
                 </div>
                 )}
-                <div className={styles.searchWrap}>
-                    <Search size={16} className={styles.selectLead} aria-hidden="true" />
-                    <input type="search" className={styles.search} value={query} onChange={(e) => setQuery(e.target.value)}
-                           placeholder="Search exams" aria-label="Search exams" />
-                </div>
+                {/* Nothing to search before there are exams */}
+                {!error && (loading || exams.length > 0) && (
+                    <div className={styles.searchWrap}>
+                        <Search size={16} className={styles.selectLead} aria-hidden="true" />
+                        <input type="search" className={styles.search} value={query} onChange={(e) => setQuery(e.target.value)}
+                               placeholder="Search exams" aria-label="Search exams" />
+                    </div>
+                )}
                 <p className={styles.count} aria-live="polite">
-                    {loading || !q ? "" : `${shown.length} of ${exams.length} exams`}
+                    {loading || !q ? "" : `${shown.length} of ${exams.length} ${exams.length === 1 ? "exam" : "exams"}`}
                 </p>
             </div>
 
@@ -145,7 +148,7 @@ export default function ExamsPage() {
             ) : shown.length === 0 ? (
                 <div className={styles.empty}>
                     <span className={styles.emptyIcon} aria-hidden="true"><Search size={28} /></span>
-                    <h2>No exams match &ldquo;{query.trim()}&rdquo;</h2>
+                    <h2>No exams match &quot;{query.trim()}&quot;</h2>
                     <p>Try another name, or clear the search.</p>
                     <Button variant="secondary" onClick={() => setQuery("")}>Clear search</Button>
                 </div>

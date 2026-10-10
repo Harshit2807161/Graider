@@ -3,12 +3,12 @@
 import React, { useId, useState } from "react";
 import { AlignLeft, CheckCircle, FilePlus2, FileText, PencilLine, Send } from "lucide-react";
 import { useExamContext } from "@/context/ExamContext";
-import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ExamCreate, ExamStatus } from "@/types/exam.types";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import InlineMessage from "@/components/ui/InlineMessage";
+import { actionError } from "./actionError";
 import styles from "./CreateExamModal.module.css";
 
 interface CreateExamModalProps {
@@ -58,7 +58,7 @@ export default function CreateExamModal({ isOpen, onClose, selectedOrgId, onCrea
             onClose();
         } catch (err) {
             console.error("Failed to create exam:", err);
-            setError(getErrorMessage(err, "Failed to create exam. Please try again."));
+            setError(actionError(err, "The exam couldn't be created"));
         } finally {
             setIsSubmitting(false);
         }

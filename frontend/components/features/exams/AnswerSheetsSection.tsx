@@ -7,12 +7,12 @@ import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import { explainFailure } from "@/components/features/review/failure";
-import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { examService } from "@/services/exam.service";
 import { Submission, SubmissionStatus } from "@/types/exam.types";
 import InlineMessage, { Message } from "@/components/ui/InlineMessage";
 import SectionCard from "./SectionCard";
+import { actionError } from "./actionError";
 import styles from "./AnswerSheetsSection.module.css";
 
 const IN_PROGRESS: SubmissionStatus[] = ["PENDING", "PROCESSING"];
@@ -48,12 +48,21 @@ function score(n: number): string {
     return Number(n.toFixed(2)).toString();
 }
 
+/** Grading progress as the worker words it ("Reading 3 page(s) for 3 questions..."), with real plurals
+ *  and an ellipsis: "Reading 3 pages for 3 questions…". */
+function progressText(step: string): string {
+    return step
+        .replace(/(\d+) ([A-Za-z]+)\(s\)/g, (_, n: string, word: string) => `${n} ${Number(n) === 1 ? word : `${word}s`}`)
+        .replace(/\.{3}$/, "…");
+}
+
 /** The first sentence of the teacher-facing cause; the full explanation is on the sheet's page. */
 function firstSentence(text: string): string {
     return text.split(/(?<=\.)\s+/)[0] ?? text;
 }
 
-const dateFormat: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" };
+/** The review screens' format: "Oct 9, 2026, 2:22 PM" */
+const dateFormat: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" };
 
 /** Step 2: upload one student's answers (one or several files, graded together in order), then
  *  follow each answer sheet's grading. The page polls while any sheet is still being graded. */
@@ -104,9 +113,9 @@ export default function AnswerSheetsSection({ examId, submissions, listState, ca
             const n = files.length;
             clearFiles();
             await onChanged();
-            setMessage({ kind: "success", text: `Uploaded ${n === 1 ? "1 file" : `${n} files`}. Grading has started; follow it under “Being graded” below.` });
+            setMessage({ kind: "success", text: `Uploaded ${n === 1 ? "1 file" : `${n} files`}. Grading has started; follow it under "Being graded" below.` });
         } catch (err) {
-            setMessage({ kind: "error", text: `The answer sheet couldn't be uploaded: ${getErrorMessage(err)}` });
+            setMessage({ kind: "error", text: actionError(err, "The answer sheet couldn't be uploaded") });
         } finally {
             setUploading(false);
         }
@@ -119,7 +128,7 @@ export default function AnswerSheetsSection({ examId, submissions, listState, ca
             await examService.regradeSubmission(submission.id);
             await onChanged();
         } catch (err) {
-            setListError(`Couldn't regrade: ${getErrorMessage(err)}`);
+            setListError(actionError(err, "The answer sheet couldn't be regraded"));
         } finally {
             setRegrading(null);
         }
@@ -219,7 +228,7 @@ export default function AnswerSheetsSection({ examId, submissions, listState, ca
                         </h3>
                         {anyInProgress && (
                             <p className={styles.live}>
-                                <Loader2 size={14} className={styles.spin} aria-hidden="true" /> Updating while grading runs
+                                <Loader2 size={14} className={styles.spin} aria-hidden="true" /> Updating as sheets are graded
                             </p>
                         )}
                     </div>
@@ -281,7 +290,16 @@ function SheetRow({ examId, submission: s, regrading, onRegrade }: {
                     {name ? initials(name) : <UserRound size={16} />}
                 </span>
                 <span className={styles.who}>
-                    <span id={`sheet-${s.id}`} className={cn(styles.name, !name && styles.noName)}>{name ?? "No student assigned"}</span>
+                    {/* The name is the row's link (it covers the row), so focus starts each row at its left
+                        whatever the layout; the id names the sheet for the Regrade button */}
+                    {busy ? (
+                        <span id={`sheet-${s.id}`} className={cn(styles.name, !name && styles.noName)} title={name ?? undefined}>{name ?? "No student assigned"}</span>
+                    ) : (
+                        <Link href={href} className={cn(styles.name, styles.rowTarget, !name && styles.noName)} title={name ?? undefined}
+                              aria-label={`${s.status === "NEEDS_REVIEW" ? "Review" : "Open"} ${who}`}>
+                            <span id={`sheet-${s.id}`}>{name ?? "No student assigned"}</span>
+                        </Link>
+                    )}
                     <span className={styles.uploaded}>Uploaded <time dateTime={s.created_at}>{uploaded}</time></span>
                 </span>
             </div>
@@ -300,7 +318,7 @@ function SheetRow({ examId, submission: s, regrading, onRegrade }: {
                 ) : busy ? (
                     <span className={styles.step}>
                         <Loader2 size={12} className={styles.spin} aria-hidden="true" />
-                        {s.current_step || (s.status === "PENDING" ? "Waiting to start" : "Grading…")}
+                        {s.current_step ? progressText(s.current_step) : s.status === "PENDING" ? "Waiting to start" : "Grading…"}
                     </span>
                 ) : NEXT_STEP[s.status] ? (
                     <span className={styles.step}>{NEXT_STEP[s.status]}</span>
@@ -321,12 +339,12 @@ function SheetRow({ examId, submission: s, regrading, onRegrade }: {
                 )}
             </div>
             <div role="cell" className={styles.actions}>
+                {/* Says where the row leads; the name link is the target */}
                 {!busy && (
-                    <Link href={href} className={styles.open}
-                          aria-label={`${s.status === "NEEDS_REVIEW" ? "Review" : "Open"} ${who}`}>
+                    <span className={styles.open} aria-hidden="true">
                         <span className={styles.openText}>{s.status === "NEEDS_REVIEW" ? "Review" : "Open"}</span>
-                        <ChevronRight size={16} aria-hidden="true" />
-                    </Link>
+                        <ChevronRight size={16} />
+                    </span>
                 )}
             </div>
         </div>
