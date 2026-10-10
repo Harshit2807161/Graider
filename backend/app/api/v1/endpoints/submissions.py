@@ -1,9 +1,10 @@
+from datetime import datetime, timezone
 from typing import Any, List, Optional, Union
 from uuid import UUID, uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, Form, HTTPException, File, UploadFile
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from app import crud
 from app.api import deps
@@ -11,10 +12,14 @@ from app.core.config import settings
 from app.core.constants import Role, SubmissionStatus
 from app.models.user import User, Membership
 from app.grading.persist import current
-from app.models.exam import Submission
+from app.models.exam import Exam, Submission
+from app.models.grade_event import EventKind, GradeEvent
+from app.ingestion.service import stored_pages
 from app.models.grading import AnswerGrade
 from app.schemas.exam import (
+    MyResults,
     StudentAnswerView,
+    StudentResultSummary,
     StudentSubmissionView,
     SubmissionAnswerRead,
     SubmissionRead,
@@ -138,6 +143,47 @@ def list_submissions(
             for s in submissions]
 
 
+def _published_at(db: Session, submission_ids: list[UUID]) -> dict[UUID, datetime]:
+    """When each submission was published (its latest publish event)."""
+    if not submission_ids:
+        return {}
+    events = db.exec(select(GradeEvent).where(
+        col(GradeEvent.submission_id).in_(submission_ids), GradeEvent.kind == EventKind.PUBLISH)).all()
+    return {e.submission_id: e.created_at for e in sorted(events, key=lambda e: e.created_at)}
+
+
+@router.get("/submissions/mine", response_model=MyResults)
+def my_results(
+    *,
+    db: Session = Depends(deps.get_session),
+    org_id: Optional[UUID] = None,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    The signed-in student's own results: published ones with their totals, newest first, and how many of
+    their answer sheets aren't published yet. Staff (who have no student membership) get an empty list.
+    """
+    memberships = select(Membership.id).where(
+        Membership.user_id == current_user.id, Membership.role == Role.STUDENT,
+        col(Membership.deleted_at).is_(None))
+    if org_id is not None:
+        memberships = memberships.where(Membership.org_id == org_id)
+    rows = db.exec(
+        select(Submission, Exam).join(Exam, col(Exam.id) == Submission.exam_id)
+        .where(col(Submission.student_membership_id).in_(memberships), col(Submission.deleted_at).is_(None),
+               col(Exam.deleted_at).is_(None))
+        .order_by(col(Submission.created_at).desc())
+    ).all()
+    published = [(s, e) for s, e in rows if s.status == SubmissionStatus.PUBLISHED]
+    when = _published_at(db, [s.id for s, _ in published])
+    results = [StudentResultSummary(
+        submission_id=s.id, exam_id=e.id, exam_name=e.name, total_score=s.total_score, max_score=s.max_score,
+        percentage=s.percentage, published_at=when.get(s.id),
+    ) for s, e in published]
+    results.sort(key=lambda r: r.published_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return MyResults(results=results, awaiting=len(rows) - len(published))
+
+
 @router.get("/submissions/{submission_id}", response_model=Union[SubmissionWithAnswers, StudentSubmissionView])
 def read_submission(
     *,
@@ -181,9 +227,12 @@ def _student_view(db: Session, submission: Submission) -> StudentSubmissionView:
                 question_id=q.id, label=label, question_text=q.question_text, score=grade.score,  # type: ignore[attr-defined]
                 max_score=q.max_score, counted=grade.counted, feedback=grade.feedback,  # type: ignore[attr-defined]
             ))
+    exam = crud.exam.get(db, id=submission.exam_id)
+    pages = sum(1 for p in stored_pages(db, submission) if p.image_path)
     return StudentSubmissionView(
-        id=submission.id, exam_id=submission.exam_id, status=submission.status, total_score=submission.total_score,
-        max_score=submission.max_score, percentage=submission.percentage, answers=answers,
+        id=submission.id, exam_id=submission.exam_id, exam_name=exam.name if exam else None, status=submission.status,
+        total_score=submission.total_score, max_score=submission.max_score, percentage=submission.percentage,
+        published_at=_published_at(db, [submission.id]).get(submission.id), pages=pages, answers=answers,
     )
 
 

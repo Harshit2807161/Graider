@@ -24,18 +24,22 @@ def read_organizations(
     """
     Retrieve organizations: all of them for superusers, otherwise the ones the user belongs to.
     """
+    roles = {m.org_id: m.role.value for m in db.exec(select(Membership).where(
+        Membership.user_id == current_user.id, Membership.deleted_at == None)).all()}  # noqa: E711
     if current_user.is_superuser:
-        return crud.org.get_multi(db, skip=skip, limit=limit)
-
-    return db.exec(
-        select(OrganizationModel)
-        .join(Membership, Membership.org_id == OrganizationModel.id)
-        .where(Membership.user_id == current_user.id)
-        .where(Membership.deleted_at == None)  # noqa: E711
-        .where(OrganizationModel.deleted_at == None)  # noqa: E711
-        .offset(skip)
-        .limit(limit)
-    ).all()
+        orgs = crud.org.get_multi(db, skip=skip, limit=limit)
+    else:
+        orgs = db.exec(
+            select(OrganizationModel)
+            .join(Membership, Membership.org_id == OrganizationModel.id)
+            .where(Membership.user_id == current_user.id)
+            .where(Membership.deleted_at == None)  # noqa: E711
+            .where(OrganizationModel.deleted_at == None)  # noqa: E711
+            .offset(skip)
+            .limit(limit)
+        ).all()
+    fallback = Role.OWNER.value if current_user.is_superuser else None
+    return [Organization.model_validate(o).model_copy(update={"role": roles.get(o.id, fallback)}) for o in orgs]
 
 @router.get("/{org_id}", response_model=Organization)
 def read_organization(

@@ -154,8 +154,27 @@ class StudentSubmissionView(BaseModel):
     internals (transcripts, evaluator rounds, escalations, models)."""
     id: UUID
     exam_id: UUID
+    exam_name: Optional[str] = None
     status: SubmissionStatus
     total_score: Optional[float] = None
     max_score: Optional[float] = None
     percentage: Optional[float] = None
+    published_at: Optional[datetime] = None
+    pages: int = 0  # page images the student may view (their own answer sheet)
     answers: List[StudentAnswerView] = []
+
+
+class StudentResultSummary(BaseModel):
+    """One published result in a student's list."""
+    submission_id: UUID
+    exam_id: UUID
+    exam_name: str
+    total_score: Optional[float] = None
+    max_score: Optional[float] = None
+    percentage: Optional[float] = None
+    published_at: Optional[datetime] = None
+
+
+class MyResults(BaseModel):
+    results: List[StudentResultSummary] = []
+    awaiting: int = 0  # the student's answer sheets that aren't published yet

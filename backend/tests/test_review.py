@@ -304,14 +304,15 @@ async def test_the_review_shows_pages_spec_transcript_grade_and_earlier_versions
     assert review["unassigned_segments"] == []
 
 
-async def test_page_images_are_served_to_staff_only(fake_llm, db, school, tmp_path, client):
+async def test_page_images_are_served_to_staff(fake_llm, db, school, tmp_path, client):
     submission = await graded(db, school, tmp_path)
     url = f"{API}/submissions/{submission.id}/pages"
     response = client.get(f"{url}/1/image", headers=login(client, "teacher@school.test"))
     assert response.status_code == 200 and response.headers["content-type"] == "image/jpeg"
     assert response.headers["cache-control"] == "private, no-store" and response.content[:2] == b"\xff\xd8"
     assert client.get(f"{url}/2/image", headers=login(client, "teacher@school.test")).status_code == 404
-    assert client.get(f"{url}/1/image", headers=login(client, "student@school.test")).status_code == 403
+    # Not their sheet (and not published): a student can't tell it exists
+    assert client.get(f"{url}/1/image", headers=login(client, "student@school.test")).status_code == 404
 
 
 async def test_the_timeline_shows_runs_calls_versions_and_actions_in_order(fake_llm, db, school, tmp_path, client):
@@ -352,7 +353,8 @@ async def test_students_see_only_their_own_published_scores_and_feedback(fake_ll
     client.post(f"{API}/exams/{school['exam'].id}/publish", headers=teacher)
 
     view = client.get(url, headers=student).json()
-    assert set(view) == {"id", "exam_id", "status", "total_score", "max_score", "percentage", "answers"}
+    assert set(view) == {"id", "exam_id", "exam_name", "status", "total_score", "max_score", "percentage",
+                         "published_at", "pages", "answers"}
     assert [(a["label"], a["score"], a["max_score"], a["counted"]) for a in view["answers"]] == [
         ("Q1", 4, 4, True), ("Q2", 6, 6, True)]
     assert set(view["answers"][0]) == {"question_id", "label", "question_text", "score", "max_score", "counted",
