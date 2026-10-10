@@ -36,8 +36,9 @@ export default function Modal({ open, title, onClose, children, footer, size = "
         if (!open) return;
         const previous = document.activeElement as HTMLElement | null;
         const dialog = dialogRef.current;
-        // Start in the first field if there is one, else on the first control
-        const first = dialog?.querySelector<HTMLElement>("textarea, input, select")
+        // Start on a control marked data-autofocus, else the first field, else the first control
+        const first = dialog?.querySelector<HTMLElement>("[data-autofocus]")
+            ?? dialog?.querySelector<HTMLElement>("textarea, input, select")
             ?? dialog?.querySelector<HTMLElement>(FOCUSABLE);
         first?.focus();
 

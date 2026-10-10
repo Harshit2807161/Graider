@@ -38,7 +38,8 @@ export default function ConfirmDialog({ title, message, confirmLabel, withReason
         <Modal open title={title} onClose={onClose} tone={danger ? "danger" : "default"}
                icon={icon ?? (danger ? <AlertTriangle size={18} /> : <HelpCircle size={18} />)} footer={
             <>
-                <Button variant="secondary" onClick={onClose}>Cancel</Button>
+                {/* Without a reason to type, start on the safe choice */}
+                <Button variant="secondary" onClick={onClose} data-autofocus={withReason ? undefined : true}>Cancel</Button>
                 <Button variant={danger ? "danger" : "primary"} onClick={confirm} isLoading={busy}>{confirmLabel}</Button>
             </>
         }>

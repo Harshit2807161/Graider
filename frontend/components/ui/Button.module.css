@@ -25,6 +25,11 @@
     transform: translateY(1px);
 }
 
+.loading {
+    cursor: progress;
+    opacity: 0.8;
+}
+
 .button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
