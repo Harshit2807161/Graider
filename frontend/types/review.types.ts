@@ -188,7 +188,7 @@ export const ESCALATION_TEXT: Record<string, string> = {
     multiple_attempts: "Several attempts at this answer",
     check_failed: "The grade failed the checks",
     evaluator_disagreement: "The two examiners disagree",
-    all_models_failed: "The models couldn't grade it",
+    all_models_failed: "The AI couldn't grade it",
     spot_check: "Random spot check",
     "grader_flag:illegible": "Grader: illegible",
     "grader_flag:off_topic": "Grader: off topic",

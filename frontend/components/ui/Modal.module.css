@@ -97,6 +97,16 @@
 
 .close:hover { background-color: var(--hover-overlay); color: var(--foreground); }
 
+/* Touch screens: a comfortable target for closing */
+@media (pointer: coarse) {
+    .close {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
 .body {
     padding: var(--space-6);
     overflow-y: auto;
