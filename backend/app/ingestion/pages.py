@@ -164,7 +164,9 @@ def straighten(image: Image.Image) -> Image.Image:
 
 def _normalise(image: Image.Image) -> Image.Image:
     image = straighten(_flatten(image))
-    image = ImageOps.autocontrast(image, cutoff=0.5)  # gentle; never binarise (faint pencil)
+    # Gentle, on brightness only: stretching each channel separately tints coloured ink on grey
+    # (a whiteboard photo turned magenta). Never binarise (faint pencil).
+    image = ImageOps.autocontrast(image, cutoff=0.5, preserve_tone=True)
     if max(image.size) > settings.INGEST_MAX_LONG_EDGE:
         image.thumbnail((settings.INGEST_MAX_LONG_EDGE, settings.INGEST_MAX_LONG_EDGE), Image.Resampling.LANCZOS)
     return image

@@ -20,6 +20,16 @@
     justify-content: center;
 }
 
+/* Press feedback */
+.button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.loading {
+    cursor: progress;
+    opacity: 0.8;
+}
+
 .button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -64,13 +74,13 @@
 }
 
 .danger {
-    background-color: var(--color-error);
-    color: white;
+    /* red-600: white text at 4.8:1 (the lighter error red was below AA) */
+    background-color: var(--red-600);
+    color: var(--color-on-primary);
 }
 
 .danger:hover:not(:disabled) {
-    background-color: #e11d48;
-    /* Darker red */
+    background-color: var(--red-700);
 }
 
 /* Sizes */
@@ -110,3 +120,11 @@
         transform: rotate(360deg);
     }
 }
+
+/* Touch screens: small buttons still get a comfortable target */
+@media (pointer: coarse) {
+    .sm {
+        height: 2.5rem;
+    }
+}
+

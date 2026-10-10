@@ -21,6 +21,7 @@ from app.schemas.exam import (
     SubmissionWithAnswers,
 )
 from app.services.labels import exam_labels
+from app.services.students import student_names
 from app.audit.runs import create_run
 from app.api.uploads import validated
 from app.ingestion.service import store_upload
@@ -125,13 +126,16 @@ def list_submissions(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """
-    List an exam's submissions, newest first.
+    List an exam's submissions, newest first, with each student's name.
     """
     exam = crud.exam.get(db, id=exam_id)
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
     deps.require_org_role(db, user=current_user, org_id=exam.org_id, roles=deps.STAFF_ROLES)
-    return crud.submission.get_by_exam(db, exam_id=exam_id, skip=skip, limit=limit)
+    submissions = crud.submission.get_by_exam(db, exam_id=exam_id, skip=skip, limit=limit)
+    names = student_names(db, [s.student_membership_id for s in submissions])
+    return [SubmissionRead.model_validate(s).model_copy(update={"student_name": names.get(s.student_membership_id)})
+            for s in submissions]
 
 
 @router.get("/submissions/{submission_id}", response_model=Union[SubmissionWithAnswers, StudentSubmissionView])

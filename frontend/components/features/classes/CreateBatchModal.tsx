@@ -1,30 +1,37 @@
 "use client";
 
-import React, { useState, FormEvent } from "react";
+import React, { useId, useState, FormEvent } from "react";
+import { GraduationCap } from "lucide-react";
 import { useBatchContext } from "@/context/BatchContext";
+import { getErrorMessage } from "@/lib/api";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { X } from "lucide-react";
+import Modal from "@/components/ui/Modal";
 import styles from "./CreateBatchModal.module.css";
 
 interface CreateBatchModalProps {
     isOpen: boolean;
     onClose: () => void;
     orgId: string;
+    orgName?: string;
 }
 
-export default function CreateBatchModal({ isOpen, onClose, orgId }: CreateBatchModalProps) {
+export default function CreateBatchModal({ isOpen, onClose, orgId, orgName }: CreateBatchModalProps) {
     const { createBatch } = useBatchContext();
+    const formId = useId();
     const [name, setName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    if (!isOpen) return null;
+    const close = () => {
+        setError(null);
+        onClose();
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!orgId) {
-            setError("No organization selected");
+            setError("Choose an organization first.");
             return;
         }
 
@@ -35,49 +42,43 @@ export default function CreateBatchModal({ isOpen, onClose, orgId }: CreateBatch
             await createBatch({ name, org_id: orgId });
             setName("");
             onClose();
-        } catch (err: any) {
-            setError(err.response?.data?.detail || "Failed to create class");
+        } catch (err) {
+            setError(getErrorMessage(err, "The class couldn't be created"));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.header}>
-                    <h2>Create New Class</h2>
-                    <button className={styles.closeBtn} onClick={onClose} aria-label="Close modal">
-                        <X size={20} />
-                    </button>
-                </div>
+        <Modal
+            open={isOpen}
+            title="New class"
+            description={orgName ? `In ${orgName}. Upload its roster next.` : "Upload its roster next."}
+            icon={<GraduationCap size={18} />}
+            onClose={close}
+            footer={
+                <>
+                    <Button type="button" variant="secondary" onClick={close}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" form={formId} variant="primary" isLoading={isSubmitting}>
+                        Create class
+                    </Button>
+                </>
+            }
+        >
+            <form id={formId} onSubmit={handleSubmit} className={styles.form}>
+                <Input
+                    label="Class name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Grade 7 · Section B"
+                    required
+                    autoComplete="off"
+                />
 
-                <form onSubmit={handleSubmit} className={styles.form}>
-                    <p className={styles.description}>
-                        Create a new class to manage students, assignments, and exams.
-                    </p>
-
-                    <Input
-                        label="Class Name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="e.g., Computer Science 101"
-                        required
-                        autoFocus
-                    />
-
-                    {error && <div className={styles.error}>{error}</div>}
-
-                    <div className={styles.actions}>
-                        <Button type="button" variant="secondary" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" variant="primary" isLoading={isSubmitting}>
-                            Create Class
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                {error && <div className={styles.error} role="alert">{error}</div>}
+            </form>
+        </Modal>
     );
 }

@@ -1,0 +1,545 @@
+/* Rubric dialog body (the frame is components/ui/Modal, size lg). */
+.questionText {
+    display: block;
+    max-width: 40rem;
+}
+
+.marks {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.topMessage {
+    margin-bottom: var(--space-4);
+}
+
+/* Loading / not parsed */
+.loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.skeleton {
+    display: block;
+    height: 6rem;
+    border-radius: 0.75rem;
+    background-color: var(--slate-100);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton:first-of-type {
+    height: 2.5rem;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.5; }
+}
+
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-4);
+    border: 1px dashed var(--slate-300);
+    border-radius: 0.75rem;
+    text-align: center;
+    font-size: var(--text-base);
+    color: var(--slate-700);
+}
+
+.emptyIcon {
+    width: 3rem;
+    height: 3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.empty p {
+    max-width: 28rem;
+}
+
+/* Editor */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.versionRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+}
+
+.reparse {
+    margin-right: calc(-1 * var(--space-2));
+}
+
+.version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+}
+
+.source {
+    padding: 0 var(--space-2);
+    border-radius: 1rem;
+    background-color: var(--primary-light);
+    color: var(--indigo-700);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+.sourceTeacher {
+    background-color: var(--teal-50);
+    color: var(--teal-700);
+}
+
+/* "Parse again?" asked in place, under the version it would replace */
+.confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--amber-200);
+    border-radius: var(--radius);
+    background-color: var(--amber-50);
+    animation: reveal 0.2s var(--ease-out);
+}
+
+@keyframes reveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+
+.confirmIcon {
+    flex-shrink: 0;
+    color: var(--amber-700);
+}
+
+.confirmText {
+    flex: 1 1 16rem;
+    min-width: 0;
+    font-size: var(--text-base);
+    color: var(--amber-800);
+}
+
+.confirmActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-left: auto;
+}
+
+/* Destructive, as an outline: red-700 on white is 6.5:1 (the shared filled red is below AA) */
+.form .destructive {
+    border-color: var(--red-200);
+    background-color: var(--color-surface);
+    color: var(--red-700);
+}
+
+.form .destructive:hover:not(:disabled) {
+    border-color: var(--red-600);
+    background-color: var(--red-50);
+}
+
+/* A failed parse: the technical detail under the plain sentence */
+.errorDetail {
+    max-width: 32rem;
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+}
+
+.warnings {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background-color: var(--amber-50);
+    border: 1px solid var(--amber-200);
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    color: var(--amber-800);
+}
+
+.warnings svg {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.warnings ul {
+    padding-left: var(--space-4);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    align-items: end;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--slate-700);
+}
+
+.optional {
+    font-weight: 400;
+    color: var(--muted-foreground);
+}
+
+.field textarea,
+.field input,
+.select {
+    width: 100%;
+    padding: 0.5625rem var(--space-3);
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius);
+    background-color: var(--color-surface);
+    font: inherit;
+    font-weight: 400;
+    color: var(--slate-900);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field input,
+.select {
+    height: 2.5rem;
+}
+
+.field textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.field textarea:hover,
+.field input:hover,
+.select:hover {
+    border-color: var(--slate-400);
+}
+
+.field textarea:focus,
+.field input:focus,
+.select:focus {
+    outline: none;
+    border-color: var(--indigo-500);
+    box-shadow: var(--focus-ring);
+}
+
+.selectWrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.select {
+    appearance: none;
+    padding-right: 2.25rem;
+    cursor: pointer;
+}
+
+.selectIcon {
+    position: absolute;
+    right: var(--space-3);
+    color: var(--slate-500);
+    pointer-events: none;
+}
+
+.points {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Points sum: icon + words + colour */
+.sum {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 2.5rem;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius);
+    font-size: var(--text-base);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.sum strong {
+    font-weight: 600;
+}
+
+.sumOk {
+    background-color: var(--status-graded-bg);
+    color: var(--status-graded-fg);
+}
+
+.sumBad {
+    background-color: var(--status-failed-bg);
+    color: var(--status-failed-fg);
+    white-space: normal;
+    height: auto;
+    min-height: 2.5rem;
+    padding: var(--space-2) var(--space-3);
+}
+
+.sumNote {
+    font-weight: 400;
+}
+
+.criteria {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.criterion {
+    position: relative;
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background-color: var(--card);
+    transition: border-color 0.15s ease;
+}
+
+.criterion:focus-within {
+    border-color: var(--indigo-200);
+}
+
+/* The remove button sits in the card's corner, beside the first label */
+.criterion > .iconButton {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+}
+
+.criterionLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-right: 2.5rem;
+}
+
+.criterionId {
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    background-color: var(--slate-100);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: 1.375rem;
+    color: var(--slate-600);
+}
+
+.criterionGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 7rem;
+    gap: var(--space-3);
+}
+
+.wide {
+    grid-column: 1 / -1;
+}
+
+.iconButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: none;
+    border-radius: var(--radius);
+    color: var(--slate-500);
+    transition: var(--transition);
+}
+
+.iconButton:hover:not(:disabled) {
+    background-color: var(--red-50);
+    color: var(--red-700);
+}
+
+.iconButton:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.addButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    min-height: 2.75rem;
+    margin-top: calc(-1 * var(--space-2));
+    border: 1px dashed var(--slate-300);
+    border-radius: 0.75rem;
+    background: none;
+    color: var(--slate-600);
+    font-size: var(--text-base);
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.addButton:hover {
+    border-color: var(--indigo-400);
+    background-color: var(--primary-light);
+    color: var(--indigo-700);
+}
+
+.errors {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--red-200);
+    border-radius: var(--radius);
+    background-color: var(--red-50);
+    color: var(--status-failed-fg);
+    font-size: var(--text-base);
+}
+
+.errors svg {
+    flex-shrink: 0;
+    margin-top: 0.1875rem;
+}
+
+.errors ul {
+    padding-left: var(--space-5);
+    margin-top: var(--space-1);
+}
+
+/* Actions stay in view at the bottom of the scrolling body, like the dialog's own footer */
+.actions {
+    position: sticky;
+    bottom: calc(-1 * var(--space-6));
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--border);
+    background-color: var(--secondary);
+}
+
+/* Closing with unsaved edits: the question replaces the save group in the sticky bar */
+.closeConfirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    width: 100%;
+    animation: reveal 0.2s var(--ease-out);
+}
+
+.closeText {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    flex: 1 1 18rem;
+    min-width: 0;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--amber-800);
+}
+
+.closeText svg {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+    color: var(--amber-700);
+}
+
+.saveGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-left: auto;
+}
+
+.saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: var(--text-base);
+    color: var(--status-graded-fg);
+}
+
+@media (max-width: 640px) {
+    .criterionGrid {
+        grid-template-columns: minmax(0, 1fr) 5.5rem;
+    }
+
+    .criterion {
+        padding: var(--space-3);
+    }
+
+    /* One row: the total, then Save (a "Saved" note goes on its own line above) */
+    .saveGroup {
+        width: 100%;
+    }
+
+    .saveGroup .saved {
+        flex-basis: 100%;
+    }
+
+    .sum {
+        flex: 1;
+        min-width: 0;
+        white-space: normal;
+        height: auto;
+        min-height: 2.5rem;
+        padding-top: var(--space-2);
+        padding-bottom: var(--space-2);
+    }
+
+    .iconButton {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .criterion > .iconButton {
+        top: var(--space-1);
+        right: var(--space-1);
+    }
+}
+
+@media (max-width: 480px) {
+    .row {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
+    }
+}
+
+/* Touch screens: remove buttons are full-size targets at every width */
+@media (pointer: coarse) {
+    .iconButton {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .criterion > .iconButton {
+        top: var(--space-1);
+        right: var(--space-1);
+    }
+}

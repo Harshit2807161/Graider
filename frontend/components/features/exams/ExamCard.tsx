@@ -1,67 +1,66 @@
-"use client";
-
 import React from "react";
-import { useRouter } from "next/navigation";
-import { FileText, MoreVertical, Calendar, ListChecks, ArrowRight } from "lucide-react";
-import { Exam } from "@/types/exam.types";
+import Link from "next/link";
+import { ArrowRight, Calendar, FileText, ListChecks } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Exam, ExamStatus } from "@/types/exam.types";
 import styles from "./ExamCard.module.css";
-import Button from "@/components/ui/Button";
+
+const STATUS: Record<ExamStatus, { label: string; className: string }> = {
+    draft: { label: "Draft", className: styles.statusDraft },
+    published: { label: "Published", className: styles.statusPublished },
+    archived: { label: "Archived", className: styles.statusArchived },
+};
 
 interface ExamCardProps {
     exam: Exam;
 }
 
+/** One exam in the list. The whole card opens the exam (the title link covers it). */
 export default function ExamCard({ exam }: ExamCardProps) {
-    const router = useRouter();
-
-    const statusColors = {
-        draft: styles.statusDraft,
-        published: styles.statusPublished,
-        archived: styles.statusArchived,
-    };
+    const status = STATUS[exam.status] ?? STATUS.draft;
+    const questions = exam.question_count || 0;
 
     return (
-        <div className={styles.card}>
+        <article className={styles.card}>
+            {/* Icon tile beside the title, as on the organization and class cards */}
             <div className={styles.header}>
-                <div className={styles.iconWrapper}>
+                <span className={styles.iconWrapper} aria-hidden="true">
                     <FileText size={24} />
-                </div>
-                <div className={styles.titleInfo}>
-                    <h3>{exam.name}</h3>
-                    <span className={`${styles.status} ${statusColors[exam.status]}`}>
-                        {exam.status.charAt(0).toUpperCase() + exam.status.slice(1)}
+                </span>
+                <div className={styles.info}>
+                    <h2 className={styles.title}>
+                        <Link href={`/dashboard/exams/${exam.id}`} className={styles.link}>{exam.name}</Link>
+                    </h2>
+                    <span className={cn(styles.status, status.className)}>
+                        <span className={styles.dot} aria-hidden="true" />
+                        {status.label}
                     </span>
                 </div>
-                <button className={styles.moreBtn}>
-                    <MoreVertical size={18} />
-                </button>
             </div>
 
-            <p className={styles.description}>
-                {exam.description || "No description provided."}
+            {/* Two lines at most; the full text is in the tooltip and on the exam's page */}
+            <p className={cn(styles.description, !exam.description && styles.descriptionEmpty)} title={exam.description || undefined}>
+                {exam.description || "No description"}
             </p>
 
-            <div className={styles.stats}>
-                <div className={styles.stat}>
-                    <ListChecks size={16} />
-                    <span>{exam.question_count || 0} Questions</span>
-                </div>
-                <div className={styles.stat}>
-                    <Calendar size={16} />
-                    <span>{new Date(exam.created_at).toLocaleDateString()}</span>
-                </div>
-            </div>
-
             <div className={styles.footer}>
-                <Button
-                    variant="secondary"
-                    fullWidth
-                    icon={<ArrowRight size={16} />}
-                    onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
-                >
-                    Open Exam
-                </Button>
+                <ul className={styles.stats}>
+                    <li className={cn(styles.stat, questions === 0 && styles.statTodo)}>
+                        <ListChecks size={16} aria-hidden="true" />
+                        {questions === 0 ? "No questions yet" : `${questions} ${questions === 1 ? "question" : "questions"}`}
+                    </li>
+                    <li className={styles.stat}>
+                        <Calendar size={16} aria-hidden="true" />
+                        <time dateTime={exam.created_at}>
+                            {new Date(exam.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                        </time>
+                    </li>
+                </ul>
+                {/* The title link is the card's target; this only says where it leads */}
+                <span className={styles.open} aria-hidden="true">
+                    Open <ArrowRight size={16} />
+                </span>
             </div>
-        </div>
+        </article>
     );
 }

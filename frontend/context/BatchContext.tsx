@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { batchService } from "@/services/batch.service";
 import { Batch, BatchCreatePayload } from "@/types/batch.types";
+import { getErrorMessage } from "@/lib/api";
 
 interface BatchContextType {
     batches: Batch[];
@@ -26,9 +27,9 @@ export function BatchProvider({ children }: { children: ReactNode }) {
         try {
             const data = await batchService.getAllByOrg(orgId);
             setBatches(data);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to fetch batches:", err);
-            setError(err.response?.data?.detail || "Failed to load classes");
+            setError(getErrorMessage(err, "Failed to load classes"));
         } finally {
             setIsLoading(false);
         }
@@ -38,7 +39,7 @@ export function BatchProvider({ children }: { children: ReactNode }) {
         try {
             const newBatch = await batchService.create(payload);
             setBatches((prev) => [...prev, newBatch]);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to create batch:", err);
             throw err;
         }
@@ -48,7 +49,7 @@ export function BatchProvider({ children }: { children: ReactNode }) {
         try {
             await batchService.delete(id);
             setBatches((prev) => prev.filter((b) => b.id !== id));
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to delete batch:", err);
             throw err;
         }

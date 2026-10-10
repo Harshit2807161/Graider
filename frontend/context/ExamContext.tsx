@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { examService } from "@/services/exam.service";
 import { Exam, ExamCreate, QuestionSync } from "@/types/exam.types";
+import { getErrorMessage } from "@/lib/api";
 
 interface ExamContextType {
     exams: Exam[];
@@ -31,9 +32,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         try {
             const data = await examService.getExams(orgId, batchId);
             setExams(data);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to fetch exams:", err);
-            setError(err.response?.data?.detail || "Failed to load exams");
+            setError(getErrorMessage(err, "Failed to load exams"));
         } finally {
             setIsLoading(false);
         }
@@ -45,9 +46,9 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         try {
             const data = await examService.getExam(examId);
             setSelectedExam(data);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to fetch exam details:", err);
-            setError(err.response?.data?.detail || "Failed to load exam details");
+            setError(getErrorMessage(err, "Failed to load exam details"));
         } finally {
             setIsLoading(false);
         }
@@ -57,7 +58,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         try {
             const newExam = await examService.createExam(payload);
             setExams((prev) => [newExam, ...prev]);
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to create exam:", err);
             throw err;
         }
@@ -70,7 +71,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
             if (selectedExam?.id === id) {
                 setSelectedExam(updatedExam);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to update exam:", err);
             throw err;
         }
@@ -83,7 +84,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
             if (selectedExam?.id === id) {
                 setSelectedExam(null);
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to delete exam:", err);
             throw err;
         }
@@ -96,7 +97,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
             const updatedExam = await examService.getExam(examId);
             setSelectedExam(updatedExam);
             setExams((prev) => prev.map((e) => (e.id === examId ? updatedExam : e)));
-        } catch (err: any) {
+        } catch (err) {
             console.error("Failed to sync questions:", err);
             throw err;
         }

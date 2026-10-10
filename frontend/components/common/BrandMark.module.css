@@ -1,0 +1,45 @@
+.mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    line-height: 1;
+}
+
+.tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background-color: var(--primary);
+    color: var(--color-surface);
+    flex-shrink: 0;
+}
+
+.word {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.lg .tile {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+}
+
+.lg .word {
+    font-size: 1.5rem;
+}
+
+.light .word { color: var(--foreground); }
+.dark .word { color: var(--color-surface); }
+
+/* On the indigo login panel the tile flips to white so it doesn't disappear */
+.brand .tile {
+    background-color: var(--color-surface);
+    color: var(--primary);
+}
+
+.brand .word { color: var(--color-surface); }

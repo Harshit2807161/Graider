@@ -46,8 +46,7 @@
 }
 
 .hasError:focus {
-    box-shadow: 0 0 0 2px #ffe4e6;
-    /* light rose */
+    box-shadow: 0 0 0 2px var(--color-error-ring);
 }
 
 .errorText {

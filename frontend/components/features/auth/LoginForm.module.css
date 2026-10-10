@@ -1,20 +1,66 @@
 .form {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: var(--space-6);
     width: 100%;
 }
 
 .error {
-    padding: 0.75rem;
-    background-color: #fee2e2;
-    color: #ef4444;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--red-50);
+    border: 1px solid var(--red-200);
     border-radius: var(--radius);
+    color: var(--red-700);
     font-size: 0.875rem;
+}
+
+.error svg {
+    flex-shrink: 0;
+    margin-top: 0.0625rem;
 }
 
 .fields {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4);
+}
+
+/* Taller fields at 16px so phones don't zoom in on focus */
+.fields .input {
+    height: 2.75rem;
+    font-size: 1rem;
+}
+
+.passwordField {
+    position: relative;
+}
+
+.fields .passwordInput {
+    padding-right: 3rem;
+}
+
+/* Sits inside the password field, which is the last thing in its wrapper */
+.toggle {
+    position: absolute;
+    right: 0.125rem;
+    bottom: 0.125rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.toggle:hover {
+    background-color: var(--slate-100);
+    color: var(--foreground);
 }

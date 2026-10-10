@@ -10,6 +10,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     fullWidth?: boolean;
 }
 
+/** While `isLoading`, the button keeps its label and stays focusable (aria-disabled, aria-busy) but
+ *  ignores clicks, so keyboard and screen-reader users don't lose their place. */
 export default function Button({
     className,
     variant = "primary",
@@ -18,10 +20,13 @@ export default function Button({
     icon,
     fullWidth = false,
     children,
+    onClick,
+    disabled,
     ...props
 }: ButtonProps) {
     return (
         <button
+            {...props}
             className={cn(
                 styles.button,
                 styles[variant],
@@ -30,17 +35,15 @@ export default function Button({
                 fullWidth && styles.fullWidth,
                 className
             )}
-            disabled={props.disabled || isLoading}
-            {...props}
+            disabled={disabled}
+            aria-disabled={isLoading || undefined}
+            aria-busy={isLoading || undefined}
+            onClick={isLoading ? (e) => e.preventDefault() : onClick}
         >
-            {isLoading ? (
-                <span className={styles.spinner} />
-            ) : (
-                <>
-                    {icon && <span className={styles.icon}>{icon}</span>}
-                    {children}
-                </>
-            )}
+            {isLoading
+                ? <span className={styles.spinner} aria-hidden="true" />
+                : icon && <span className={styles.icon}>{icon}</span>}
+            {children}
         </button>
     );
 }

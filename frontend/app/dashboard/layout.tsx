@@ -14,8 +14,9 @@ export default function DashboardLayout({
             <BatchProvider>
                 <ExamProvider>
                     <div className={styles.container}>
+                        <a href="#main-content" className={styles.skipLink}>Skip to main content</a>
                         <Sidebar />
-                        <main className={styles.main}>
+                        <main id="main-content" tabIndex={-1} className={styles.main}>
                             <div className={styles.content}>
                                 {children}
                             </div>

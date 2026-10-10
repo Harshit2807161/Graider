@@ -1,0 +1,203 @@
+/* Grading settings as settings rows: label + help on the left, control on the right.
+   Rows stack when the surrounding section card is narrow (container "section"). */
+.form {
+    display: flex;
+    flex-direction: column;
+}
+
+.rows {
+    border-top: 1px solid var(--border);
+}
+
+.row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 16rem;
+    gap: var(--space-2) var(--space-8);
+    align-items: start;
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.labelBlock {
+    min-width: 0;
+    max-width: 40rem;
+}
+
+.label {
+    display: block;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.help {
+    margin-top: 0.125rem;
+    font-size: var(--text-sm);
+    color: var(--muted-foreground);
+}
+
+.control {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.input,
+.select {
+    width: 100%;
+    height: 2.5rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius);
+    background-color: var(--color-surface);
+    font: inherit;
+    font-size: var(--text-base);
+    color: var(--foreground);
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:hover,
+.select:hover {
+    border-color: var(--slate-400);
+}
+
+.input:focus,
+.select:focus {
+    outline: none;
+    border-color: var(--indigo-500);
+    box-shadow: var(--focus-ring);
+}
+
+.input[aria-invalid="true"] {
+    border-color: var(--red-600);
+}
+
+.suffixWrap,
+.selectWrap {
+    position: relative;
+}
+
+.suffixWrap .input {
+    padding-right: 2rem;
+}
+
+.suffix {
+    position: absolute;
+    right: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+    pointer-events: none;
+}
+
+.select {
+    appearance: none;
+    padding-right: 2.25rem;
+    cursor: pointer;
+}
+
+.selectIcon {
+    position: absolute;
+    right: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--slate-500);
+    pointer-events: none;
+}
+
+.fieldError {
+    font-size: var(--text-sm);
+    color: var(--status-failed-fg);
+}
+
+/* A save bar flush with the bottom of the surrounding section card (SectionCard's footer look) */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin: var(--space-6) calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    background-color: var(--secondary);
+}
+
+.state {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+    color: var(--muted-foreground);
+}
+
+.savedIcon {
+    flex-shrink: 0;
+    color: var(--status-graded-fg);
+}
+
+.dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--amber-500);
+}
+
+.unsaved {
+    font-weight: 500;
+    color: var(--status-review-fg);
+}
+
+.saveGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    margin-left: auto;
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.skeletonRow {
+    display: block;
+    height: 3.5rem;
+    border-radius: var(--radius);
+    background-color: var(--slate-100);
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.5; }
+}
+
+@container section (max-width: 40rem) {
+    .row {
+        grid-template-columns: 1fr;
+    }
+
+    .saveGroup,
+    .saveGroup > button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .actions {
+        margin: var(--space-5) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+        padding: var(--space-4);
+    }
+}

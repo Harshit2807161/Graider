@@ -68,4 +68,10 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
 - [M6] **Choice groups after an override.** An overridden answer keeps whether it counts; if a teacher raises the extra alternative above the counted one, which one counts doesn't switch (best policy). A regrade recounts.
 - [M6] **Corrections after publishing.** Published results are final in the state machine. Needs a reviewed path (unpublish with reason and student notification, or a published correction).
 - [M6] **Concurrent actions on SQLite.** Teacher actions lock the submission row on Postgres; SQLite (tests only) has no row locks.
+- [M7] **Student results page.** Students can read their published results through the API, but there's no page for them yet.
+- [M7] **Overview summary endpoint.** The overview loads each exam's sheets (newest 12 exams); a summary endpoint would scale and count everything.
+- [M7] **Failure codes.** The UI explains failed sheets by matching the error text (`components/features/review/failure.ts`); a failure code stored next to `current_step` would be sturdier. Likewise contexts return message strings, not codes.
+- [M7] **Side-by-side transcript correction** next to the page image, and a viewer mode that follows the answer being read.
+- [M7] **Class pages.** Classes have no detail page (overview rows don't link) and don't show linked exams.
+- [M7] **Shared skeleton and spin animations** are duplicated across a few CSS modules (CSS Modules scope keyframes).
 

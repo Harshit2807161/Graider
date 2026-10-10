@@ -1,0 +1,26 @@
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 1rem;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+}
+
+.dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 999px;
+    background-color: currentColor;
+}
+
+.pending { background-color: var(--status-pending-bg); color: var(--status-pending-fg); }
+.processing { background-color: var(--status-processing-bg); color: var(--status-processing-fg); }
+.graded { background-color: var(--status-graded-bg); color: var(--status-graded-fg); }
+.review { background-color: var(--status-review-bg); color: var(--status-review-fg); }
+.approved { background-color: var(--status-approved-bg); color: var(--status-approved-fg); }
+.published { background-color: var(--status-published-bg); color: var(--status-published-fg); }
+.failed { background-color: var(--status-failed-bg); color: var(--status-failed-fg); }

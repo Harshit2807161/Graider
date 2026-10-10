@@ -5,8 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Graider | AI Grading System",
-  description: "Automated grading for schools using Claude Vision.",
+  title: { default: "Gr8r · Grading for handwritten exams", template: "%s · Gr8r" },
+  description:
+    "Gr8r reads handwritten answer sheets, grades them against your rubric with a second AI examiner checking, and sends anything uncertain to the teacher.",
 };
 
 export default function RootLayout({

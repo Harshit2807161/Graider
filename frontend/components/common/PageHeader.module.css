@@ -1,0 +1,148 @@
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-8);
+}
+
+.crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    list-style: none;
+    font-size: 0.875rem;
+    color: var(--muted-foreground);
+}
+
+.crumb {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.crumbLink {
+    color: var(--primary);
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s ease;
+}
+
+/* Phones and tablets: a 40px tall tap target without moving the text */
+@media (max-width: 1023px) {
+    .crumbLink {
+        display: inline-block;
+        padding-block: 0.625rem;
+        margin-block: -0.625rem;
+    }
+}
+
+/* Shown only as the phone back link */
+.back {
+    display: none;
+    flex-shrink: 0;
+    color: var(--primary);
+}
+
+/* Phones: just "‹ Parent page", one line, instead of a trail that wraps */
+@media (max-width: 767px) {
+    .crumb {
+        display: none;
+    }
+
+    .parent {
+        display: inline-flex;
+    }
+
+    /* The arrow is part of the link, so it's tappable too */
+    .parent .crumbLink {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.125rem;
+        margin-left: -0.25rem;
+    }
+
+    .parent .back {
+        display: block;
+    }
+
+    .parent .chevron {
+        display: none;
+    }
+}
+
+.crumbLink:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.chevron {
+    color: var(--slate-400);
+    flex-shrink: 0;
+}
+
+.row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-4);
+}
+
+.titleBlock {
+    min-width: 0;
+}
+
+.title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    color: var(--foreground);
+    /* Not "balance": balancing broke "check-in" at its hyphen on phones; "pretty" only avoids a lone last word */
+    text-wrap: pretty;
+    /* Last resort for a single token wider than the screen */
+    overflow-wrap: break-word;
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.subtitle {
+    margin-top: var(--space-1);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    max-width: 65ch;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+    .row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+    }
+
+    .titleBlock {
+        flex: 1 1 28rem;
+    }
+
+    .title {
+        font-size: 1.875rem;
+    }
+
+    .actions {
+        flex-shrink: 0;
+        justify-content: flex-end;
+    }
+}

@@ -1,106 +1,251 @@
-.container {
+.page {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    height: 100%;
 }
 
-.header {
-    display: flex;
-    justify-content: space-between;
+.orgName {
+    font-weight: 600;
+    color: var(--slate-700);
+}
+
+/* After creating an exam: where to go next */
+.created {
     align-items: center;
+    margin-bottom: var(--space-6);
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
 }
 
-.headerInfo h1 {
-    font-size: 1.875rem;
-    font-weight: 700;
+.created strong {
+    font-weight: 600;
+}
+
+.createdAction {
+    flex-shrink: 0;
+    background-color: var(--card);
+}
+
+/* Organization (when there's more than one) + search */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.orgField {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.toolbarLabel {
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--slate-600);
+    white-space: nowrap;
+}
+
+.selectWrap,
+.searchWrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.selectLead {
+    position: absolute;
+    left: var(--space-3);
+    color: var(--slate-400);
+    pointer-events: none;
+}
+
+.selectChevron {
+    position: absolute;
+    right: var(--space-3);
+    color: var(--slate-500);
+    pointer-events: none;
+}
+
+.select,
+.search {
+    height: 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--card);
+    font: inherit;
+    font-size: var(--text-base);
     color: var(--foreground);
-    margin: 0;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.headerInfo p {
+.select {
+    appearance: none;
+    min-width: 15rem;
+    max-width: 100%;
+    padding: 0 2.25rem 0 2.25rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-overflow: ellipsis;
+}
+
+.search {
+    width: 16rem;
+    padding: 0 var(--space-3) 0 2.25rem;
+}
+
+.search::placeholder {
+    color: var(--slate-400);
+}
+
+.select:hover:not(:disabled),
+.search:hover {
+    border-color: var(--slate-300);
+}
+
+.select:focus,
+.search:focus {
+    outline: none;
+    border-color: var(--indigo-500);
+    box-shadow: var(--focus-ring);
+}
+
+.select:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.count {
+    margin-left: auto;
+    font-size: var(--text-base);
     color: var(--muted-foreground);
-    margin: 0.25rem 0 0 0;
+    font-variant-numeric: tabular-nums;
 }
 
+/* Error (the shared ErrorBanner; spacing only) */
 .errorBanner {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    background-color: #fef2f2;
-    border: 1px solid #fee2e2;
-    border-radius: 0.5rem;
-    color: #b91c1c;
+    margin-bottom: var(--space-6);
 }
 
+/* Cards */
 .grid {
+    list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    gap: var(--space-6);
 }
 
-.loadingState,
-.emptyContent {
+.grid > li {
+    display: flex;
+    min-width: 0;
+}
+
+.skeletonCard {
+    height: 15rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background-color: var(--card);
+    /* The card's outline drawn in place: icon tile, two title lines, description, divider, footer */
+    background-image:
+        linear-gradient(var(--slate-100), var(--slate-100)),
+        linear-gradient(var(--slate-200), var(--slate-200)),
+        linear-gradient(var(--slate-200), var(--slate-200)),
+        linear-gradient(var(--slate-100), var(--slate-100)),
+        linear-gradient(var(--border-light), var(--border-light)),
+        linear-gradient(var(--slate-100), var(--slate-100));
+    background-size: 48px 48px, 70% 1rem, 45% 1rem, 60% 0.75rem, calc(100% - 3rem) 1px, 50% 0.75rem;
+    background-position: 1.5rem 1.5rem, 1.5rem 6.5rem, 1.5rem 8rem, 1.5rem 9.75rem, 1.5rem 11.25rem, 1.5rem 13rem;
+    background-repeat: no-repeat;
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.55; }
+}
+
+/* Empty states */
+.empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4rem 2rem;
+    gap: var(--space-2);
+    padding: 4rem var(--space-6);
     background-color: var(--card);
-    border: 1px dashed var(--border);
-    border-radius: 1rem;
+    border: 1px dashed var(--slate-300);
+    border-radius: var(--radius-lg);
     text-align: center;
-    gap: 1.5rem;
-}
-
-.spinner {
-    width: 48px;
-    height: 48px;
-    color: var(--primary);
-    animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 .emptyIcon {
-    width: 100px;
-    height: 100px;
+    width: 72px;
+    height: 72px;
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
     background-color: var(--primary-light);
     color: var(--primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 1rem;
 }
 
-.emptyContent h2 {
-    font-size: 1.5rem;
+.empty h2 {
+    font-size: var(--text-lg);
     font-weight: 600;
-    margin: 0;
+    color: var(--foreground);
 }
 
-.emptyContent p {
+.empty p {
+    max-width: 26rem;
+    margin-bottom: var(--space-3);
+    font-size: var(--text-base);
     color: var(--muted-foreground);
-    max-width: 400px;
-    margin: 0;
 }
 
-.emptyState {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--muted-foreground);
-    gap: 1rem;
+@media (max-width: 640px) {
+    .orgField,
+    .searchWrap {
+        width: 100%;
+    }
+
+    .orgField {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-1);
+    }
+
+    .select,
+    .search {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .count {
+        margin-left: 0;
+    }
+
+    /* The sentence gets the first line; the action (then dismiss) the second */
+    .created {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .created > div {
+        flex: 1 1 calc(100% - 3rem);
+    }
+
+    .createdAction {
+        margin-left: 1.5rem;
+    }
+
+    .created > button:last-child {
+        margin-left: auto;
+    }
+
+    .empty {
+        padding: var(--space-8) var(--space-4);
+    }
 }

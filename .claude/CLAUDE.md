@@ -23,7 +23,7 @@ Status: multi-tenant web app working end to end (branch `v1-full`). **Grading v2
 
 ### Frontend (`frontend/`)
 - Next.js 16 (App Router), React 19, TypeScript
-- Styling: CSS Modules plus some inline styles (no Tailwind)
+- Styling: CSS Modules (no Tailwind) on the design tokens in `app/globals.css` (status colours, type and spacing scales, radii). New UI builds on the existing components and visual language (cards, icon tiles, pills, modals); see docs/grading-v2-checklist.md M7
 - HTTP: axios client in `lib/api.ts` (bearer token from the `token` cookie, redirects to `/login` on 401). API base URL from `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`)
 
 ## Project Structure
@@ -55,9 +55,13 @@ backend/
 │   └── services/                  # grading_service (run lifecycle), labels, enrollment_service, org_service
 └── tests/                         # pytest suite (FakeLLM, SQLite or Postgres)
 frontend/
-├── app/                           # (auth)/login, dashboard/{orgs,classes,exams,exams/[id]}
-├── components/ context/ hooks/    # UI, React contexts per resource
-├── services/ types/               # API calls and types per resource
+├── app/                           # (auth)/login, dashboard/{orgs,classes,exams,exams/[id],
+│                                  #   exams/[id]/review (queue), exams/[id]/submissions/[sid] (review screen)}
+├── components/                    # ui/ (Button, Card, Input, Modal, ConfirmDialog, StatusBadge, InlineMessage),
+│                                  # common/ (Sidebar, PageHeader, ErrorBanner, ButtonLink, useHydrated, useTabTitle),
+│                                  # features/{review,rubrics,exams,classes,orgs,auth}
+├── context/ hooks/                # React contexts per resource
+├── services/ types/               # API calls and types per resource (review, rubric, exam, ...)
 └── lib/                           # api.ts (axios client), utils.ts
 docs/                              # architecture, ADRs, proposals/
 ```
@@ -204,8 +208,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - `backend/tests/test_audit.py`, `test_tracing.py` — audit rows, run lifecycle, Langfuse tracing
 
 ## Known Gaps
-- Frontend lint has existing `any` / hook warnings
-- Review workflow is API-only until M7 (UI); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
+- No student-facing results page yet (students can read their published results through the API); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
 
 ## Key Documents
 - [Changelog](../CHANGELOG.md)

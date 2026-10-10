@@ -1,0 +1,51 @@
+.banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--red-50);
+    border: 1px solid var(--red-200);
+    border-radius: var(--radius-lg);
+    color: var(--status-failed-fg);
+    font-size: 0.875rem;
+}
+
+.icon {
+    flex-shrink: 0;
+    margin-top: 0.0625rem;
+}
+
+.body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.text {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.title {
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.detail {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--red-700);
+    overflow-wrap: anywhere;
+    white-space: pre-line;
+}
+
+/* White on red-50 keeps the button legible */
+.retry {
+    background-color: var(--card);
+    border-color: var(--red-200);
+}

@@ -27,8 +27,8 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 | M4b | Document intake (Proposal 003) | `feat/document-intake` | M4 | [#11](https://github.com/Harshit2807161/Graider/pull/11) | Merged |
 | M4c | Exam documents (Proposal 003) | `feat/exam-documents` | M4b | [#12](https://github.com/Harshit2807161/Graider/pull/12) | Merged |
 | M5 | Grading graph v2 | `feat/grading-graph-v2` | M4c | [#13](https://github.com/Harshit2807161/Graider/pull/13) | Merged |
-| M6 | Review workflow API | `feat/review-workflow-api` | M5 | [#14](https://github.com/Harshit2807161/Graider/pull/14) | In review |
-| M7 | Review UI | `feat/review-ui` | M6 | – | Not started |
+| M6 | Review workflow API | `feat/review-workflow-api` | M5 | [#14](https://github.com/Harshit2807161/Graider/pull/14) | Merged |
+| M7 | Review UI | `feat/review-ui` | M6 | [#15](https://github.com/Harshit2807161/Graider/pull/15) | In review |
 | M8 | Eval harness | `feat/eval-harness` | M5 | – | Not started |
 | M9 | Public eval sets | `feat/eval-datasets` | M8 | – | Not started |
 | M10 | Hardening | `chore/hardening` | M3, M6 | – | Not started |
@@ -195,24 +195,17 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 **Acceptance:** a teacher can resolve every escalation and publish using the API alone. ✔
 
 ## M7: Review UI
-- [ ] Design pass first, with the available skills:
-  - `frontend-design`: visual direction, typography, layout
-  - `ui-ux-pro-max`: review-workflow UX, accessibility, dense data
-  - `design-system`: status and flag colour tokens, spacing, type scale, as CSS variables
-  - Keep Next.js and CSS Modules
-- [ ] Types and services for review and rubrics; NEEDS_REVIEW badge
-- [ ] Exam page: rubric status badges; parsed-rubric drawer (criteria editor, points-sum indicator, re-parse); Review button; "Publish approved" button
-- [ ] Review queue page
-- [ ] Submission review page:
-  - Page image
-  - Editable transcript
-  - Criteria with highlighted evidence
-  - Grader and evaluator positions side by side
-  - Override modal with a mandatory reason
-  - Resolve and approve
-  - Audit timeline
+- [x] Types and services for review, rubrics and grading settings; NEEDS_REVIEW badge (`StatusBadge`: words plus colour)
+- [x] Exam page: rubric status per question and a rubric dialog (criteria editor, points-sum check, parse again); a progress stepper (questions → grading → review → publish); answer sheets grouped by what needs action, with student names; Review queue and Publish approved (confirmed); grading settings (agreement as a percentage, spot checks, choice policy); unsaved-changes guard
+- [x] Review queue: needs review first, then lowest agreement; deep link to each answer
+- [x] Submission review screen: page viewer (sticky, keyboard paging, zoom); per answer the reason and what to do, transcript with highlighted evidence (quotes pin the highlight), criteria, examiner discussion (grader and evaluator side by side, replies), earlier versions; accept, change scores (mandatory reason), correct transcript (can add unplaced writing), approve / withdraw, regrade, history timeline; plain-language failed-sheet guidance
+- [x] Overview with next steps (review, regrade, approve, publish, add questions); responsive shell (drawer below 1024px, skip link); organizations, classes and sign-in refreshed
+- [x] Design: built on the existing UI (Parth's components, palette, cards, modals) and refined with the ui-ux-pro-max skill (Swiss-minimal SaaS direction) in four rounds by parallel design agents, each round with fresh eyes on another agent's area; shared tokens in `globals.css`
+- [x] Verified with headless-browser scripts on seeded data: WCAG AA contrast 0 failures on every page and dialog at 1440 and 390; keyboard walks (tab order, focus trap, Escape, focus return) with 0 issues; no horizontal overflow from 320 to 1440px; tap targets ≥ 40px on narrow screens; loading, error and empty states for every data region
+- [x] Frontend lint clean (was 30 problems); `tsc` and `next build` pass
+- Changes from the plan: the `frontend-design` and `design-system` skills weren't available; `ui-ux-pro-max` drove the design, on top of the existing UI as the owner asked. Screenshots stay with the reviewer (GitHub's CLI can't attach images to a PR). A walkthrough on real handwriting found and fixed a colour cast in photo ingestion (M4b)
 
-**Acceptance:** `tsc` and the build pass; the whole review flow works against the API; accessibility checks pass; Playwright screenshots are attached to the PR.
+**Acceptance:** `tsc` and the build pass; the whole review flow works against the API; accessibility checks pass. ✔
 
 ## M8: Eval harness
 - [ ] `backend/evals/`:
@@ -242,7 +235,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [ ] Redis token-bucket rate limits and a per-target circuit breaker in the router
 - [ ] Hash-locked dependencies, Dependabot, pre-commit (ruff, gitleaks, detect-private-key)
 - [ ] `worker_max_tasks_per_child`, a retention job for `llm_calls` bodies, structlog bound to `run_id`
-- [ ] Clear the frontend lint debt, then enable `npm run lint` in CI
+- [x] Clear the frontend lint debt, then enable `npm run lint` in CI (done in M7)
 
 ---
 

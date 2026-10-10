@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, FormEvent } from "react";
+import React, { useId, useState, FormEvent } from "react";
+import { Building2 } from "lucide-react";
 import { useOrgs } from "@/hooks/useOrgs";
+import { getErrorMessage } from "@/lib/api";
 import { CreateOrgPayload } from "@/types/org.types";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { X } from "lucide-react";
+import Modal from "@/components/ui/Modal";
 import styles from "./CreateOrgModal.module.css";
 
 interface CreateOrgModalProps {
@@ -13,17 +15,14 @@ interface CreateOrgModalProps {
     onClose: () => void;
 }
 
+const EMPTY: CreateOrgPayload = { name: "", slug: "", description: "" };
+
 export default function CreateOrgModal({ isOpen, onClose }: CreateOrgModalProps) {
     const { createOrg } = useOrgs();
-    const [formData, setFormData] = useState<CreateOrgPayload>({
-        name: "",
-        slug: "",
-        description: "",
-    });
+    const formId = useId();
+    const [formData, setFormData] = useState<CreateOrgPayload>(EMPTY);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    if (!isOpen) return null;
 
     const handleNameChange = (value: string) => {
         setFormData((prev) => ({
@@ -33,6 +32,11 @@ export default function CreateOrgModal({ isOpen, onClose }: CreateOrgModalProps)
         }));
     };
 
+    const close = () => {
+        setError(null);
+        onClose();
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -40,62 +44,64 @@ export default function CreateOrgModal({ isOpen, onClose }: CreateOrgModalProps)
 
         try {
             await createOrg(formData);
-            setFormData({ name: "", slug: "", description: "" });
+            setFormData(EMPTY);
             onClose();
-        } catch (err: any) {
-            setError(err.response?.data?.detail || "Failed to create organization");
+        } catch (err) {
+            setError(getErrorMessage(err, "The organization couldn't be created"));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <div className={styles.overlay} onClick={onClose}>
-            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <div className={styles.header}>
-                    <h2>Create Organization</h2>
-                    <button className={styles.closeBtn} onClick={onClose} aria-label="Close modal">
-                        <X size={20} />
-                    </button>
-                </div>
+        <Modal
+            open={isOpen}
+            title="New organization"
+            description="A school or department. You become its owner."
+            icon={<Building2 size={18} />}
+            onClose={close}
+            footer={
+                <>
+                    <Button type="button" variant="secondary" onClick={close}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" form={formId} variant="primary" isLoading={isSubmitting}>
+                        Create organization
+                    </Button>
+                </>
+            }
+        >
+            <form id={formId} onSubmit={handleSubmit} className={styles.form}>
+                <Input
+                    label="Organization name"
+                    value={formData.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="e.g. Greenfield Middle School"
+                    required
+                    autoComplete="organization"
+                />
 
-                <form onSubmit={handleSubmit} className={styles.form}>
-                    <Input
-                        label="Organization Name"
-                        value={formData.name}
-                        onChange={(e) => handleNameChange(e.target.value)}
-                        placeholder="e.g., Acme University"
-                        required
-                    />
+                <Input
+                    label="Short name"
+                    value={formData.slug}
+                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                    placeholder="greenfield"
+                    helperText="Lowercase letters, numbers and hyphens. Filled in from the name."
+                    required
+                    pattern="[a-z0-9\-]+"
+                    autoComplete="off"
+                />
 
-                    <Input
-                        label="Slug"
-                        value={formData.slug}
-                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                        placeholder="acme-university"
-                        helperText="URL-friendly identifier"
-                        required
-                    />
+                <Input
+                    label="Description (optional)"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="e.g. Grades 6 to 8, maths and science"
+                    autoComplete="off"
+                />
 
-                    <Input
-                        label="Description (Optional)"
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Brief description of your organization"
-                    />
-
-                    {error && <div className={styles.error}>{error}</div>}
-
-                    <div className={styles.actions}>
-                        <Button type="button" variant="secondary" onClick={onClose}>
-                            Cancel
-                        </Button>
-                        <Button type="submit" variant="primary" isLoading={isSubmitting}>
-                            Create Organization
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                {error && <div className={styles.error} role="alert">{error}</div>}
+            </form>
+        </Modal>
     );
 }
