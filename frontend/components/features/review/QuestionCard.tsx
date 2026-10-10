@@ -159,7 +159,7 @@ export default function QuestionCard({
                                             <button key={p} type="button" onClick={() => onShowPage(p)}
                                                     className={cn(styles.pageButton, p === currentPage && styles.pageButtonShown)}
                                                     aria-current={p === currentPage ? "true" : undefined}>
-                                                <FileText size={13} aria-hidden="true" /> Page {p}
+                                                <FileText size={14} aria-hidden="true" /> Page {p}
                                                 {p === currentPage && <span className="sr-only"> (shown)</span>}
                                             </button>
                                         ))}
@@ -251,7 +251,7 @@ export default function QuestionCard({
                                 {grade?.feedback ? <p className={styles.feedback}>{grade.feedback}</p> : <p className={styles.empty}>No feedback.</p>}
                                 {grade?.override_reason && (
                                     <p className={styles.reason}>
-                                        <UserCheck size={14} aria-hidden="true" />
+                                        <UserCheck size={16} aria-hidden="true" />
                                         <span><strong>Teacher&apos;s reason:</strong> {grade.override_reason}</span>
                                     </p>
                                 )}
@@ -281,14 +281,14 @@ export default function QuestionCard({
                                         <time className={styles.versionTime} dateTime={g.created_at}>{when(g.created_at)}</time>
                                         {g.override_reason && (
                                             <p className={styles.reason}>
-                                                <UserCheck size={14} aria-hidden="true" />
+                                                <UserCheck size={16} aria-hidden="true" />
                                                 <span><strong>Reason:</strong> {g.override_reason}</span>
                                             </p>
                                         )}
                                         {g.rounds.length > 0 && (
                                             <details className={styles.nested}>
                                                 <summary>
-                                                    <MessagesSquare size={14} aria-hidden="true" className={styles.summaryIcon} />
+                                                    <MessagesSquare size={16} aria-hidden="true" className={styles.summaryIcon} />
                                                     <span className={styles.summaryText}>
                                                         Examiner discussion{" "}
                                                         <span className={styles.summaryMeta}>
@@ -296,7 +296,7 @@ export default function QuestionCard({
                                                             {` · agreement ${percent(g.rounds[g.rounds.length - 1].effective_agreement)}`}
                                                         </span>
                                                     </span>
-                                                    <ChevronRight size={14} aria-hidden="true" className={styles.chevron} />
+                                                    <ChevronRight size={16} aria-hidden="true" className={styles.chevron} />
                                                 </summary>
                                                 <div><ExaminerRounds rounds={g.rounds} criteria={specCriteria} /></div>
                                             </details>
@@ -312,24 +312,24 @@ export default function QuestionCard({
             {(canScore || canEditTranscript) && grade && !notAttempted && (
                 <div className={styles.footer}>
                     {canAccept && (
-                        <Button size="sm" onClick={() => onResolve(q)} disabled={busy} icon={<Check size={14} aria-hidden="true" />}>
+                        <Button size="sm" onClick={() => onResolve(q)} disabled={busy} icon={<Check size={16} aria-hidden="true" />}>
                             Accept {fmt(grade.score)} / {fmt(q.max_score)}
                         </Button>
                     )}
                     {primary === "transcript" && (
-                        <Button size="sm" onClick={() => onEditTranscript(q)} disabled={busy} icon={<Pencil size={14} aria-hidden="true" />}>
+                        <Button size="sm" onClick={() => onEditTranscript(q)} disabled={busy} icon={<Pencil size={16} aria-hidden="true" />}>
                             Correct transcript
                         </Button>
                     )}
                     {canScore && (
                         <Button size="sm" variant={primary === "scores" ? "primary" : "secondary"} onClick={() => onOverride(q)} disabled={busy}
-                                icon={<SlidersHorizontal size={14} aria-hidden="true" />}>
+                                icon={<SlidersHorizontal size={16} aria-hidden="true" />}>
                             Change scores
                         </Button>
                     )}
                     {canEditTranscript && primary !== "transcript" && (
                         <Button size="sm" variant="ghost" onClick={() => onEditTranscript(q)} disabled={busy}
-                                icon={<Pencil size={14} aria-hidden="true" />}>
+                                icon={<Pencil size={16} aria-hidden="true" />}>
                             Correct transcript
                         </Button>
                     )}

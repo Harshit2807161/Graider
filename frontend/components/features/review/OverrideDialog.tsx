@@ -92,7 +92,7 @@ export default function OverrideDialog({ q, onClose, onSubmit }: {
                                     setScores(Object.fromEntries(criteria.map((c) => [c.id, "0"])));
                                     setTouched(new Set(criteria.map((c) => c.id)));
                                 }}>
-                            <Eraser size={14} aria-hidden="true" /> Set every criterion to 0
+                            <Eraser size={16} aria-hidden="true" /> Set every criterion to 0
                         </button>
                     </div>
                 )}

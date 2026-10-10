@@ -3,14 +3,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
-    AlertCircle, AlertTriangle, ArrowDown, Calendar, Check, CheckCircle2, ChevronRight, Clock, FileQuestion, FileText, History, ListChecks,
-    Loader2, Minus, RefreshCw, Send, ShieldCheck, Undo2, X,
+    AlertCircle, AlertTriangle, ArrowDown, ArrowLeft, Calendar, Check, CheckCircle2, ChevronRight, Clock, FileQuestion, FileText, History,
+    ListChecks, Loader2, Minus, RefreshCw, Send, ShieldCheck, Undo2, X,
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ButtonLink from "@/components/common/ButtonLink";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import PageHeader from "@/components/common/PageHeader";
+import { focusMainContent } from "@/components/common/focus";
 import OverrideDialog from "@/components/features/review/OverrideDialog";
 import PageViewer from "@/components/features/review/PageViewer";
 import QuestionCard from "@/components/features/review/QuestionCard";
@@ -19,6 +21,7 @@ import TranscriptDialog from "@/components/features/review/TranscriptDialog";
 import { explainFailure, plainError } from "@/components/features/review/failure";
 import { fmt, plural } from "@/components/features/review/format";
 import styles from "@/components/features/review/review.module.css";
+import { useTabTitle } from "@/components/common/useTabTitle";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { examService } from "@/services/exam.service";
@@ -53,37 +56,37 @@ function progress(step: string | null | undefined, fallback: string): string {
 function summaryFor(status: SubmissionStatus, toReview: number, step: string | null | undefined) {
     switch (status) {
         case "PENDING":
-            return { tone: "processing", icon: <Loader2 size={22} className={styles.spin} />, title: "Waiting to be graded",
+            return { tone: "processing", icon: <Loader2 size={20} className={styles.spin} />, title: "Waiting to be graded",
                      text: progress(step, "Queued: grading starts shortly.") };
         case "PROCESSING":
-            return { tone: "processing", icon: <Loader2 size={22} className={styles.spin} />, title: "Grading in progress",
+            return { tone: "processing", icon: <Loader2 size={20} className={styles.spin} />, title: "Grading in progress",
                      text: progress(step, "Reading the pages and grading each answer…") };
         case "NEEDS_REVIEW":
-            return { tone: "review", icon: <AlertTriangle size={22} />,
+            return { tone: "review", icon: <AlertTriangle size={20} />,
                      title: `${plural(toReview, "answer needs", "answers need")} your review`,
                      text: "Accept or change each flagged answer. You can approve the sheet once every answer is reviewed." };
         case "GRADED":
-            return { tone: "graded", icon: <CheckCircle2 size={22} />, title: "Ready to approve",
+            return { tone: "graded", icon: <CheckCircle2 size={20} />, title: "Ready to approve",
                      text: "Every answer is graded. Check the grades, then approve this answer sheet." };
         case "APPROVED":
-            return { tone: "approved", icon: <ShieldCheck size={22} />, title: "Approved, ready to publish",
+            return { tone: "approved", icon: <ShieldCheck size={20} />, title: "Approved, ready to publish",
                      text: "\"Publish approved\" on the exam page shares every approved sheet with its student. "
                          + "To change a score first, withdraw the approval." };
         case "PUBLISHED":
-            return { tone: "published", icon: <Send size={22} />, title: "Published",
+            return { tone: "published", icon: <Send size={20} />, title: "Published",
                      text: "The student can see these results. Published results can't be changed." };
         default:
-            return { tone: "failed", icon: <AlertCircle size={22} />, title: "This answer sheet couldn't be graded",
+            return { tone: "failed", icon: <AlertCircle size={20} />, title: "This answer sheet couldn't be graded",
                      text: explainFailure(step).cause };
     }
 }
 
 function answerState(q: QuestionReview): { kind: "graded" | "review" | "muted"; icon: React.ReactNode; words: string } {
     const status = q.grade?.status;
-    if (status === "escalated") return { kind: "review", icon: <AlertTriangle size={14} />, words: "needs review" };
-    if (status === "graded") return { kind: "graded", icon: <Check size={14} />, words: "graded" };
-    if (status === "not_attempted") return { kind: "muted", icon: <Minus size={14} />, words: "not attempted" };
-    return { kind: "muted", icon: <Clock size={14} />, words: "not graded yet" };
+    if (status === "escalated") return { kind: "review", icon: <AlertTriangle size={16} />, words: "needs review" };
+    if (status === "graded") return { kind: "graded", icon: <Check size={16} />, words: "graded" };
+    if (status === "not_attempted") return { kind: "muted", icon: <Minus size={16} />, words: "not attempted" };
+    return { kind: "muted", icon: <Clock size={16} />, words: "not graded yet" };
 }
 
 export default function SubmissionReviewPage() {
@@ -144,6 +147,9 @@ export default function SubmissionReviewPage() {
         examService.getExam(examId).then((exam) => setExamName(exam.name)).catch(() => undefined);
     }, [examId]);
 
+    // The browser tab names the student once the sheet has loaded (layout.tsx gives "Answer sheet · Gr8r" until then)
+    useTabTitle(review ? `${review.student_name ?? "Answer sheet"} · Gr8r` : null, "Answer sheet · Gr8r");
+
     const status = review?.submission.status;
     const grading = status === "PENDING" || status === "PROCESSING";
     useEffect(() => {
@@ -197,6 +203,12 @@ export default function SubmissionReviewPage() {
         el?.focus({ preventScroll: true });
     });
 
+    /** Load again after an error. Once it works the banner (and the button that had focus) is gone:
+     *  keep keyboard focus on the page rather than losing it to <body>. */
+    const retryLoad = async () => {
+        if (await load()) focusMainContent();
+    };
+
     /** What is left to review after an action, for the confirmation. */
     const reviewLeft = (fresh: SubmissionReview | null): string => {
         if (!fresh) return "";
@@ -231,20 +243,11 @@ export default function SubmissionReviewPage() {
         return (
             <div className={styles.page}>
                 <PageHeader breadcrumbs={[...crumbs, { label: "Answer sheet" }]} title="Answer sheet" />
-                <div className={styles.errorBanner} role="alert">
-                    <AlertCircle size={20} aria-hidden="true" />
-                    <div className={styles.errorBody}>
-                        <div>
-                            <p className={styles.errorTitle}>{LOAD_ERROR}</p>
-                            <p>{loadError === LOAD_ERROR ? "Check your connection and try again."
-                                : plainError(loadError) ?? "Something went wrong on our side. Try again in a moment."}</p>
-                        </div>
-                        <div className={styles.errorActions}>
-                            <Button variant="outline" size="sm" onClick={load} icon={<RefreshCw size={14} aria-hidden="true" />}>Try again</Button>
-                            <ButtonLink href={`/dashboard/exams/${examId}/review`} variant="ghost" size="sm">Back to the review queue</ButtonLink>
-                        </div>
-                    </div>
-                </div>
+                <ErrorBanner title={LOAD_ERROR} detail={loadError} onRetry={retryLoad} />
+                <ButtonLink href={`/dashboard/exams/${examId}/review`} variant="outline" className={styles.backLink}
+                            icon={<ArrowLeft size={16} aria-hidden="true" />}>
+                    Back to the review queue
+                </ButtonLink>
             </div>
         );
     }
@@ -345,6 +348,10 @@ export default function SubmissionReviewPage() {
         focusLater(`q-${q.question_id}`);
     };
 
+    // A failed refresh: what the server said (when it means something to a teacher), then what it means here
+    const serverSaid = plainError(loadError);
+    const refreshDetail = `${serverSaid ? `${serverSaid.replace(/\.?$/, ".")} ` : ""}What you see may be out of date.`;
+
     const uploaded = new Date(submission.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
     return (
@@ -356,10 +363,10 @@ export default function SubmissionReviewPage() {
                     subtitle={
                         <span className={styles.meta}>
                             <StatusBadge status={submission.status} />
-                            <span><Calendar size={15} aria-hidden="true" />Uploaded {uploaded}</span>
-                            <span><ListChecks size={15} aria-hidden="true" />{plural(questions.length, "question", "questions")}</span>
+                            <span><Calendar size={16} aria-hidden="true" />Uploaded {uploaded}</span>
+                            <span><ListChecks size={16} aria-hidden="true" />{plural(questions.length, "question", "questions")}</span>
                             {review.pages.length > 0 && (
-                                <span><FileText size={15} aria-hidden="true" />{plural(review.pages.length, "page", "pages")}</span>
+                                <span><FileText size={16} aria-hidden="true" />{plural(review.pages.length, "page", "pages")}</span>
                             )}
                         </span>
                     }
@@ -369,8 +376,9 @@ export default function SubmissionReviewPage() {
                                     className={styles.headerAction}>
                                 History
                             </Button>
-                            {!grading && status !== "PUBLISHED" && (
-                                <Button variant={status === "FAILED" ? "primary" : "outline"} onClick={() => setConfirmRegrade(true)} disabled={busy}
+                            {/* A failed sheet has its Regrade with the explanation below */}
+                            {!grading && status !== "PUBLISHED" && status !== "FAILED" && (
+                                <Button variant="outline" onClick={() => setConfirmRegrade(true)} disabled={busy}
                                         icon={<RefreshCw size={16} aria-hidden="true" />} className={styles.headerAction}>
                                     Regrade
                                 </Button>
@@ -396,16 +404,7 @@ export default function SubmissionReviewPage() {
 
                 <div className={styles.sections}>
                     {loadError && (
-                        <div className={styles.errorBanner} role="alert">
-                            <AlertCircle size={20} aria-hidden="true" />
-                            <div className={styles.errorBody}>
-                                <div>
-                                    <p className={styles.errorTitle}>{plainError(loadError) ?? "This answer sheet couldn't be refreshed"}</p>
-                                    <p>What you see may be out of date.</p>
-                                </div>
-                                <Button variant="outline" size="sm" onClick={load} icon={<RefreshCw size={14} aria-hidden="true" />}>Try again</Button>
-                            </div>
-                        </div>
+                        <ErrorBanner title="This answer sheet couldn't be refreshed" detail={refreshDetail} onRetry={retryLoad} />
                     )}
 
                     <section ref={summaryRef} tabIndex={-1} aria-labelledby="summary-title"
@@ -422,13 +421,18 @@ export default function SubmissionReviewPage() {
                                     <ol className={styles.steps} aria-label="What to try">
                                         {failure.steps.map((s) => <li key={s}>{s}</li>)}
                                     </ol>
+                                    {/* The retry sits with the problem; it's the page's one primary action */}
                                     <div className={styles.summaryActions}>
+                                        <Button size="sm" onClick={() => setConfirmRegrade(true)} disabled={busy}
+                                                icon={<RefreshCw size={16} aria-hidden="true" />}>
+                                            Regrade
+                                        </Button>
                                         <ButtonLink href={examHref} variant="outline" size="sm">Open the exam</ButtonLink>
                                     </div>
                                     {failure.technical && (
                                         <details className={styles.technical}>
                                             <summary>
-                                                <ChevronRight size={14} aria-hidden="true" className={styles.technicalChevron} />
+                                                <ChevronRight size={16} aria-hidden="true" className={styles.technicalChevron} />
                                                 Technical details for your administrator
                                             </summary>
                                             <p><code>{failure.technical}</code></p>
@@ -438,7 +442,7 @@ export default function SubmissionReviewPage() {
                             )}
                             {status === "APPROVED" && (
                                 <div className={styles.summaryActions}>
-                                    <ButtonLink href={examHref} variant="outline" size="sm" icon={<Send size={14} />}>
+                                    <ButtonLink href={examHref} variant="outline" size="sm" icon={<Send size={16} aria-hidden="true" />}>
                                         Publish on the exam page
                                     </ButtonLink>
                                 </div>
@@ -465,7 +469,7 @@ export default function SubmissionReviewPage() {
                                         )}
                                         {status === "NEEDS_REVIEW" && escalated.length > 0 && (
                                             <Button size="sm" variant="secondary" onClick={nextToReview} className={styles.nextButton}
-                                                    icon={<ArrowDown size={14} aria-hidden="true" />}>
+                                                    icon={<ArrowDown size={16} aria-hidden="true" />}>
                                                 Next to review
                                             </Button>
                                         )}
@@ -516,7 +520,7 @@ export default function SubmissionReviewPage() {
                                                     <button type="button" className={cn(styles.pageLink, s.page === page && styles.pageLinkShown)}
                                                             aria-current={s.page === page ? "true" : undefined}
                                                             onClick={() => showPage(s.page as number)}>
-                                                        <FileText size={13} aria-hidden="true" /> Page {s.page}
+                                                        <FileText size={14} aria-hidden="true" /> Page {s.page}
                                                         {s.page === page && <span className="sr-only"> (shown)</span>}
                                                     </button>
                                                 )}

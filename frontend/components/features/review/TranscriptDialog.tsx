@@ -58,7 +58,7 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
                         </div>
                         <Button type="button" size="sm" variant="secondary" disabled={added.has(i)}
                                 onClick={() => add(i, s.text!.trim())}
-                                icon={added.has(i) ? <Check size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
+                                icon={added.has(i) ? <Check size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
                                 aria-label={added.has(i) ? `Added${s.page != null ? ` from page ${s.page}` : ""}`
                                     : `Add to the transcript${s.page != null ? ` (page ${s.page})` : ""}`}>
                             {added.has(i) ? "Added" : "Add"}

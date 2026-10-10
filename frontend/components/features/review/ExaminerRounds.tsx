@@ -104,8 +104,8 @@ export default function ExaminerRounds({ rounds, criteria }: { rounds: Evaluator
                                                                 <span className={cn(styles.speaker, styles.graderName)}>Grader</span>
                                                                 <span className={cn(styles.decision, accepted ? styles.accepted : styles.rejected)}>
                                                                     {accepted
-                                                                        ? <Check size={12} aria-hidden="true" />
-                                                                        : <CornerDownRight size={12} aria-hidden="true" />}
+                                                                        ? <Check size={14} aria-hidden="true" />
+                                                                        : <CornerDownRight size={14} aria-hidden="true" />}
                                                                     {accepted ? "accepted" : "pushed back"}
                                                                 </span>
                                                                 <span className="sr-only">:</span>

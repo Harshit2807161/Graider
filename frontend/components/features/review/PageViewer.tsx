@@ -167,18 +167,18 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
                  onPointerCancel={() => { drag.current = null; }}>
                 {error ? (
                     <div role="alert" className={cn(styles.message, styles.messageError)}>
-                        <span className={styles.messageIcon} aria-hidden="true"><AlertCircle size={22} /></span>
+                        <span className={styles.messageIcon} aria-hidden="true"><AlertCircle size={24} /></span>
                         <div>
                             <p className={styles.messageTitle}>Page {page} couldn&apos;t be loaded</p>
                             <p>{error}</p>
                         </div>
-                        <Button size="sm" variant="outline" onClick={retry} icon={<RefreshCw size={14} aria-hidden="true" />}>
+                        <Button size="sm" variant="outline" onClick={retry} icon={<RefreshCw size={16} aria-hidden="true" />}>
                             Try again
                         </Button>
                     </div>
                 ) : !current?.has_image ? (
                     <div className={styles.message}>
-                        <span className={styles.messageIcon} aria-hidden="true"><FileText size={22} /></span>
+                        <span className={styles.messageIcon} aria-hidden="true"><FileText size={24} /></span>
                         <p>This page is typed text, so there is no image to show.</p>
                     </div>
                 ) : (

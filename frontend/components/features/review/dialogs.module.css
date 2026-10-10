@@ -117,12 +117,6 @@
 
 .formError > svg { flex-shrink: 0; margin-top: 0.125rem; }
 
-.formError > button { flex-shrink: 0; }
-
-.formErrorTitle { font-weight: 600; }
-
-.grow { flex: 1; }
-
 /* ===== criteria (change scores) ===== */
 .criteria {
     display: flex;
@@ -525,6 +519,4 @@
     .entry { grid-template-columns: 2rem minmax(0, 1fr); row-gap: 0; }
     .entryTime { grid-column: 2; padding-top: 0.125rem; }
     .entryTech > summary { min-height: 2.5rem; }
-    .formError { flex-wrap: wrap; }
-    .formError > button { margin-left: calc(16px + var(--space-2)); }
 }

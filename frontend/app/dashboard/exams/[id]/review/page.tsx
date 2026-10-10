@@ -3,14 +3,16 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle2, ChevronRight, Inbox, RefreshCw } from "lucide-react";
+import { CheckCircle2, ChevronRight, Inbox } from "lucide-react";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
 import ButtonLink from "@/components/common/ButtonLink";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import PageHeader from "@/components/common/PageHeader";
-import { plainError } from "@/components/features/review/failure";
+import { focusMainContent } from "@/components/common/focus";
 import { fmt, percent, plural } from "@/components/features/review/format";
 import queue from "@/components/features/review/ReviewQueue.module.css";
+import { useTabTitle } from "@/components/common/useTabTitle";
 import styles from "@/components/features/review/review.module.css";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -40,6 +42,9 @@ export default function ReviewQueuePage() {
     useEffect(() => {
         examService.getExam(examId).then((exam) => setExamName(exam.name)).catch(() => undefined);
     }, [examId]);
+
+    // The browser tab names the exam once it's known (layout.tsx gives "Review queue · Gr8r" until then)
+    useTabTitle(examName ? `Review queue · ${examName} · Gr8r` : null, "Review queue · Gr8r");
 
     useEffect(() => {
         let cancelled = false;
@@ -74,6 +79,8 @@ export default function ReviewQueuePage() {
     const retry = () => {
         setError(null);
         setAttempt((n) => n + 1);
+        // The banner (and its button) goes away: keep keyboard focus on the page, not lost to <body>
+        focusMainContent();
     };
 
     return (
@@ -99,17 +106,7 @@ export default function ReviewQueuePage() {
 
             <div className={styles.sections}>
                 {error && (
-                    <div className={styles.errorBanner} role="alert">
-                        <AlertCircle size={20} aria-hidden="true" />
-                        <div className={styles.errorBody}>
-                            <div>
-                                <p className={styles.errorTitle}>The review queue couldn&apos;t be loaded</p>
-                                <p>{error === QUEUE_ERROR ? "Check your connection and try again."
-                                    : plainError(error) ?? "Something went wrong on our side. Try again in a moment."}</p>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={retry} icon={<RefreshCw size={14} aria-hidden="true" />}>Try again</Button>
-                        </div>
-                    </div>
+                    <ErrorBanner title={QUEUE_ERROR} detail={error} onRetry={retry} />
                 )}
 
                 {loading && items.length === 0 && (

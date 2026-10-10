@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { AlertCircle, Bot, ChevronRight, FileText, Gavel, History, Play, RefreshCw, UserRound } from "lucide-react";
-import Button from "@/components/ui/Button";
+import React, { useEffect, useRef, useState } from "react";
+import { AlertCircle, Bot, ChevronRight, FileText, Gavel, History, Play, UserRound } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import ErrorBanner from "@/components/common/ErrorBanner";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { reviewService } from "@/services/review.service";
 import { TimelineEntry, escalationText } from "@/types/review.types";
-import { explainFailure, plainError } from "./failure";
+import { explainFailure } from "./failure";
 import { fmt as score, plural } from "./format";
 import styles from "./dialogs.module.css";
 
@@ -50,7 +50,7 @@ function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string;
             const failed = d.status === "failed";
             const usage = `${plural(Number(d.llm_calls ?? 0), "AI request", "AI requests")} · $${Number(d.cost_usd ?? 0).toFixed(2)}`;
             return {
-                icon: failed ? <AlertCircle size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />,
+                icon: failed ? <AlertCircle size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />,
                 title: `${RUN_TEXT[d.trigger] ?? "Grading"} ${RUN_STATUS[d.status] ?? d.status}`,
                 detail: failed ? explainFailure(d.error).cause : usage,
                 technical: failed ? [d.error, usage].filter(Boolean).join("\n") : undefined,
@@ -59,26 +59,26 @@ function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string;
         }
         case "llm_call":
             return {
-                icon: <Bot size={14} aria-hidden="true" />,
+                icon: <Bot size={16} aria-hidden="true" />,
                 title: `${label}${String(d.purpose).replace(/_/g, " ")} · ${d.model_answered ?? d.model_requested}`,
                 detail: [d.attempt_kind !== "initial" && d.attempt_kind, d.fallback_reason, d.error_type,
                          `${d.latency_ms} ms`, d.cost_usd != null && `$${fmt(d.cost_usd)}`].filter(Boolean).join(" · "),
             };
         case "transcription":
             return {
-                icon: <FileText size={14} aria-hidden="true" />,
+                icon: <FileText size={16} aria-hidden="true" />,
                 title: `${label}Transcript v${d.version}, ${d.source === "teacher" ? "corrected by a teacher" : "read by AI"}`,
             };
         case "grade":
             return {
-                icon: <Gavel size={14} aria-hidden="true" />,
+                icon: <Gavel size={16} aria-hidden="true" />,
                 title: `${label}Grade v${d.version} by ${d.source === "teacher" ? "a teacher" : "AI"}: ${fmt(d.score)} / ${fmt(d.max_score)}`,
                 detail: d.status === "escalated" ? `Needs review: ${escalationText(d.escalation_reason)}` : (d.override_reason ?? undefined),
                 tone: d.status === "escalated" ? "gradeReview" : undefined,
             };
         default:
             return {
-                icon: <UserRound size={14} aria-hidden="true" />,
+                icon: <UserRound size={16} aria-hidden="true" />,
                 title: `${label}${EVENT_TEXT[d.kind] ?? d.kind}`,
                 detail: d.reason ?? undefined,
             };
@@ -95,6 +95,7 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
     const [error, setError] = useState<string | null>(null);
     const [attempt, setAttempt] = useState(0);
     const [showCalls, setShowCalls] = useState(false);
+    const errorRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -128,17 +129,13 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
                 </div>
             )}
             {error && (
-                <div role="alert" className={styles.formError}>
-                    <AlertCircle size={16} aria-hidden="true" />
-                    <div className={styles.grow}>
-                        <p className={styles.formErrorTitle}>{HISTORY_ERROR}</p>
-                        <p>{error === HISTORY_ERROR ? "Check your connection and try again."
-                            : plainError(error) ?? "Something went wrong on our side. Try again in a moment."}</p>
-                    </div>
-                    <Button size="sm" variant="outline" icon={<RefreshCw size={14} aria-hidden="true" />} onClick={() => {
+                <div ref={errorRef}>
+                    <ErrorBanner title={HISTORY_ERROR} detail={error} onRetry={() => {
+                        // The banner goes away while it loads again: keep focus in the dialog (on Close)
+                        errorRef.current?.closest("[role=dialog]")?.querySelector<HTMLElement>("button")?.focus();
                         setError(null);
                         setAttempt((n) => n + 1);
-                    }}>Try again</Button>
+                    }} />
                 </div>
             )}
             {!entries && !error && (
@@ -173,7 +170,7 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
                                         {technical && (
                                             <details className={styles.entryTech}>
                                                 <summary>
-                                                    <ChevronRight size={14} aria-hidden="true" className={styles.entryTechChevron} />
+                                                    <ChevronRight size={16} aria-hidden="true" className={styles.entryTechChevron} />
                                                     Technical details
                                                 </summary>
                                                 <p><code>{technical}</code></p>
