@@ -56,7 +56,7 @@ backend/
 └── tests/                         # pytest suite (FakeLLM, SQLite or Postgres)
 frontend/
 ├── app/                           # (auth)/login, dashboard/{orgs,classes,exams,exams/[id],
-│                                  #   exams/[id]/review (queue), exams/[id]/submissions/[sid] (review screen)}
+│                                  #   exams/[id]/review (queue), exams/[id]/submissions/[sid] (review screen), results (students)}
 ├── components/                    # ui/ (Button, Card, Input, Modal, ConfirmDialog, StatusBadge, InlineMessage),
 │                                  # common/ (Sidebar, PageHeader, ErrorBanner, ButtonLink, useHydrated, useTabTitle),
 │                                  # features/{review,rubrics,exams,classes,orgs,auth}
@@ -148,7 +148,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | POST | /auth/login | anyone (OAuth2 form: username=email) |
 | GET | /users/me | logged in |
 | GET, POST | /users/ | superuser |
-| GET | /orgs/ | own orgs (superuser: all) |
+| GET | /orgs/ | own orgs (superuser: all), each with the user's `role` there |
 | POST | /orgs/ | superuser (creator becomes owner) |
 | GET, DELETE | /orgs/{id} | member / owner |
 | GET, POST | /batches/?org_id= , /batches/ | staff / owner+admin |
@@ -170,9 +170,10 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | GET, PATCH | /exams/{id}/grading-settings | staff — agreement threshold (0.5–1), spot-check rate (0–1), choice policy (best/first) |
 | GET | /exams/{id}/review-queue | staff — answers to review: escalated first, then lowest evaluator agreement (`escalated_only`) |
 | POST | /exams/{id}/publish | staff — publish the approved submissions |
+| GET | /submissions/mine | a student's own published results (+ how many aren't published yet) |
 | GET | /submissions/{id} | staff: full; students: own and published only, scores and feedback |
 | GET | /submissions/{id}/review | staff — pages, and per question spec, transcript, current grade with evaluator rounds, earlier versions |
-| GET | /submissions/{id}/pages/{n}/image | staff — page image as the model saw it |
+| GET | /submissions/{id}/pages/{n}/image | staff; the student whose sheet it is, once published — page image |
 | GET | /submissions/{id}/timeline | staff — runs, model calls, versions, actions; `bodies=true` raw model I/O for owner/admin |
 | POST | /submissions/{id}/answers/{qid}/override | staff — set every criterion's score; `expected_grade_id`, mandatory `reason` (409 stale, 422 failed checks) |
 | POST | /submissions/{id}/answers/{qid}/resolve | staff — accept an escalated answer's proposed grade |
@@ -208,7 +209,7 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 - `backend/tests/test_audit.py`, `test_tracing.py` — audit rows, run lifecycle, Langfuse tracing
 
 ## Known Gaps
-- No student-facing results page yet (students can read their published results through the API); audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
+- Audit has no tamper-evidence/retention/erasure tooling yet — see docs/audit-trail.md and the backlog
 
 ## Key Documents
 - [Changelog](../CHANGELOG.md)

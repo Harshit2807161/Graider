@@ -6,6 +6,15 @@ Notable changes to Gr8r, newest first.
 
 ## [Unreleased]
 
+### Student results
+
+#### Added
+- **Students see their results:** a "My results" page with their published results, and a result page with the total, each question's marks and feedback, and their own answer-sheet pages. The portal follows the user's role, so students only see their area.
+- **API:** `GET /submissions/mine`; organizations carry the user's role; students may view their own published pages.
+
+#### Fixed
+- Students signing in got 403 errors: the portal only had staff pages.
+
 ### M7: Review UI ([#15](https://github.com/Harshit2807161/Graider/pull/15), in review)
 
 #### Added

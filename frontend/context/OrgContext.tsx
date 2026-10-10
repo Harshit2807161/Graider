@@ -9,6 +9,10 @@ interface OrgContextType {
     orgs: Org[];
     activeOrg: Org | null;
     isLoading: boolean;
+    /** True once the first load has finished (successfully or not) */
+    loaded: boolean;
+    /** The signed-in user is a student in the active organization */
+    isStudent: boolean;
     error: string | null;
     fetchOrgs: () => Promise<void>;
     setActiveOrg: (org: Org | null) => void;
@@ -23,6 +27,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     const [orgs, setOrgs] = useState<Org[]>([]);
     const [activeOrg, setActiveOrgState] = useState<Org | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [loaded, setLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const setActiveOrg = useCallback((org: Org | null) => {
@@ -58,6 +63,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
             setError(getErrorMessage(err, "Failed to load organizations"));
         } finally {
             setIsLoading(false);
+            setLoaded(true);
         }
     }, [setActiveOrg]);
 
@@ -94,6 +100,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
             orgs,
             activeOrg,
             isLoading,
+            loaded,
+            isStudent: activeOrg?.role === "student",
             error,
             fetchOrgs,
             setActiveOrg,

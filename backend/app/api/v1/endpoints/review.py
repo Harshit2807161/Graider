@@ -13,7 +13,7 @@ from sqlmodel import Session, col, select
 from app import crud
 from app.api import deps
 from app.core.config import settings
-from app.core.constants import SubmissionStatus
+from app.core.constants import Role, SubmissionStatus
 from app.grading import persist
 from app.ingestion.service import stored_pages
 from app.models.audit import GradingRun, LLMCall
@@ -250,8 +250,16 @@ def page_image(
     *, db: Session = Depends(deps.get_session), submission_id: UUID, number: int,
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
-    """One page of the answer sheet as the model saw it (staff only; not cached by browsers)."""
-    submission, _, _ = staff_submission(db, submission_id, current_user)
+    """One page of the answer sheet as the model saw it, for staff, and for the student whose sheet it is once
+    the results are published. Not cached by browsers."""
+    submission = crud.submission.get(db, id=submission_id)
+    exam = crud.exam.get(db, id=submission.exam_id) if submission else None
+    if not submission or not exam:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    membership = deps.require_org_role(db, user=current_user, org_id=exam.org_id)
+    if membership is not None and membership.role == Role.STUDENT and (
+            submission.student_membership_id != membership.id or submission.status != SubmissionStatus.PUBLISHED):
+        raise HTTPException(status_code=404, detail="Page not found")
     pages = stored_pages(db, submission)
     page = pages[number - 1] if 1 <= number <= len(pages) else None
     path = Path(page.image_path).resolve() if page is not None and page.image_path else None

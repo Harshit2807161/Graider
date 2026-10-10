@@ -1,3 +1,4 @@
+import RoleGate from "@/components/common/RoleGate";
 import Sidebar from "@/components/common/Sidebar";
 import { OrgProvider } from "@/context/OrgContext";
 import { BatchProvider } from "@/context/BatchContext";
@@ -18,7 +19,7 @@ export default function DashboardLayout({
                         <Sidebar />
                         <main id="main-content" tabIndex={-1} className={styles.main}>
                             <div className={styles.content}>
-                                {children}
+                                <RoleGate>{children}</RoleGate>
                             </div>
                         </main>
                     </div>

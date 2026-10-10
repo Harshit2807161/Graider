@@ -24,4 +24,6 @@ class OrganizationInDBBase(OrganizationBase):
         from_attributes = True
 
 class Organization(OrganizationInDBBase):
-    pass
+    # The signed-in user's role here ("owner" for a superuser without a membership), so the portal can
+    # show staff or student pages
+    role: Optional[str] = None
