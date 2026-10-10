@@ -309,12 +309,20 @@
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.quoteStatic { quotes: "“" "”"; }
+.quoteStatic { quotes: '"' '"'; }
+
+button.quote { cursor: pointer; touch-action: manipulation; }
 
 button.quote:hover,
 .quote[aria-pressed="true"] {
     border-left-color: var(--amber-500);
     background-color: var(--amber-100);
+}
+
+/* Fingers and phones: the quote and page buttons are comfortable targets however short they are */
+@media (pointer: coarse), (max-width: 767px) {
+    button.quote { display: inline-flex; align-items: center; min-height: 2.5rem; }
+    .pageButton { height: 2.5rem; padding: 0 var(--space-3); }
 }
 
 .justification {
@@ -434,10 +442,11 @@ button.quote:hover,
     border-top: 1px solid var(--border-light);
 }
 
+/* Tag, who and what (wrapping as a sentence), score on the right */
 .versionHead {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: baseline;
     gap: var(--space-2) var(--space-3);
     font-size: var(--text-base);
     color: var(--slate-700);
@@ -455,7 +464,6 @@ button.quote:hover,
 }
 
 .versionScore {
-    margin-left: auto;
     font-weight: 600;
     color: var(--slate-800);
     font-variant-numeric: tabular-nums;
@@ -513,7 +521,7 @@ button.quote:hover,
     .transcript { padding: var(--space-3) var(--space-4); }
     .criterion { padding: var(--space-3); }
     .pageButtons { margin-left: 0; }
-    .pageButton { height: 2.25rem; padding: 0 var(--space-3); }
+    .pageButton { padding: 0 var(--space-3); }
     .scoreValue strong { font-size: var(--text-xl); }
     .disclosure > summary { padding: var(--space-2) var(--space-3); }
     .disclosureBody { padding: var(--space-3); }

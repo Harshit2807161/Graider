@@ -7,10 +7,12 @@ import Modal from "@/components/ui/Modal";
 import { getErrorMessage } from "@/lib/api";
 import { CriterionScoreIn } from "@/services/review.service";
 import { QuestionReview } from "@/types/review.types";
+import { fmt, plural } from "./format";
 import styles from "./dialogs.module.css";
 
-function points(n: number): string {
-    return `${n} ${n === 1 ? "point" : "points"}`;
+/** "1 mark", "2 marks", as on the exam page. */
+function marks(n: number): string {
+    return plural(n, "mark", "marks");
 }
 
 /** Set every criterion's score for one answer, with a reason (kept in the audit trail). Open it
@@ -72,7 +74,7 @@ export default function OverrideDialog({ q, onClose, onSubmit }: {
                footer={
                    <>
                        <span className={styles.footerTotal} aria-live="polite">
-                           Total <strong>{Number(total.toFixed(2))}</strong> / {q.max_score}
+                           Total <strong>{fmt(total)}</strong> / {fmt(q.max_score)}
                        </span>
                        <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
                        <Button type="submit" form="override-form" disabled={!ready} isLoading={saving}
@@ -84,7 +86,7 @@ export default function OverrideDialog({ q, onClose, onSubmit }: {
             <form id="override-form" onSubmit={submit} className={styles.form}>
                 {criteria.length > 1 && (
                     <div className={styles.formTop}>
-                        <span>{criteria.length} criteria · {points(q.max_score)} in all</span>
+                        <span>{criteria.length} criteria · {marks(q.max_score)} in all</span>
                         <button type="button" className={styles.textButton}
                                 onClick={() => {
                                     setScores(Object.fromEntries(criteria.map((c) => [c.id, "0"])));
@@ -103,7 +105,7 @@ export default function OverrideDialog({ q, onClose, onSubmit }: {
                             <fieldset key={c.id} className={styles.criterion}>
                                 <legend>
                                     <span><span className={styles.criterionId}>{c.id}</span>{c.description}</span>
-                                    <span className={styles.points}>{points(c.points)}</span>
+                                    <span className={styles.points}>{marks(c.points)}</span>
                                 </legend>
                                 {c.expected_answer && <p className={styles.expected}><strong>Expected:</strong> {c.expected_answer}</p>}
                                 <div className={styles.criterionInputs}>
@@ -161,7 +163,7 @@ export default function OverrideDialog({ q, onClose, onSubmit }: {
                     </label>
                     <textarea id="override-reason" rows={2} className={styles.textarea} value={reason} required
                               aria-describedby="override-reason-help" onChange={(e) => setReason(e.target.value)}
-                              placeholder="e.g. “Method correct; final answer misread”." />
+                              placeholder="e.g. Method correct; final answer misread." />
                     <p id="override-reason-help" className={styles.help}>Required. Kept in the audit trail.</p>
                 </div>
                 <p id="override-missing" className={styles.missing} aria-live="polite">

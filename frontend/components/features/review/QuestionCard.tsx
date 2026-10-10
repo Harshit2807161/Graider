@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { AlertTriangle, Bot, Check, ChevronRight, FileText, History, MessagesSquare, Pencil, SlidersHorizontal, UserCheck } from "lucide-react";
 import Button from "@/components/ui/Button";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { AnswerGrade, QuestionReview, escalationText } from "@/types/review.types";
 import ExaminerRounds from "./ExaminerRounds";
 import HighlightedText from "./HighlightedText";
+import { fmt, percent, plural } from "./format";
 import styles from "./QuestionCard.module.css";
 
 /** What the teacher can do about each kind of escalation. */
@@ -16,8 +17,8 @@ const HINTS: Record<string, string> = {
     rubric_invalid: "Fix this question's rubric on the exam page, then set the scores or regrade.",
     low_ocr_confidence: "Compare the transcript with the page: correct it if it was misread, otherwise accept the proposed score.",
     multiple_attempts: "The student answered more than once. Check which attempt should count.",
-    check_failed: "The model's grade didn't pass the checks. Set the scores yourself.",
-    all_models_failed: "No model could grade this answer. Set the scores yourself.",
+    check_failed: "The AI's grade didn't pass the checks. Set the scores yourself.",
+    all_models_failed: "The AI couldn't grade this answer. Set the scores yourself.",
     evaluator_disagreement: "The examiners still disagree after revising. Their positions are below.",
     spot_check: "A random check of a confident grade: accept it or change it.",
 };
@@ -27,10 +28,6 @@ function hint(reason: string | null): string {
     return HINTS[reason] ?? "Check the page and the transcript, then accept or change the score.";
 }
 
-function fmt(value: number | null | undefined): string {
-    return value == null ? "–" : Number(value.toFixed(2)).toString();
-}
-
 function when(iso: string): string {
     return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
@@ -38,10 +35,6 @@ function when(iso: string): string {
 function versionStatus(grade: AnswerGrade): string {
     return grade.status === "escalated" ? `Needs review: ${escalationText(grade.escalation_reason).toLowerCase()}`
         : grade.status === "not_attempted" ? "Not attempted" : "Graded";
-}
-
-function plural(n: number, one: string, many: string): string {
-    return `${n} ${n === 1 ? one : many}`;
 }
 
 interface QuestionCardProps {
@@ -65,10 +58,25 @@ export default function QuestionCard({
     q, canScore, canEditTranscript, busy, currentPage, hasUnplaced = false, ungradedText = "Not graded yet.",
     onResolve, onOverride, onEditTranscript, onShowPage,
 }: QuestionCardProps) {
-    // Hovering or focusing a criterion previews its quote; clicking the quote keeps it highlighted
+    // Pointing at a criterion (mouse) or tabbing to its quote previews the quote in the transcript;
+    // selecting the quote (click, tap, Enter) keeps it highlighted until it is selected again
     const [hovered, setHovered] = useState<string | null>(null);
     const [pinned, setPinned] = useState<string | null>(null);
     const activeCriterion = hovered ?? pinned;
+    const transcriptRef = useRef<HTMLPreElement>(null);
+    const togglePin = (id: string) => {
+        setHovered(null);
+        if (pinned === id) return setPinned(null);
+        setPinned(id);
+        // On a phone the transcript is often above the screen: bring the quote into view
+        requestAnimationFrame(() => {
+            const mark = transcriptRef.current?.querySelector<HTMLElement>(`mark[data-criteria~="${CSS.escape(id)}"]`);
+            const box = mark?.getBoundingClientRect();
+            if (!mark || !box || (box.top >= 72 && box.bottom <= window.innerHeight)) return;
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            mark.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+        });
+    };
     const grade = q.grade;
     const transcript = q.transcription;
     const escalated = grade?.status === "escalated";
@@ -99,14 +107,14 @@ export default function QuestionCard({
                 <div className={styles.headMain}>
                     <h3 id={titleId} className={styles.title}><span className="sr-only">{q.label}: </span>{q.text}</h3>
                     <div className={styles.meta}>
-                        {grade ? <StatusBadge status={grade.status} /> : <span className={styles.chip}>Not graded yet</span>}
+                        {grade ? <StatusBadge status={grade.status} /> : <StatusBadge status="PENDING" label="Not graded yet" />}
                         {grade?.source === "teacher" && (
                             <span className={cn(styles.chip, styles.chipTeacher)}><UserCheck size={14} aria-hidden="true" /> Teacher&apos;s decision</span>
                         )}
                         {grade && !grade.counted && !notAttempted && (
                             <span className={styles.chip}>Doesn&apos;t count: extra alternative</span>
                         )}
-                        {grade?.fallback_used && <span className={styles.chip}><Bot size={14} aria-hidden="true" /> Graded by a fallback model</span>}
+                        {grade?.fallback_used && <span className={styles.chip}><Bot size={14} aria-hidden="true" /> Graded by the backup AI</span>}
                         {q.choice_group && <span className={styles.chip}>Choice group {q.choice_group}</span>}
                     </div>
                 </div>
@@ -143,7 +151,7 @@ export default function QuestionCard({
                                 <h4 id={`${titleId}-transcript`} className={styles.sectionTitle}>Transcript</h4>
                                 <span className={styles.sectionMeta}>
                                     {transcript?.source === "teacher" ? "Corrected by a teacher"
-                                        : transcript?.confidence != null ? `Read by the model · confidence ${fmt(transcript.confidence)}` : ""}
+                                        : transcript?.confidence != null ? `Read by AI · confidence ${percent(transcript.confidence)}` : ""}
                                 </span>
                                 {pages.length > 0 && (
                                     <span className={styles.pageButtons}>
@@ -159,7 +167,7 @@ export default function QuestionCard({
                                 )}
                             </div>
                             {transcript?.text ? (
-                                <pre className={cn(styles.transcript, activeCriterion && quoted.has(activeCriterion) && styles.focusing)}>
+                                <pre ref={transcriptRef} className={cn(styles.transcript, activeCriterion && quoted.has(activeCriterion) && styles.focusing)}>
                                     <HighlightedText text={transcript.text} quotes={quotes} activeCriterion={activeCriterion} />
                                 </pre>
                             ) : (
@@ -179,7 +187,8 @@ export default function QuestionCard({
                                         const share = points ? Math.max(0, Math.min(1, c.score / points)) : 0;
                                         return (
                                             <li key={c.id} className={cn(styles.criterion, activeCriterion === c.id && styles.criterionActive)}
-                                                onMouseEnter={() => setHovered(c.id)} onMouseLeave={() => setHovered(null)}>
+                                                onPointerEnter={(e) => e.pointerType === "mouse" && setHovered(c.id)}
+                                                onPointerLeave={(e) => e.pointerType === "mouse" && setHovered(null)}>
                                                 <p className={styles.criterionName}>
                                                     <span className={styles.criterionId}>{c.id}</span>
                                                     {describe.get(c.id)?.description ?? ""}
@@ -194,10 +203,11 @@ export default function QuestionCard({
                                                         {c.evidence && (quoted.has(c.id) ? (
                                                             <button type="button" className={styles.quote} aria-pressed={pinned === c.id}
                                                                     title="Highlight in the transcript"
-                                                                    onClick={() => setPinned(pinned === c.id ? null : c.id)}
-                                                                    onFocus={() => setHovered(c.id)} onBlur={() => setHovered(null)}>
+                                                                    onClick={() => togglePin(c.id)}
+                                                                    onFocus={(e) => e.currentTarget.matches(":focus-visible") && setHovered(c.id)}
+                                                                    onBlur={() => setHovered(null)}>
                                                                 <span className="sr-only">Highlight in the transcript: {c.evidence}</span>
-                                                                <span aria-hidden="true">“{c.evidence}”</span>
+                                                                <span aria-hidden="true">&quot;{c.evidence}&quot;</span>
                                                             </button>
                                                         ) : (
                                                             <q className={cn(styles.quote, styles.quoteStatic)}>{c.evidence}</q>
@@ -211,7 +221,7 @@ export default function QuestionCard({
                                 </ul>
                             </section>
                         ) : grade && !q.rubric_spec ? (
-                            <p className={styles.emptyBox}>This question has no rubric spec yet: fix the rubric on the exam page.</p>
+                            <p className={styles.emptyBox}>This question&apos;s rubric isn&apos;t ready yet: fix it on the exam page.</p>
                         ) : null}
 
                         {grade && grade.rounds.length > 0 && (
@@ -222,7 +232,7 @@ export default function QuestionCard({
                                         Examiner discussion{" "}
                                         <span className={styles.summaryMeta}>
                                             · {plural(grade.rounds.length, "round", "rounds")}
-                                            {lastRound && ` · agreement ${fmt(lastRound.effective_agreement)}`}
+                                            {lastRound && ` · agreement ${percent(lastRound.effective_agreement)}`}
                                         </span>
                                     </span>
                                     <ChevronRight size={16} aria-hidden="true" className={styles.chevron} />
@@ -265,7 +275,7 @@ export default function QuestionCard({
                                     <li key={g.id} className={styles.version}>
                                         <p className={styles.versionHead}>
                                             <span className={styles.versionTag}>v{g.version}</span>
-                                            <span>{g.source === "teacher" ? "Teacher" : "Model"} · {versionStatus(g)}</span>
+                                            <span>{g.source === "teacher" ? "Teacher" : "AI"} · {versionStatus(g)}</span>
                                             <span className={styles.versionScore}>{fmt(g.score)} / {fmt(g.max_score)}</span>
                                         </p>
                                         <time className={styles.versionTime} dateTime={g.created_at}>{when(g.created_at)}</time>
@@ -281,7 +291,10 @@ export default function QuestionCard({
                                                     <MessagesSquare size={14} aria-hidden="true" className={styles.summaryIcon} />
                                                     <span className={styles.summaryText}>
                                                         Examiner discussion{" "}
-                                                        <span className={styles.summaryMeta}>· {plural(g.rounds.length, "round", "rounds")}</span>
+                                                        <span className={styles.summaryMeta}>
+                                                            · {plural(g.rounds.length, "round", "rounds")}
+                                                            {` · agreement ${percent(g.rounds[g.rounds.length - 1].effective_agreement)}`}
+                                                        </span>
                                                     </span>
                                                     <ChevronRight size={14} aria-hidden="true" className={styles.chevron} />
                                                 </summary>

@@ -7,11 +7,13 @@ import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { reviewService } from "@/services/review.service";
 import { PageInfo } from "@/types/review.types";
+import { plainError } from "./failure";
 import styles from "./PageViewer.module.css";
 
-/** The answer sheet as the model saw it, one page at a time. Images are fetched with the
+/** The answer sheet as the AI read it, one page at a time. Images are fetched with the
  *  teacher's token and kept as object URLs until the viewer goes away. `captions` says what is on
- *  each page (e.g. "Q1, Q2"); `flagged` pages get a dot. Arrow keys move between pages. */
+ *  each page (e.g. "Q1, Q2"); `flagged` pages get a dot. Arrow keys move between pages, Home and
+ *  End jump to the first and last; a zoomed page scrolls with the arrow keys once focused. */
 export default function PageViewer({ submissionId, pages, page, onPageChange, captions, flagged = [] }: {
     submissionId: string;
     pages: PageInfo[];
@@ -27,6 +29,8 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
     const [attempt, setAttempt] = useState(0);
     const [zoomed, setZoomed] = useState(false);
     const pagerRef = useRef<HTMLDivElement>(null);
+    // Dragging a zoomed page with the mouse moves it, as in a document viewer
+    const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
     const current = pages.find((p) => p.number === page);
     const index = pages.findIndex((p) => p.number === page);
     const url = images[page]?.url ?? null;
@@ -52,7 +56,9 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
             })
             .catch((err) => {
                 urls.current.delete(page);  // try again next time the page is shown
-                setImages((prev) => ({ ...prev, [page]: { error: getErrorMessage(err, "The page couldn't be loaded") } }));
+                // A teacher sees the server's own words only when they mean something ("Page not found")
+                const detail = plainError(getErrorMessage(err, "")) ?? "Check your connection and try again.";
+                setImages((prev) => ({ ...prev, [page]: { error: detail } }));
             });
     }, [submissionId, page, current?.has_image, attempt]);
 
@@ -66,8 +72,8 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
     };
 
     const step = (delta: number, moveFocus = false) => {
-        const target = pages[index + delta];
-        if (!target) return;
+        const target = pages[Math.max(0, Math.min(pages.length - 1, index + delta))];
+        if (!target || target.number === page) return;
         onPageChange(target.number);
         // Arrow keys: focus follows the page, as in a tab list
         if (moveFocus) pagerRef.current?.querySelector<HTMLButtonElement>(`[data-page="${target.number}"]`)?.focus();
@@ -85,64 +91,88 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
 
     const aspect = current?.width && current?.height ? `${current.width} / ${current.height}` : undefined;
     const caption = captions?.[page];
+    const canZoom = !!current?.has_image && !error;
 
     return (
         <section className={styles.viewer} aria-labelledby="viewer-title">
             <h2 id="viewer-title" className="sr-only">Answer sheet</h2>
-            <div className={styles.bar}>
-                <div ref={pagerRef} className={styles.pager} role="group" aria-label="Pages"
-                     onKeyDown={(e) => {
-                         if (e.key === "ArrowLeft") { e.preventDefault(); step(-1, true); }
-                         if (e.key === "ArrowRight") { e.preventDefault(); step(1, true); }
-                     }}>
+            {(pages.length > 1 || canZoom || url) && (
+                <div className={styles.bar}>
                     {pages.length > 1 && (
-                        <button type="button" className={styles.stepButton} onClick={() => step(-1)} disabled={index <= 0}
-                                aria-label="Previous page" title="Previous page">
-                            <ChevronLeft size={18} aria-hidden="true" />
-                        </button>
+                        <div ref={pagerRef} className={styles.pager} role="group" aria-label="Pages"
+                             onKeyDown={(e) => {
+                                 const delta = { ArrowLeft: -1, ArrowRight: 1, Home: -pages.length, End: pages.length }[e.key];
+                                 if (delta == null) return;
+                                 e.preventDefault();
+                                 step(delta, true);
+                             }}>
+                            <button type="button" className={styles.stepButton} onClick={() => step(-1)} disabled={index <= 0}
+                                    aria-label="Previous page" title="Previous page">
+                                <ChevronLeft size={18} aria-hidden="true" />
+                            </button>
+                            {pages.map((p) => (
+                                <button key={p.number} type="button" aria-pressed={p.number === page} data-page={p.number}
+                                        className={cn(styles.pageTab, p.number === page && styles.pageTabActive)}
+                                        title={captions?.[p.number] ? `Page ${p.number}: ${captions[p.number]}` : `Page ${p.number}`}
+                                        onClick={() => onPageChange(p.number)}>
+                                    <span className="sr-only">
+                                        Page {p.number}{flagged.includes(p.number) && ", has writing not matched to a question"}
+                                    </span>
+                                    <span aria-hidden="true">{p.number}</span>
+                                    {flagged.includes(p.number) && <span className={styles.flag} aria-hidden="true" />}
+                                </button>
+                            ))}
+                            <button type="button" className={styles.stepButton} onClick={() => step(1)} disabled={index >= pages.length - 1}
+                                    aria-label="Next page" title="Next page">
+                                <ChevronRight size={18} aria-hidden="true" />
+                            </button>
+                        </div>
                     )}
-                    {pages.map((p) => (
-                        <button key={p.number} type="button" aria-pressed={p.number === page} data-page={p.number}
-                                className={cn(styles.pageTab, p.number === page && styles.pageTabActive)}
-                                title={captions?.[p.number] ? `Page ${p.number}: ${captions[p.number]}` : `Page ${p.number}`}
-                                onClick={() => onPageChange(p.number)}>
-                            <span className="sr-only">
-                                Page {p.number}{flagged.includes(p.number) && ", has writing not matched to a question"}
-                            </span>
-                            <span aria-hidden="true">{p.number}</span>
-                            {flagged.includes(p.number) && <span className={styles.flag} aria-hidden="true" />}
-                        </button>
-                    ))}
-                    {pages.length > 1 && (
-                        <button type="button" className={styles.stepButton} onClick={() => step(1)} disabled={index >= pages.length - 1}
-                                aria-label="Next page" title="Next page">
-                            <ChevronRight size={18} aria-hidden="true" />
-                        </button>
-                    )}
+                    <div className={styles.tools}>
+                        {canZoom && (
+                            <button type="button" className={cn(styles.toolButton, zoomed && styles.toolButtonOn)} onClick={() => setZoomed(!zoomed)}
+                                    aria-label={zoomed ? "Fit page to width" : "Zoom in"} title={zoomed ? "Fit to width" : "Zoom in"}>
+                                {zoomed ? <ZoomOut size={18} aria-hidden="true" /> : <ZoomIn size={18} aria-hidden="true" />}
+                            </button>
+                        )}
+                        {url && (
+                            <a className={styles.toolButton} href={url} target="_blank" rel="noreferrer"
+                               aria-label="Open the page in a new tab" title="Open in a new tab">
+                                <ExternalLink size={18} aria-hidden="true" />
+                            </a>
+                        )}
+                    </div>
                 </div>
-                <div className={styles.tools}>
-                    <button type="button" className={cn(styles.toolButton, zoomed && styles.toolButtonOn)} onClick={() => setZoomed(!zoomed)}
-                            aria-label={zoomed ? "Fit page to width" : "Zoom in"} title={zoomed ? "Fit to width" : "Zoom in"}>
-                        {zoomed ? <ZoomOut size={18} aria-hidden="true" /> : <ZoomIn size={18} aria-hidden="true" />}
-                    </button>
-                    {url && (
-                        <a className={styles.toolButton} href={url} target="_blank" rel="noreferrer"
-                           aria-label="Open the page in a new tab" title="Open in a new tab">
-                            <ExternalLink size={18} aria-hidden="true" />
-                        </a>
-                    )}
-                </div>
-            </div>
+            )}
             <p className={styles.caption} aria-live="polite">
                 <strong>Page {page} of {pages.length}</strong>
                 {caption && <> · {caption}</>}
             </p>
-            <div className={cn(styles.frame, zoomed && styles.zoomed)}>
+            {/* Zoomed, the page is a scroll area: focusable, so the arrow keys can move around it */}
+            <div className={cn(styles.frame, zoomed && url && styles.zoomed)}
+                 {...(zoomed && url ? { tabIndex: 0, role: "region", "aria-label": `Page ${page}, zoomed in: scroll to see all of it` } : {})}
+                 onPointerDown={(e) => {
+                     if (!zoomed || e.pointerType !== "mouse" || e.button !== 0) return;
+                     const frame = e.currentTarget;
+                     drag.current = { x: e.clientX, y: e.clientY, left: frame.scrollLeft, top: frame.scrollTop };
+                     frame.setPointerCapture(e.pointerId);
+                 }}
+                 onPointerMove={(e) => {
+                     const from = drag.current;
+                     if (!from) return;
+                     e.currentTarget.scrollLeft = from.left - (e.clientX - from.x);
+                     e.currentTarget.scrollTop = from.top - (e.clientY - from.y);
+                 }}
+                 onPointerUp={() => { drag.current = null; }}
+                 onPointerCancel={() => { drag.current = null; }}>
                 {error ? (
                     <div role="alert" className={cn(styles.message, styles.messageError)}>
                         <span className={styles.messageIcon} aria-hidden="true"><AlertCircle size={22} /></span>
-                        <p>{error}</p>
-                        <Button size="sm" variant="secondary" onClick={retry} icon={<RefreshCw size={14} aria-hidden="true" />}>
+                        <div>
+                            <p className={styles.messageTitle}>Page {page} couldn&apos;t be loaded</p>
+                            <p>{error}</p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={retry} icon={<RefreshCw size={14} aria-hidden="true" />}>
                             Try again
                         </Button>
                     </div>
@@ -155,7 +185,7 @@ export default function PageViewer({ submissionId, pages, page, onPageChange, ca
                     <div className={styles.sheet} style={{ aspectRatio: aspect }}>
                         {url ? (
                             // eslint-disable-next-line @next/next/no-img-element -- a local object URL, not an optimisable asset
-                            <img src={url} alt={`Page ${page} of ${pages.length} of the answer sheet`} className={styles.image} />
+                            <img src={url} alt={`Page ${page} of ${pages.length} of the answer sheet`} className={styles.image} draggable={false} />
                         ) : (
                             <div className={styles.placeholder} role="img" aria-label={`Loading page ${page}`} />
                         )}

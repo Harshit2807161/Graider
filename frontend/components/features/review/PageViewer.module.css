@@ -128,6 +128,13 @@
     overscroll-behavior: contain;
 }
 
+/* The zoomed page takes focus to scroll from the keyboard; the ring sits inside the card's edge */
+.frame:focus-visible { outline-offset: -2px; }
+
+.zoomed { cursor: grab; }
+.zoomed:active { cursor: grabbing; }
+.zoomed .image { user-select: none; }
+
 .sheet {
     display: block;
     width: 100%;
@@ -181,6 +188,8 @@
     color: var(--slate-500);
 }
 
+.messageTitle { font-weight: 600; }
+
 .messageError { color: var(--red-700); }
 .messageError .messageIcon { background-color: var(--red-50); color: var(--red-600); }
 
@@ -230,9 +239,21 @@
     .stepButton, .toolButton { width: 2.5rem; }
 }
 
-/* A narrow column beside the answers: a tighter toolbar so it stays on one line */
+/* A narrow column beside the answers: a tighter toolbar so it stays on one line
+   (the step buttons only narrow for a mouse; fingers keep 40px targets) */
 @container viewer (max-width: 24rem) {
     .bar { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
-    .stepButton { width: 2rem; }
     .caption { padding: var(--space-2) var(--space-3); }
+}
+
+@media (pointer: fine) {
+    @container viewer (max-width: 24rem) {
+        .stepButton { width: 2rem; }
+    }
+}
+
+@media (pointer: coarse) {
+    .pageTab, .stepButton, .toolButton { height: 2.5rem; }
+    .pageTab { min-width: 2.5rem; }
+    .stepButton, .toolButton { width: 2.5rem; }
 }

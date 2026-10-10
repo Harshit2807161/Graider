@@ -97,7 +97,7 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
                     </label>
                     <textarea id="transcript-reason" rows={2} className={styles.textarea} value={reason} required
                               aria-describedby="transcript-reason-help" onChange={(e) => setReason(e.target.value)}
-                              placeholder="e.g. “The last line was misread”." />
+                              placeholder="e.g. The last line was misread." />
                     <p id="transcript-reason-help" className={styles.help}>Required. Kept in the audit trail.</p>
                 </div>
                 {error && (

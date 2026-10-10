@@ -2,11 +2,8 @@ import React from "react";
 import { Check, CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Criterion, EvaluatorRound } from "@/types/review.types";
+import { fmt, percent } from "./format";
 import styles from "./ExaminerRounds.module.css";
-
-function fmt(value: number | null | undefined): string {
-    return value == null ? "–" : Number(value.toFixed(2)).toString();
-}
 
 function roundName(round: number): string {
     return round === 0 ? "First review" : `After revision ${round}`;
@@ -30,8 +27,9 @@ export default function ExaminerRounds({ rounds, criteria }: { rounds: Evaluator
                             </span>
                             <span className={styles.pills}>
                                 <span className={styles.pill}>
-                                    Agreement {fmt(round.effective_agreement)}
-                                    {round.effective_agreement !== round.agreement && ` (stated ${fmt(round.agreement)})`}
+                                    Agreement {percent(round.effective_agreement)}
+                                    {percent(round.effective_agreement) !== percent(round.agreement)
+                                        && ` (evaluator said ${percent(round.agreement)})`}
                                 </span>
                                 {apartCount > 0 && (
                                     <span className={cn(styles.pill, styles.pillApart)}>

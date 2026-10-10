@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AlertCircle, Bot, FileText, Gavel, History, Play, UserRound } from "lucide-react";
+import { AlertCircle, Bot, ChevronRight, FileText, Gavel, History, Play, RefreshCw, UserRound } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { reviewService } from "@/services/review.service";
 import { TimelineEntry, escalationText } from "@/types/review.types";
-import { explainFailure } from "./failure";
+import { explainFailure, plainError } from "./failure";
+import { fmt as score, plural } from "./format";
 import styles from "./dialogs.module.css";
 
 const EVENT_TEXT: Record<string, string> = {
@@ -36,8 +37,10 @@ const RUN_STATUS: Record<string, string> = {
 };
 
 function fmt(value: unknown): string {
-    return typeof value === "number" ? Number(value.toFixed(2)).toString() : "–";
+    return score(typeof value === "number" ? value : null);
 }
+
+const HISTORY_ERROR = "The history couldn't be loaded";
 
 function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string; detail?: string; technical?: string; tone?: string } {
     const d = entry.data as Record<string, never>;
@@ -45,12 +48,12 @@ function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string;
     switch (entry.type) {
         case "run": {
             const failed = d.status === "failed";
-            const usage = `${d.llm_calls} model ${d.llm_calls === 1 ? "call" : "calls"} · $${Number(d.cost_usd ?? 0).toFixed(2)}`;
+            const usage = `${plural(Number(d.llm_calls ?? 0), "AI request", "AI requests")} · $${Number(d.cost_usd ?? 0).toFixed(2)}`;
             return {
                 icon: failed ? <AlertCircle size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />,
-                title: `${RUN_TEXT[d.trigger] ?? "Grading run"} ${RUN_STATUS[d.status] ?? d.status}`,
+                title: `${RUN_TEXT[d.trigger] ?? "Grading"} ${RUN_STATUS[d.status] ?? d.status}`,
                 detail: failed ? explainFailure(d.error).cause : usage,
-                technical: failed ? [d.error, usage].filter(Boolean).join(" · ") : undefined,
+                technical: failed ? [d.error, usage].filter(Boolean).join("\n") : undefined,
                 tone: failed ? "runFailed" : undefined,
             };
         }
@@ -64,12 +67,12 @@ function describe(entry: TimelineEntry): { icon: React.ReactNode; title: string;
         case "transcription":
             return {
                 icon: <FileText size={14} aria-hidden="true" />,
-                title: `${label}Transcript v${d.version} (${d.source === "teacher" ? "teacher" : "model"})`,
+                title: `${label}Transcript v${d.version}, ${d.source === "teacher" ? "corrected by a teacher" : "read by AI"}`,
             };
         case "grade":
             return {
                 icon: <Gavel size={14} aria-hidden="true" />,
-                title: `${label}Grade v${d.version} (${d.source === "teacher" ? "teacher" : "model"}): ${fmt(d.score)} / ${fmt(d.max_score)}`,
+                title: `${label}Grade v${d.version} by ${d.source === "teacher" ? "a teacher" : "AI"}: ${fmt(d.score)} / ${fmt(d.max_score)}`,
                 detail: d.status === "escalated" ? `Needs review: ${escalationText(d.escalation_reason)}` : (d.override_reason ?? undefined),
                 tone: d.status === "escalated" ? "gradeReview" : undefined,
             };
@@ -97,7 +100,7 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
         let cancelled = false;
         reviewService.getTimeline(submissionId)
             .then((data) => !cancelled && setEntries(data))
-            .catch((err) => !cancelled && setError(getErrorMessage(err, "The history couldn't be loaded")));
+            .catch((err) => !cancelled && setError(getErrorMessage(err, HISTORY_ERROR)));
         return () => {
             cancelled = true;
         };
@@ -114,19 +117,25 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
 
     return (
         <Modal open title="History" onClose={onClose} size="lg" icon={<History size={18} aria-hidden="true" />}
-               description="Grading runs, transcript and grade versions, and every teacher action.">
-            <div className={styles.toolbar}>
-                <label className={styles.toggle}>
-                    <input type="checkbox" checked={showCalls} onChange={(e) => setShowCalls(e.target.checked)} />
-                    Show model calls ({callCount})
-                </label>
-                {entries && <span className={styles.count} aria-live="polite">{shown.length} {shown.length === 1 ? "entry" : "entries"}</span>}
-            </div>
+               description="Every grading, transcript and grade version, and what teachers did, oldest first.">
+            {entries && entries.length > 0 && (
+                <div className={styles.toolbar}>
+                    <label className={styles.toggle}>
+                        <input type="checkbox" checked={showCalls} onChange={(e) => setShowCalls(e.target.checked)} />
+                        Show AI requests ({callCount})
+                    </label>
+                    <span className={styles.count} aria-live="polite">{plural(shown.length, "entry", "entries")}</span>
+                </div>
+            )}
             {error && (
                 <div role="alert" className={styles.formError}>
                     <AlertCircle size={16} aria-hidden="true" />
-                    <span className={styles.grow}>{error}</span>
-                    <Button size="sm" variant="secondary" onClick={() => {
+                    <div className={styles.grow}>
+                        <p className={styles.formErrorTitle}>{HISTORY_ERROR}</p>
+                        <p>{error === HISTORY_ERROR ? "Check your connection and try again."
+                            : plainError(error) ?? "Something went wrong on our side. Try again in a moment."}</p>
+                    </div>
+                    <Button size="sm" variant="outline" icon={<RefreshCw size={14} aria-hidden="true" />} onClick={() => {
                         setError(null);
                         setAttempt((n) => n + 1);
                     }}>Try again</Button>
@@ -143,7 +152,12 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
                     ))}
                 </div>
             )}
-            {entries && shown.length === 0 && <p className={styles.emptyHistory}>Nothing has happened to this answer sheet yet.</p>}
+            {entries && shown.length === 0 && (
+                <div className={styles.emptyHistory}>
+                    <span className={styles.emptyHistoryIcon} aria-hidden="true"><History size={24} /></span>
+                    <p>Nothing has happened to this answer sheet yet.</p>
+                </div>
+            )}
             {days.map((group) => (
                 <section key={group.day} aria-label={group.day}>
                     <h3 className={styles.day}>{group.day}</h3>
@@ -156,7 +170,15 @@ export default function TimelineDialog({ submissionId, onClose }: { submissionId
                                     <div>
                                         <p className={styles.entryTitle}>{title}</p>
                                         {detail && <p className={styles.entryDetail}>{detail}</p>}
-                                        {technical && <p className={styles.entryTech}>{technical}</p>}
+                                        {technical && (
+                                            <details className={styles.entryTech}>
+                                                <summary>
+                                                    <ChevronRight size={14} aria-hidden="true" className={styles.entryTechChevron} />
+                                                    Technical details
+                                                </summary>
+                                                <p><code>{technical}</code></p>
+                                            </details>
+                                        )}
                                     </div>
                                     <time className={styles.entryTime} dateTime={entry.at}>
                                         {new Date(entry.at).toLocaleTimeString(undefined, { timeStyle: "short" })}

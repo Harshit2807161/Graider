@@ -103,7 +103,8 @@
 
 .row:hover { background-color: var(--slate-50); }
 
-.table .person { white-space: nowrap; }
+/* Long names wrap rather than push the table wider than its card */
+.person > :last-child { min-width: 0; }
 
 .person {
     display: flex;
@@ -288,6 +289,7 @@
 @container review (max-width: 60rem) {
     .table th, .table td { padding-left: var(--space-3); padding-right: var(--space-3); }
     .table .meter { display: none; }
+    .table .avatar { display: none; }
     .openText { display: none; }
     .openLink { padding: 0 var(--space-2); }
 }

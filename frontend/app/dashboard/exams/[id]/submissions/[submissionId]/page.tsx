@@ -17,6 +17,7 @@ import QuestionCard from "@/components/features/review/QuestionCard";
 import TimelineDialog from "@/components/features/review/TimelineDialog";
 import TranscriptDialog from "@/components/features/review/TranscriptDialog";
 import { explainFailure, plainError } from "@/components/features/review/failure";
+import { fmt, plural } from "@/components/features/review/format";
 import styles from "@/components/features/review/review.module.css";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -28,14 +29,6 @@ import { QuestionReview, SubmissionReview } from "@/types/review.types";
 const POLL_INTERVAL_MS = 3000;
 const TOAST_MS = 6000;
 const LOAD_ERROR = "This answer sheet couldn't be loaded";
-
-function fmt(value: number | null | undefined): string {
-    return value == null ? "–" : Number(value.toFixed(2)).toString();
-}
-
-function plural(n: number, one: string, many: string): string {
-    return `${n} ${n === 1 ? one : many}`;
-}
 
 function firstPage(q: QuestionReview | undefined): number | null {
     const pages = (q?.transcription?.segments ?? []).map((s) => s.page).filter((p): p is number => p != null);
@@ -50,15 +43,21 @@ function escalatedIn(questions: QuestionReview[]): QuestionReview[] {
     return questions.filter((q) => q.grade?.status === "escalated");
 }
 
+/** The worker's progress note ("Reading 3 page(s) for 3 questions...") as a tidy sentence. */
+function progress(step: string | null | undefined, fallback: string): string {
+    if (!step || /^error/i.test(step)) return fallback;
+    return step.replace(/(\d+) page\(s\)/, (_, n: string) => plural(Number(n), "page", "pages")).replace(/\.\.\.$/, "…");
+}
+
 /** What the sheet's status means for the teacher, and what to do next. */
 function summaryFor(status: SubmissionStatus, toReview: number, step: string | null | undefined) {
     switch (status) {
         case "PENDING":
             return { tone: "processing", icon: <Loader2 size={22} className={styles.spin} />, title: "Waiting to be graded",
-                     text: step || "Queued: grading starts shortly." };
+                     text: progress(step, "Queued: grading starts shortly.") };
         case "PROCESSING":
             return { tone: "processing", icon: <Loader2 size={22} className={styles.spin} />, title: "Grading in progress",
-                     text: step || "Reading the pages and grading each answer…" };
+                     text: progress(step, "Reading the pages and grading each answer…") };
         case "NEEDS_REVIEW":
             return { tone: "review", icon: <AlertTriangle size={22} />,
                      title: `${plural(toReview, "answer needs", "answers need")} your review`,
@@ -68,13 +67,13 @@ function summaryFor(status: SubmissionStatus, toReview: number, step: string | n
                      text: "Every answer is graded. Check the grades, then approve this answer sheet." };
         case "APPROVED":
             return { tone: "approved", icon: <ShieldCheck size={22} />, title: "Approved, ready to publish",
-                     text: "“Publish approved” on the exam page shares every approved sheet with its student. "
+                     text: "\"Publish approved\" on the exam page shares every approved sheet with its student. "
                          + "To change a score first, withdraw the approval." };
         case "PUBLISHED":
             return { tone: "published", icon: <Send size={22} />, title: "Published",
-                     text: "The student can see these results. Published results can’t be changed." };
+                     text: "The student can see these results. Published results can't be changed." };
         default:
-            return { tone: "failed", icon: <AlertCircle size={22} />, title: "This answer sheet couldn’t be graded",
+            return { tone: "failed", icon: <AlertCircle size={22} />, title: "This answer sheet couldn't be graded",
                      text: explainFailure(step).cause };
     }
 }
@@ -346,7 +345,7 @@ export default function SubmissionReviewPage() {
         focusLater(`q-${q.question_id}`);
     };
 
-    const submitted = new Date(submission.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const uploaded = new Date(submission.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
     return (
         <>
@@ -357,7 +356,7 @@ export default function SubmissionReviewPage() {
                     subtitle={
                         <span className={styles.meta}>
                             <StatusBadge status={submission.status} />
-                            <span><Calendar size={15} aria-hidden="true" />Submitted {submitted}</span>
+                            <span><Calendar size={15} aria-hidden="true" />Uploaded {uploaded}</span>
                             <span><ListChecks size={15} aria-hidden="true" />{plural(questions.length, "question", "questions")}</span>
                             {review.pages.length > 0 && (
                                 <span><FileText size={15} aria-hidden="true" />{plural(review.pages.length, "page", "pages")}</span>
@@ -387,7 +386,7 @@ export default function SubmissionReviewPage() {
                                 <Button disabled={busy || status === "NEEDS_REVIEW"} icon={<ShieldCheck size={16} aria-hidden="true" />} className={styles.headerAction}
                                         aria-describedby={status === "NEEDS_REVIEW" ? "approve-blocked" : undefined}
                                         onClick={() => act(() => reviewService.approve(submissionId),
-                                            () => "Approved. Publish it from the exam page with “Publish approved”.", null)}>
+                                            () => "Approved. Publish it from the exam page with \"Publish approved\".", null)}>
                                     Approve
                                 </Button>
                             )}
@@ -401,7 +400,7 @@ export default function SubmissionReviewPage() {
                             <AlertCircle size={20} aria-hidden="true" />
                             <div className={styles.errorBody}>
                                 <div>
-                                    <p className={styles.errorTitle}>{plainError(loadError) ?? "This answer sheet couldn’t be refreshed"}</p>
+                                    <p className={styles.errorTitle}>{plainError(loadError) ?? "This answer sheet couldn't be refreshed"}</p>
                                     <p>What you see may be out of date.</p>
                                 </div>
                                 <Button variant="outline" size="sm" onClick={load} icon={<RefreshCw size={14} aria-hidden="true" />}>Try again</Button>
@@ -506,7 +505,7 @@ export default function SubmissionReviewPage() {
                                         <div>
                                             <h2 id="unplaced-title" className={styles.sectionTitle}>Writing not matched to a question</h2>
                                             <p className={styles.sectionText}>
-                                                If it belongs to an answer, add it there with “Correct transcript”.
+                                                If it belongs to an answer, add it there with &quot;Correct transcript&quot;.
                                             </p>
                                         </div>
                                     </div>

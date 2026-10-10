@@ -431,6 +431,11 @@
     background-color: var(--primary-light);
 }
 
+/* Fingers and phones: a 40px target, like the answers' page buttons */
+@media (pointer: coarse), (max-width: 767px) {
+    .pageLink { height: 2.5rem; }
+}
+
 /* ===== states (as in the exams area) ===== */
 .errorBanner {
     display: flex;
@@ -593,7 +598,7 @@
 /* ===== small spaces ===== */
 @container answers (max-width: 30rem) {
     .unplaced { padding: var(--space-4); }
-    .pageLink { height: 2.25rem; padding: 0 var(--space-3); }
+    .pageLink { padding: 0 var(--space-3); }
 }
 
 @container review (max-width: 40rem) {

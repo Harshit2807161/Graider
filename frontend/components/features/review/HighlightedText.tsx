@@ -48,7 +48,7 @@ export default function HighlightedText({ text, quotes, activeCriterion }: {
         if (range.start > at) pieces.push(text.slice(at, range.start));
         pieces.push(
             <mark key={range.start} className={cn(styles.evidence, activeCriterion && range.ids.includes(activeCriterion) && styles.evidenceActive)}
-                  title={`Evidence for ${range.ids.join(", ")}`}>
+                  data-criteria={range.ids.join(" ")} title={`Evidence for ${range.ids.join(", ")}`}>
                 {text.slice(range.start, range.end)}
             </mark>,
         );

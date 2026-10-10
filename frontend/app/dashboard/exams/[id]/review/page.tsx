@@ -9,6 +9,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import ButtonLink from "@/components/common/ButtonLink";
 import PageHeader from "@/components/common/PageHeader";
 import { plainError } from "@/components/features/review/failure";
+import { fmt, percent, plural } from "@/components/features/review/format";
 import queue from "@/components/features/review/ReviewQueue.module.css";
 import styles from "@/components/features/review/review.module.css";
 import { getErrorMessage } from "@/lib/api";
@@ -18,10 +19,6 @@ import { reviewService } from "@/services/review.service";
 import { ReviewQueueItem, escalationText } from "@/types/review.types";
 
 const QUEUE_ERROR = "The review queue couldn't be loaded";
-
-function fmt(value: number | null | undefined): string {
-    return value == null ? "–" : Number(value.toFixed(2)).toString();
-}
 
 function initials(name: string | null): string {
     if (!name) return "?";
@@ -68,9 +65,9 @@ export default function ReviewQueuePage() {
     const status = loading ? "Loading the review queue…"
         : error ? ""
         : items.length === 0 ? (escalatedOnly ? "Nothing needs review." : "Nothing to check yet.")
-        : waiting === 0 ? `Nothing needs review; ${items.length} graded ${items.length === 1 ? "answer" : "answers"} to check.`
-        : `${waiting} ${waiting === 1 ? "answer needs" : "answers need"} review across ${sheets} answer ${sheets === 1 ? "sheet" : "sheets"}`
-            + (toCheck.length > 0 ? `; ${toCheck.length} graded ${toCheck.length === 1 ? "answer" : "answers"} to check.` : ".");
+        : waiting === 0 ? `Nothing needs review; ${plural(items.length, "graded answer", "graded answers")} to check.`
+        : `${plural(waiting, "answer needs", "answers need")} review across ${plural(sheets, "answer sheet", "answer sheets")}`
+            + (toCheck.length > 0 ? `; ${plural(toCheck.length, "graded answer", "graded answers")} to check.` : ".");
     // The filter only helps when there is something to filter
     const showFilter = escalatedOnly || loading || items.length > 0;
     const hrefOf = (item: ReviewQueueItem) => `/dashboard/exams/${examId}/submissions/${item.submission_id}#q-${item.question_id}`;
@@ -206,7 +203,7 @@ export default function ReviewQueuePage() {
                                                                 <span style={{ width: `${Math.max(0, Math.min(1, item.agreement)) * 100}%` }} />
                                                             </span>
                                                         )}
-                                                        {fmt(item.agreement)}
+                                                        {percent(item.agreement)}
                                                     </span>
                                                 </td>
                                                 <td className={queue.open}>
@@ -237,7 +234,9 @@ export default function ReviewQueuePage() {
                                                         <span className={queue.avatar} aria-hidden="true">{initials(item.student_name)}</span>
                                                         <span className={queue.cardWho}>
                                                             <span>{item.student_name ?? "No student"} · {item.question_label}</span>
-                                                            <span className={queue.cardSub}>Agreement {fmt(item.agreement)}</span>
+                                                            {item.agreement != null && (
+                                                                <span className={queue.cardSub}>Agreement {percent(item.agreement)}</span>
+                                                            )}
                                                         </span>
                                                     </span>
                                                     <span className={cn(queue.num, queue.score)}><strong>{fmt(item.score)}</strong> / {fmt(item.max_score)}</span>
