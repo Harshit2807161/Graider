@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, ChevronsUpDown, GraduationCap, FileText, LogOut, Menu, X } from "lucide-react";
+import { Award, Building2, ChevronsUpDown, FileText, GraduationCap, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgContext } from "@/context/OrgContext";
@@ -12,11 +12,16 @@ import BrandMark from "./BrandMark";
 import { focusMainContent } from "./focus";
 import styles from "./Sidebar.module.css";
 
-const navItems = [
+const staffNav = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
     { href: "/dashboard/orgs", label: "Organizations", icon: Building2, exact: false },
     { href: "/dashboard/classes", label: "Classes", icon: GraduationCap, exact: false },
     { href: "/dashboard/exams", label: "Exams", icon: FileText, exact: false },
+];
+
+// Students only see their own results
+const studentNav = [
+    { href: "/dashboard/results", label: "My results", icon: Award, exact: false },
 ];
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
@@ -53,7 +58,7 @@ function AccountBlock({ switchable, onNavigate, title, children }: {
 export default function Sidebar() {
     const pathname = usePathname();
     const { logout } = useAuth();
-    const { orgs, activeOrg, isLoading: orgsLoading } = useOrgContext();
+    const { orgs, activeOrg, isLoading: orgsLoading, isStudent } = useOrgContext();
     const [open, setOpen] = useState(false);
     // undefined while loading, null if it couldn't be loaded (the footer then shows the organization only)
     const [user, setUser] = useState<CurrentUser | null | undefined>(undefined);
@@ -180,7 +185,7 @@ export default function Sidebar() {
 
                 <nav className={styles.nav} aria-label="Main">
                     <ul className={styles.navList}>
-                        {navItems.map((item) => {
+                        {(isStudent ? studentNav : staffNav).map((item) => {
                             const Icon = item.icon;
                             const active = isActive(item.href, item.exact);
                             return (
