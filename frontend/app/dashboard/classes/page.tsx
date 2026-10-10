@@ -1,31 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Building2, ChevronDown, Plus } from "lucide-react";
 import { useOrgContext } from "@/context/OrgContext";
 import { useBatchContext } from "@/context/BatchContext";
 import PageHeader from "@/components/common/PageHeader";
+import ButtonLink from "@/components/common/ButtonLink";
+import ErrorBanner from "@/components/common/ErrorBanner";
+import { useHydrated } from "@/components/common/useHydrated";
 import Button from "@/components/ui/Button";
 import BatchList from "@/components/features/classes/BatchList";
 import CreateBatchModal from "@/components/features/classes/CreateBatchModal";
 import styles from "./page.module.css";
 
 export default function ClassesPage() {
-    const { orgs, activeOrg, setActiveOrg } = useOrgContext();
+    const { orgs, activeOrg, setActiveOrg, isLoading: orgsLoading, error: orgsError, refetch: refetchOrgs } = useOrgContext();
     const { batches, isLoading, error, fetchBatches } = useBatchContext();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const hydrated = useHydrated();
 
     // The organization you're working in (shown in the sidebar); this page can switch it
     const selectedOrg = activeOrg ?? orgs[0] ?? null;
     const selectedOrgId = selectedOrg?.id ?? "";
+    // The organizations only start loading in the browser: until they're in, the classes are loading too
+    const orgsPending = !hydrated || (orgsLoading && orgs.length === 0);
+    const noOrg = !orgsPending && !orgsError && orgs.length === 0;
 
-    useEffect(() => {
+    // Before paint, so the previous organization's classes (or "No classes yet") never flash up
+    useLayoutEffect(() => {
         if (selectedOrgId) {
             fetchBatches(selectedOrgId);
         }
     }, [selectedOrgId, fetchBatches]);
 
-    const lead = isLoading || error
+    if (noOrg) {
+        return (
+            <>
+                <PageHeader title="Classes" subtitle="Class rosters, so answer sheets can be matched to students." />
+                <div className={styles.empty}>
+                    <span className={styles.emptyIcon} aria-hidden="true"><Building2 size={32} /></span>
+                    <h2>No organization yet</h2>
+                    <p>Classes belong to an organization, such as your school or department. Create one, or ask an owner to add you to theirs.</p>
+                    <ButtonLink href="/dashboard/orgs" variant="secondary">Go to organizations</ButtonLink>
+                </div>
+            </>
+        );
+    }
+
+    const lead = orgsPending || isLoading || error
         ? "Class rosters in"
         : `${batches.length} ${batches.length === 1 ? "class" : "classes"} in`;
 
@@ -69,11 +91,20 @@ export default function ClassesPage() {
                 </div>
             )}
 
-            <BatchList
-                onCreateClick={() => setIsModalOpen(true)}
-                onRetry={() => selectedOrgId && fetchBatches(selectedOrgId)}
-                orgName={selectedOrg?.name}
-            />
+            {orgsError && !selectedOrg ? (
+                <ErrorBanner
+                    title="Your organizations couldn't be loaded"
+                    detail={orgsError === "Failed to load organizations" ? null : orgsError}
+                    onRetry={refetchOrgs}
+                />
+            ) : (
+                <BatchList
+                    pending={orgsPending}
+                    onCreateClick={() => setIsModalOpen(true)}
+                    onRetry={() => selectedOrgId && fetchBatches(selectedOrgId)}
+                    orgName={selectedOrg?.name}
+                />
+            )}
 
             <CreateBatchModal
                 isOpen={isModalOpen}

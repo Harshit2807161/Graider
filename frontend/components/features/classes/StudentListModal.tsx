@@ -131,7 +131,7 @@ export default function StudentListModal({
                     <p className={styles.emptyTitle}>No students in this class yet</p>
                     <p>Upload a roster (Excel or CSV with Name and Email columns) to add them.</p>
                     {onUpload && (
-                        <Button variant="secondary" size="sm" onClick={onUpload} icon={<Upload size={14} aria-hidden="true" />}>
+                        <Button variant="secondary" size="sm" onClick={onUpload} icon={<Upload size={16} aria-hidden="true" />}>
                             Upload roster
                         </Button>
                     )}

@@ -164,3 +164,27 @@
     background-color: var(--slate-50);
     border-color: var(--slate-300);
 }
+
+/* Small phones (below 360px): the name gets the room; the tile is decorative */
+@media (max-width: 359px) {
+    .card {
+        padding: var(--space-4);
+    }
+
+    .icon {
+        display: none;
+    }
+}
+
+/* Press feedback (after the hover rules, so it wins) */
+.link:active {
+    background-color: var(--indigo-100);
+}
+
+.switchBtn:active {
+    background-color: var(--slate-100);
+}
+
+.deleteBtn:active {
+    background-color: var(--red-100);
+}

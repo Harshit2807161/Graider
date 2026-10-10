@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import Link from "next/link";
 import { Org } from "@/types/org.types";
 import { useOrgs } from "@/hooks/useOrgs";
@@ -12,16 +12,25 @@ interface OrgCardProps {
     /** The organization you're working in (shown in the sidebar); the others offer a Switch */
     isCurrent?: boolean;
     onDelete?: () => void;
+    /** After Switch made this the current organization */
+    onSwitched?: () => void;
 }
 
 const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 
-export default function OrgCard({ org, isCurrent = false, onDelete }: OrgCardProps) {
+export default function OrgCard({ org, isCurrent = false, onDelete, onSwitched }: OrgCardProps) {
     const { setActiveOrg } = useOrgs();
     const titleId = `org-${org.id}`;
+    const classesRef = useRef<HTMLAnchorElement>(null);
     // Opening an organization's classes or exams makes it the one you're working in
     const select = () => setActiveOrg(org);
+    const switchTo = () => {
+        select();
+        onSwitched?.();
+        // Switch disappears once this is the current organization: keep focus in the card, on its next step
+        requestAnimationFrame(() => classesRef.current?.focus());
+    };
 
     return (
         <article className={styles.card} aria-labelledby={titleId}>
@@ -54,17 +63,17 @@ export default function OrgCard({ org, isCurrent = false, onDelete }: OrgCardPro
             </p>
 
             <div className={styles.links}>
-                <Link href="/dashboard/classes" className={styles.link} onClick={select}>
-                    Classes <ArrowRight size={14} aria-hidden="true" />
+                <Link ref={classesRef} href="/dashboard/classes" className={styles.link} onClick={select}>
+                    Classes <ArrowRight size={16} aria-hidden="true" />
                     <span className="sr-only"> in {org.name}</span>
                 </Link>
                 <Link href="/dashboard/exams" className={styles.link} onClick={select}>
-                    Exams <ArrowRight size={14} aria-hidden="true" />
+                    Exams <ArrowRight size={16} aria-hidden="true" />
                     <span className="sr-only"> in {org.name}</span>
                 </Link>
                 {!isCurrent && (
-                    <button type="button" className={styles.switchBtn} onClick={select}>
-                        <ArrowLeftRight size={14} aria-hidden="true" />
+                    <button type="button" className={styles.switchBtn} onClick={switchTo}>
+                        <ArrowLeftRight size={16} aria-hidden="true" />
                         Switch<span className="sr-only"> to {org.name}</span>
                     </button>
                 )}

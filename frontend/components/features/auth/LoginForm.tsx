@@ -5,7 +5,14 @@ import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
+import { plainError } from "@/components/features/review/failure";
 import styles from "./LoginForm.module.css";
+
+/** The server's reason when it's meant for people ("Incorrect email or password"), else a plain sentence */
+function signInError(message: string): string {
+    if (/network error/i.test(message)) return "Gr8r can't be reached right now. Check your internet connection, then try again.";
+    return plainError(message) ?? "Something went wrong on our side. Try again in a moment.";
+}
 
 export default function LoginForm() {
     const { login, isLoading, error } = useAuth();
@@ -24,7 +31,7 @@ export default function LoginForm() {
             {error && (
                 <div className={styles.error} role="alert">
                     <AlertCircle size={18} aria-hidden="true" />
-                    <span>{error}</span>
+                    <span>{signInError(error)}</span>
                 </div>
             )}
 

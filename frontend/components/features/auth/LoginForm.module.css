@@ -45,10 +45,10 @@
 /* Sits inside the password field, which is the last thing in its wrapper */
 .toggle {
     position: absolute;
-    right: 0.25rem;
-    bottom: 0.25rem;
-    width: 2.25rem;
-    height: 2.25rem;
+    right: 0.125rem;
+    bottom: 0.125rem;
+    width: 2.5rem;
+    height: 2.5rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;

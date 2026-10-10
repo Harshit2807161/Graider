@@ -7,6 +7,8 @@ import OrgCard from "./OrgCard";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ErrorBanner from "@/components/common/ErrorBanner";
+import { focusMainContent } from "@/components/common/focus";
+import { useHydrated } from "@/components/common/useHydrated";
 import { Plus, Building2 } from "lucide-react";
 import styles from "./OrgList.module.css";
 
@@ -17,9 +19,14 @@ interface OrgListProps {
 export default function OrgList({ onCreateClick }: OrgListProps) {
     const { orgs, activeOrg, isLoading, error, deleteOrg, refetch } = useOrgs();
     const [toDelete, setToDelete] = useState<Org | null>(null);
+    // Said to screen readers after a switch or a delete
+    const [announcement, setAnnouncement] = useState("");
+    const hydrated = useHydrated();
 
-    if (isLoading && orgs.length === 0) {
-        return (
+    let body: React.ReactNode;
+    // The list only starts loading in the browser: until then it's loading, not empty
+    if (!hydrated || (isLoading && orgs.length === 0)) {
+        body = (
             <div className={styles.grid} role="status">
                 <span className="sr-only">Loading organizations</span>
                 {[0, 1].map((i) => (
@@ -33,16 +40,12 @@ export default function OrgList({ onCreateClick }: OrgListProps) {
                 ))}
             </div>
         );
-    }
-
-    if (error) {
+    } else if (error) {
         // The context's own fallback only repeats the title
         const detail = error === "Failed to load organizations" ? null : error;
-        return <ErrorBanner title="Your organizations couldn't be loaded" detail={detail} onRetry={refetch} />;
-    }
-
-    if (orgs.length === 0) {
-        return (
+        body = <ErrorBanner title="Your organizations couldn't be loaded" detail={detail} onRetry={refetch} />;
+    } else if (orgs.length === 0) {
+        body = (
             <div className={styles.empty}>
                 <span className={styles.emptyIcon} aria-hidden="true">
                     <Building2 size={32} />
@@ -54,17 +57,28 @@ export default function OrgList({ onCreateClick }: OrgListProps) {
                 </Button>
             </div>
         );
+    } else {
+        body = (
+            <ul className={styles.grid} aria-label="Organizations">
+                {orgs.map((org) => (
+                    <li key={org.id}>
+                        <OrgCard
+                            org={org}
+                            isCurrent={activeOrg?.id === org.id}
+                            onDelete={() => setToDelete(org)}
+                            onSwitched={() => setAnnouncement(`You're now working in ${org.name}`)}
+                        />
+                    </li>
+                ))}
+            </ul>
+        );
     }
 
     return (
         <>
-            <ul className={styles.grid} aria-label="Organizations">
-                {orgs.map((org) => (
-                    <li key={org.id}>
-                        <OrgCard org={org} isCurrent={activeOrg?.id === org.id} onDelete={() => setToDelete(org)} />
-                    </li>
-                ))}
-            </ul>
+            {body}
+            {/* Outside the branches, so it's announced even when the last organization goes */}
+            <p className="sr-only" role="status">{announcement}</p>
 
             {toDelete && (
                 <ConfirmDialog
@@ -80,6 +94,9 @@ export default function OrgList({ onCreateClick }: OrgListProps) {
                     onConfirm={async () => {
                         await deleteOrg(toDelete.id);
                         setToDelete(null);
+                        setAnnouncement(`${toDelete.name} was deleted`);
+                        // Its card, and the button that opened this, are gone
+                        focusMainContent();
                     }}
                     onClose={() => setToDelete(null)}
                 />

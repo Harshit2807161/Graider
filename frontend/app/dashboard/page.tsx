@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useId, useState } from "react";
+import React, { useEffect, useId, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
     AlertTriangle,
@@ -18,6 +18,7 @@ import {
     ListPlus,
     LucideIcon,
     Plus,
+    RefreshCw,
     Send,
     ShieldCheck,
     Upload,
@@ -34,6 +35,8 @@ import { Exam, Submission, SubmissionStatus } from "@/types/exam.types";
 import PageHeader from "@/components/common/PageHeader";
 import ButtonLink from "@/components/common/ButtonLink";
 import ErrorBanner from "@/components/common/ErrorBanner";
+import { useHydrated } from "@/components/common/useHydrated";
+import { explainFailure } from "@/components/features/review/failure";
 import Button from "@/components/ui/Button";
 import CreateExamModal from "@/components/features/exams/CreateExamModal";
 import styles from "./page.module.css";
@@ -140,13 +143,47 @@ function names(submissions: Submission[]): string {
 
 const sheetOf = (s: Submission) => (s.student_name?.trim() ? `${s.student_name.trim()}'s answer sheet` : "an unnamed answer sheet");
 
-/** A teacher-friendly reason for a failed grading run; the raw error stays on the answer sheet's page */
-function failureReason(step?: string | null): string {
-    const text = (step ?? "").toLowerCase();
-    if (text.includes("couldn't be read") || text.includes("could not be read")) return "Its pages couldn't be read";
-    if (text.includes("no questions")) return "The exam had no questions when it was graded";
-    if (text.includes("budget") || text.includes("cost") || text.includes("cap")) return "Grading stopped at its cost limit";
-    return "Grading stopped before it finished";
+/** Why an answer sheet couldn't be graded, in the answer sheet page's words: the cause's first clause
+ *  ("The pages couldn't be read"), short enough for a one-line detail */
+const failureReason = (step?: string | null) => explainFailure(step).cause.split(/[,.;](?:\s|$)/)[0];
+
+/** "How grading works" stays open or folded per browser; in memory if storage is blocked */
+const HOW_KEY = "gr8r.overview.howItWorks";
+let howFolded: boolean | null = null;
+const howListeners = new Set<() => void>();
+
+function readHowFolded(): boolean {
+    if (howFolded !== null) return howFolded;
+    try {
+        return window.localStorage.getItem(HOW_KEY) === "folded";
+    } catch {
+        return false;
+    }
+}
+
+function subscribeHow(listener: () => void): () => void {
+    howListeners.add(listener);
+    // Another tab folded or opened it
+    const onStorage = (e: StorageEvent) => {
+        if (e.key !== HOW_KEY) return;
+        howFolded = null;
+        listener();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+        howListeners.delete(listener);
+        window.removeEventListener("storage", onStorage);
+    };
+}
+
+function setHowFoldedPreference(folded: boolean): void {
+    howFolded = folded;
+    try {
+        window.localStorage.setItem(HOW_KEY, folded ? "folded" : "open");
+    } catch {
+        // Private window or blocked storage: remembered until the page is reloaded
+    }
+    howListeners.forEach((listener) => listener());
 }
 
 /** Everything waiting for the teacher, most urgent first, each pointing at the page where it's done */
@@ -219,6 +256,9 @@ export default function DashboardPage() {
     const orgId = activeOrg?.id ?? orgs[0]?.id ?? "";
     const orgName = activeOrg?.name ?? orgs[0]?.name;
     const tasksId = useId();
+    const howId = useId();
+    const hydrated = useHydrated();
+    const howFoldedNow = useSyncExternalStore(subscribeHow, readHowFolded, () => false);
 
     const [data, setData] = useState<OverviewData | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -246,18 +286,18 @@ export default function DashboardPage() {
     const failure = error ?? (!orgId ? orgsError : null);
     const loading = !ready && !failure;
 
-    const retry = () => {
-        if (!error) {
-            refetchOrgs();
-            return;
-        }
+    // Load everything again, showing the skeletons meanwhile
+    const reload = () => {
         setError(null);
         setData(null);
         setAttempt((n) => n + 1);
     };
+    // Without an organization there is nothing to reload yet: fetch the organizations instead
+    const retry = () => (error || orgId ? reload() : refetchOrgs());
 
-    // No organization yet: nothing else on this page can work
-    if (!orgsLoading && !orgsError && orgs.length === 0) {
+    // No organization yet: nothing else on this page can work. Until the page runs in the browser the
+    // organizations haven't even started loading, so that's loading, not "none".
+    if (hydrated && !orgsLoading && !orgsError && orgs.length === 0) {
         return (
             <>
                 <PageHeader title="Overview" subtitle="Your classes, exams and the answers waiting for you." />
@@ -265,9 +305,7 @@ export default function DashboardPage() {
                     <span className={styles.emptyIcon} aria-hidden="true"><Building2 size={32} /></span>
                     <h2>Set up your organization</h2>
                     <p>Classes, exams and answer sheets all live inside an organization, such as your school or department.</p>
-                    <ButtonLink href="/dashboard/orgs" variant="primary" icon={<ArrowRight size={16} />}>
-                        Go to organizations
-                    </ButtonLink>
+                    <ButtonLink href="/dashboard/orgs" variant="secondary">Go to organizations</ButtonLink>
                 </div>
             </>
         );
@@ -431,15 +469,18 @@ export default function DashboardPage() {
                             </div>
                         )}
                         {!loading && (unreadable > 0 || !scannedAll) && (
-                            <p className={styles.footnote}>
-                                {!scannedAll && `Counted from your ${SCAN_LIMIT} most recent exams. `}
+                            <div className={styles.footnote}>
+                                <p>
+                                    {!scannedAll && `Counted from your ${SCAN_LIMIT} most recent exams. `}
+                                    {unreadable > 0 && <>Answer sheets for {plural(unreadable, "exam")} couldn&apos;t be loaded.</>}
+                                </p>
                                 {unreadable > 0 && (
-                                    <>
-                                        Answer sheets for {plural(unreadable, "exam")} couldn&apos;t be loaded.{" "}
-                                        <button type="button" className={styles.inlineButton} onClick={retry}>Try again</button>
-                                    </>
+                                    <Button variant="outline" size="sm" onClick={reload}
+                                            icon={<RefreshCw size={16} aria-hidden="true" />}>
+                                        Try again
+                                    </Button>
                                 )}
-                            </p>
+                            </div>
                         )}
                     </section>
 
@@ -476,7 +517,7 @@ export default function DashboardPage() {
                                 <h2 id="exams-title" className={styles.cardTitle}>Recent exams</h2>
                             </div>
                             <Link href="/dashboard/exams" className={styles.cardLink}>
-                                All exams <ArrowRight size={14} aria-hidden="true" />
+                                All exams <ArrowRight size={16} aria-hidden="true" />
                             </Link>
                         </div>
 
@@ -503,7 +544,7 @@ export default function DashboardPage() {
                                                     <span className={styles.rowTitle}>{exam.name}</span>
                                                     <span className={styles.rowMeta}>
                                                         {className(exam.batch_id) ?? "No class"}
-                                                        {" · "}{plural(questions, "question")}
+                                                        {" · "}{questions === 0 ? "No questions" : plural(questions, "question")}
                                                         {" · "}{formatDate(exam.created_at)}
                                                     </span>
                                                 </span>
@@ -548,7 +589,7 @@ export default function DashboardPage() {
                                     )}
                                 </div>
                                 <Link href="/dashboard/classes" className={styles.cardLink}>
-                                    Manage <ArrowRight size={14} aria-hidden="true" />
+                                    Manage <ArrowRight size={16} aria-hidden="true" />
                                 </Link>
                             </div>
                             {loading ? (
@@ -575,15 +616,26 @@ export default function DashboardPage() {
                             )}
                         </section>
 
-                        {/* How it works, for teachers new to it */}
+                        {/* How it works, for teachers new to it; folds away once they know (remembered per browser) */}
                         <section className={styles.card} aria-labelledby="how-title">
-                            <div className={styles.cardHeader}>
-                                <span className={styles.tile} aria-hidden="true"><ListChecks size={18} /></span>
-                                <div className={styles.cardTitleBlock}>
-                                    <h2 id="how-title" className={styles.cardTitle}>How grading works</h2>
-                                </div>
-                            </div>
-                            <ol className={styles.steps}>
+                            <h2 className={cn(styles.disclosureHeading, !howFoldedNow && styles.disclosureHeadingOpen)}>
+                                <button
+                                    type="button"
+                                    id="how-title"
+                                    className={styles.disclosure}
+                                    aria-expanded={!howFoldedNow}
+                                    aria-controls={howId}
+                                    onClick={() => setHowFoldedPreference(!howFoldedNow)}
+                                >
+                                    <span className={styles.tile} aria-hidden="true"><ListChecks size={18} /></span>
+                                    <span className={styles.disclosureTitle}>How grading works</span>
+                                    <span className={styles.disclosureAction} aria-hidden="true">
+                                        {howFoldedNow ? "Show" : "Hide"}
+                                        <ChevronDown size={16} className={cn(styles.moreIcon, !howFoldedNow && styles.moreIconOpen)} />
+                                    </span>
+                                </button>
+                            </h2>
+                            <ol id={howId} className={styles.steps} hidden={howFoldedNow}>
                                 <li>Add an exam&apos;s questions and the rubric you mark with.</li>
                                 <li>Upload each student&apos;s answer sheet: a PDF or photos of the pages.</li>
                                 <li>Gr8r reads the handwriting and grades every answer against your rubric; a second AI examiner checks each grade.</li>

@@ -7,21 +7,27 @@ import BatchCard from "./BatchCard";
 import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import ErrorBanner from "@/components/common/ErrorBanner";
+import { focusMainContent } from "@/components/common/focus";
 import { Plus, GraduationCap } from "lucide-react";
 import styles from "./BatchList.module.css";
 
 interface BatchListProps {
+    /** Show the loading state even before the classes start loading (e.g. while organizations load) */
+    pending?: boolean;
     onCreateClick: () => void;
     onRetry?: () => void;
     orgName?: string;
 }
 
-export default function BatchList({ onCreateClick, onRetry, orgName }: BatchListProps) {
+export default function BatchList({ pending = false, onCreateClick, onRetry, orgName }: BatchListProps) {
     const { batches, isLoading, error, deleteBatch } = useBatchContext();
     const [toDelete, setToDelete] = useState<Batch | null>(null);
+    // Said to screen readers after a delete
+    const [announcement, setAnnouncement] = useState("");
 
-    if (isLoading) {
-        return (
+    let body: React.ReactNode;
+    if (isLoading || pending) {
+        body = (
             <div className={styles.grid} role="status">
                 <span className="sr-only">Loading classes</span>
                 {[0, 1, 2].map((i) => (
@@ -35,16 +41,12 @@ export default function BatchList({ onCreateClick, onRetry, orgName }: BatchList
                 ))}
             </div>
         );
-    }
-
-    if (error) {
+    } else if (error) {
         // The context's own fallback only repeats the title
         const detail = error === "Failed to load classes" ? null : error;
-        return <ErrorBanner title="The classes couldn't be loaded" detail={detail} onRetry={onRetry} />;
-    }
-
-    if (batches.length === 0) {
-        return (
+        body = <ErrorBanner title="The classes couldn't be loaded" detail={detail} onRetry={onRetry} />;
+    } else if (batches.length === 0) {
+        body = (
             <div className={styles.empty}>
                 <span className={styles.emptyIcon} aria-hidden="true">
                     <GraduationCap size={32} />
@@ -59,10 +61,8 @@ export default function BatchList({ onCreateClick, onRetry, orgName }: BatchList
                 </Button>
             </div>
         );
-    }
-
-    return (
-        <>
+    } else {
+        body = (
             <ul className={styles.grid} aria-label="Classes">
                 {batches.map((batch) => (
                     <li key={batch.id}>
@@ -70,6 +70,14 @@ export default function BatchList({ onCreateClick, onRetry, orgName }: BatchList
                     </li>
                 ))}
             </ul>
+        );
+    }
+
+    return (
+        <>
+            {body}
+            {/* Outside the branches, so it's announced even when the last class goes */}
+            <p className="sr-only" role="status">{announcement}</p>
 
             {toDelete && (
                 <ConfirmDialog
@@ -85,6 +93,9 @@ export default function BatchList({ onCreateClick, onRetry, orgName }: BatchList
                     onConfirm={async () => {
                         await deleteBatch(toDelete.id);
                         setToDelete(null);
+                        setAnnouncement(`${toDelete.name} was deleted`);
+                        // Its card, and the button that opened this, are gone
+                        focusMainContent();
                     }}
                     onClose={() => setToDelete(null)}
                 />

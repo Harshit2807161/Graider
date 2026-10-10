@@ -306,3 +306,12 @@
         z-index: 30;
     }
 }
+
+/* Press feedback (after the hover rules, so it wins) */
+.navItem:active:not(.active),
+.logoutBtn:active,
+.accountLink:active,
+.menuBtn:active,
+.closeBtn:active {
+    background-color: var(--slate-700);
+}

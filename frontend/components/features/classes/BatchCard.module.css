@@ -87,6 +87,10 @@
     color: var(--red-600);
 }
 
+.deleteBtn:active {
+    background-color: var(--red-100);
+}
+
 .created {
     margin-top: 0.125rem;
     font-size: 0.8125rem;
@@ -99,7 +103,8 @@
     padding-top: var(--space-4);
     border-top: 1px solid var(--border-light);
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Side by side when both fit, stacked on the smallest phones */
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
     gap: var(--space-2);
 }
 
@@ -112,5 +117,16 @@
 @media (max-width: 1023px) {
     .actionBtn {
         min-height: 2.5rem;
+    }
+}
+
+/* Small phones (below 360px): the name gets the room; the tile is decorative */
+@media (max-width: 359px) {
+    .card {
+        padding: var(--space-4);
+    }
+
+    .icon {
+        display: none;
     }
 }

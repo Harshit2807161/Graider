@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrgContext } from "@/context/OrgContext";
 import { CurrentUser, userService } from "@/services/user.service";
 import BrandMark from "./BrandMark";
+import { focusMainContent } from "./focus";
 import styles from "./Sidebar.module.css";
 
 const navItems = [
@@ -115,6 +116,14 @@ export default function Sidebar() {
         };
     }, [open, close]);
 
+    // A link followed from the drawer: the drawer, and the link with it, go away, so focus starts at the
+    // top of the new page instead of falling back to <body>. The fixed sidebar stays, and so does focus.
+    const followLink = () => {
+        if (!open) return;
+        setOpen(false);
+        focusMainContent();
+    };
+
     const userName = user?.full_name?.trim() || user?.email || "";
 
     const isActive = (href: string, exact: boolean) =>
@@ -155,7 +164,7 @@ export default function Sidebar() {
             >
                 <div className={styles.brandRow}>
                     <Link href="/dashboard" className={styles.brandLink} aria-label="Gr8r, overview"
-                          onClick={() => setOpen(false)}>
+                          onClick={followLink}>
                         <BrandMark tone="dark" />
                     </Link>
                     <button
@@ -180,7 +189,7 @@ export default function Sidebar() {
                                         href={item.href}
                                         className={cn(styles.navItem, active && styles.active)}
                                         aria-current={active ? (pathname === item.href ? "page" : "true") : undefined}
-                                        onClick={() => setOpen(false)}
+                                        onClick={followLink}
                                     >
                                         <Icon size={18} aria-hidden="true" />
                                         <span>{item.label}</span>
@@ -203,11 +212,12 @@ export default function Sidebar() {
                     ) : (
                         <AccountBlock
                             switchable={orgs.length > 1}
-                            onNavigate={() => setOpen(false)}
-                            title={user?.email}
+                            onNavigate={followLink}
+                            title={[userName, user?.email !== userName ? user?.email : null, activeOrg?.name]
+                                .filter(Boolean).join("\n") || undefined}
                         >
                             <span className={styles.avatar} aria-hidden="true">
-                                {user ? initials(userName) : <Building2 size={14} />}
+                                {user ? initials(userName) : <Building2 size={16} />}
                             </span>
                             <span className={styles.accountText}>
                                 {user && (
