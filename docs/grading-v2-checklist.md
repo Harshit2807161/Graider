@@ -235,7 +235,7 @@ Implements [Proposal 002](proposals/002-grading-v2-architecture.md). Deferred it
 - [ ] Redis token-bucket rate limits and a per-target circuit breaker in the router
 - [ ] Hash-locked dependencies, Dependabot, pre-commit (ruff, gitleaks, detect-private-key)
 - [ ] `worker_max_tasks_per_child`, a retention job for `llm_calls` bodies, structlog bound to `run_id`
-- [ ] Clear the frontend lint debt, then enable `npm run lint` in CI
+- [x] Clear the frontend lint debt, then enable `npm run lint` in CI (done in M7)
 
 ---
 
