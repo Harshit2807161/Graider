@@ -4,12 +4,19 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-6);
+    gap: var(--space-3);
+    padding: var(--space-5);
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+/* Same padding as the organization and class cards */
+@media (min-width: 768px) {
+    .card {
+        padding: var(--space-6);
+    }
 }
 
 .card:hover {
@@ -24,16 +31,16 @@
     box-shadow: var(--focus-ring);
 }
 
+/* Icon tile beside the title block (as on OrgCard / BatchCard) */
 .header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
+    align-items: flex-start;
+    gap: var(--space-4);
 }
 
 .iconWrapper {
-    width: 48px;
-    height: 48px;
+    width: 3rem;
+    height: 3rem;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -41,6 +48,17 @@
     border-radius: 0.75rem;
     background-color: var(--primary-light);
     color: var(--primary);
+}
+
+/* Title, then the status pill under it (where the org card has its @slug) */
+.info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding-top: 0.125rem;
 }
 
 .status {
@@ -77,14 +95,8 @@
     color: var(--status-review-fg);
 }
 
-.body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 0;
-}
-
 .title {
+    align-self: stretch;
     font-size: var(--text-lg);
     font-weight: 600;
     line-height: 1.4;
@@ -185,6 +197,17 @@
 
 .card:hover .open svg {
     transform: translateX(2px);
+}
+
+/* Small phones (below 360px): the name gets the room; the tile is decorative (as on the other cards) */
+@media (max-width: 359px) {
+    .card {
+        padding: var(--space-4);
+    }
+
+    .iconWrapper {
+        display: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

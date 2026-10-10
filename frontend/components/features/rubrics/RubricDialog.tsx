@@ -84,7 +84,7 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
             )}
             {record === null && (
                 <div className={styles.empty}>
-                    <span className={styles.emptyIcon} aria-hidden="true"><ScrollText size={22} /></span>
+                    <span className={styles.emptyIcon} aria-hidden="true"><ScrollText size={20} /></span>
                     <p>
                         {status?.rubric_status === "pending" ? "The rubric is being parsed. Check back in a moment."
                             : status?.rubric_status === "error" ? "The rubric couldn't be turned into criteria. Parse it again; if that fails too, check the rubric text."
@@ -94,7 +94,7 @@ export default function RubricDialog({ examId, question, status, onClose, onChan
                     {status?.rubric_status === "error" && status.rubric_error && (
                         <p className={styles.errorDetail}>{status.rubric_error}</p>
                     )}
-                    <Button size="sm" variant="secondary" onClick={reparse} isLoading={reparsing} icon={<RotateCcw size={14} aria-hidden="true" />}>
+                    <Button size="sm" variant="secondary" onClick={reparse} isLoading={reparsing} icon={<RotateCcw size={16} aria-hidden="true" />}>
                         Parse now
                     </Button>
                 </div>
@@ -216,7 +216,7 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing,
                 </p>
                 {/* A new version from the rubric text: it belongs with the version, away from Save */}
                 <Button data-reparse variant="ghost" size="sm" onClick={askReparse} isLoading={reparsing && !confirmReparse}
-                        icon={<RotateCcw size={14} aria-hidden="true" />} aria-expanded={confirmReparse}
+                        icon={<RotateCcw size={16} aria-hidden="true" />} aria-expanded={confirmReparse}
                         title="Reads the rubric text again and replaces this version" className={styles.reparse}>
                     Parse again
                 </Button>
@@ -273,7 +273,7 @@ function RubricEditor({ examId, question, record, onSaved, onReparse, reparsing,
                         <button type="button" className={styles.iconButton} onClick={() => setCriteria(criteria.filter((_, j) => j !== i))}
                                 aria-label={`Remove criterion ${c.id}`} title={criteria.length === 1 ? "A rubric needs at least one criterion" : "Remove criterion"}
                                 disabled={criteria.length === 1}>
-                            <Trash2 size={15} aria-hidden="true" />
+                            <Trash2 size={16} aria-hidden="true" />
                         </button>
                         <div className={styles.criterionGrid}>
                             <label className={cn(styles.field, styles.wide)}>

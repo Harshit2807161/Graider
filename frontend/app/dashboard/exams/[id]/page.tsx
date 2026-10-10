@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar, ClipboardCheck, ListChecks, LogOut, Send, SlidersHorizontal, Trophy } from "lucide-react";
+import { ArrowLeft, Calendar, ClipboardCheck, LogOut, Send, SlidersHorizontal } from "lucide-react";
 import type { AxiosError } from "axios";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ import { useUnsavedChangesGuard } from "@/components/features/exams/useUnsavedCh
 import GradingSettingsPanel from "@/components/features/review/GradingSettingsPanel";
 import RubricDialog from "@/components/features/rubrics/RubricDialog";
 import styles from "./page.module.css";
+import { useTabTitle } from "@/components/common/useTabTitle";
 
 const IN_PROGRESS: SubmissionStatus[] = ["PENDING", "PROCESSING"];
 const POLL_INTERVAL_MS = 3000;
@@ -74,12 +75,10 @@ export default function ExamDetailsPage() {
             setDirty(false);
             setErrorDetails(null);
         } catch (err) {
-            const status = (err as AxiosError)?.response?.status;
-            setNotFound(status === 404);
-            // Server faults get a plain sentence; other errors say what the API said
-            setErrorDetails(!status || status >= 500
-                ? "The server didn't respond as expected. Check your connection, then try again."
-                : getErrorMessage(err, "Failed to load exam"));
+            setNotFound((err as AxiosError)?.response?.status === 404);
+            // What the API said; the banner turns technical noise ("Internal server error", "Network Error")
+            // into the shared plain sentences
+            setErrorDetails(getErrorMessage(err, "Failed to load exam"));
         } finally {
             setLoading(false);
         }
@@ -88,6 +87,9 @@ export default function ExamDetailsPage() {
     useEffect(() => {
         loadExam();
     }, [loadExam]);
+
+    // The browser tab names the exam ("<exam name> · Gr8r"); the layout's "Exams · Gr8r" until it loads
+    useTabTitle(exam?.name ? `${exam.name} · Gr8r` : null, "Exams · Gr8r");
 
     const refreshSubmissions = useCallback(async () => {
         try {
@@ -168,7 +170,6 @@ export default function ExamDetailsPage() {
 
     const approvedCount = submissions.filter((s) => s.status === "APPROVED").length;
     const reviewCount = submissions.filter((s) => s.status === "NEEDS_REVIEW").length;
-    const totalMarks = questions.reduce((t, q) => t + (Number(q.max_score) || 0), 0);
     const created = new Date(exam.created_at).toLocaleDateString(undefined, { dateStyle: "medium" });
 
     return (
@@ -177,18 +178,19 @@ export default function ExamDetailsPage() {
                 breadcrumbs={[{ label: "Exams", href: "/dashboard/exams" }, { label: exam.name }]}
                 title={exam.name}
                 subtitle={
+                    // The teacher's description, then when the exam was made. The question count and total
+                    // marks are right below (progress card, Questions section), and descriptions often
+                    // repeat them ("… · 8 marks"), so the header doesn't say them a second time.
                     <>
                         {exam.description && <span className={styles.description}>{exam.description}</span>}
                         <span className={styles.meta}>
-                            <span><ListChecks size={15} aria-hidden="true" />{questions.length} {questions.length === 1 ? "question" : "questions"}</span>
-                            <span><Trophy size={15} aria-hidden="true" />{totalMarks} {totalMarks === 1 ? "mark" : "marks"}</span>
-                            <span><Calendar size={15} aria-hidden="true" />Created {created}</span>
+                            <span><Calendar size={16} aria-hidden="true" /><span>Created <time dateTime={exam.created_at}>{created}</time></span></span>
                         </span>
                     </>
                 }
                 actions={
                     <>
-                        <ButtonLink href={`/dashboard/exams/${examId}/review`} variant="outline" icon={<ClipboardCheck size={16} />} className={styles.headerAction}>
+                        <ButtonLink href={`/dashboard/exams/${examId}/review`} variant="outline" icon={<ClipboardCheck size={16} aria-hidden="true" />} className={styles.headerAction}>
                             Review queue{" "}
                             {reviewCount > 0 && <span className={styles.countReview}><span className="sr-only">(</span>{reviewCount}<span className="sr-only">)</span></span>}
                         </ButtonLink>

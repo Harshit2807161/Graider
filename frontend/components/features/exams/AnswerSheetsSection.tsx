@@ -165,7 +165,7 @@ export default function AnswerSheetsSection({ examId, submissions, listState, ca
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDrop}
             >
-                <span className={styles.dropIcon} aria-hidden="true">{canUpload ? <UploadCloud size={22} /> : <Lock size={20} />}</span>
+                <span className={styles.dropIcon} aria-hidden="true">{canUpload ? <UploadCloud size={20} /> : <Lock size={20} />}</span>
                 <span className={styles.dropText}>
                     {canUpload ? (
                         <span className={styles.dropTitle}>
@@ -228,7 +228,7 @@ export default function AnswerSheetsSection({ examId, submissions, listState, ca
                         </h3>
                         {anyInProgress && (
                             <p className={styles.live}>
-                                <Loader2 size={14} className={styles.spin} aria-hidden="true" /> Updating as sheets are graded
+                                <Loader2 size={16} className={styles.spin} aria-hidden="true" /> Updating as sheets are graded
                             </p>
                         )}
                     </div>
@@ -310,14 +310,14 @@ function SheetRow({ examId, submission: s, regrading, onRegrade }: {
                         <span className={styles.reason}>{firstSentence(failure.cause)}</span>
                         {/* The fix sits with the problem; the sheet's page has the full explanation */}
                         <Button size="sm" variant="outline" className={styles.regrade} onClick={onRegrade}
-                                isLoading={regrading} icon={<RotateCcw size={14} aria-hidden="true" />}
+                                isLoading={regrading} icon={<RotateCcw size={16} aria-hidden="true" />}
                                 aria-describedby={`sheet-${s.id}`}>
                             Regrade
                         </Button>
                     </>
                 ) : busy ? (
                     <span className={styles.step}>
-                        <Loader2 size={12} className={styles.spin} aria-hidden="true" />
+                        <Loader2 size={16} className={styles.spin} aria-hidden="true" />
                         {s.current_step ? progressText(s.current_step) : s.status === "PENDING" ? "Waiting to start" : "Grading…"}
                     </span>
                 ) : NEXT_STEP[s.status] ? (

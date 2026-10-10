@@ -260,7 +260,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
             {empty && !removed ? (
                 !addOpen && (
                     <div className={styles.empty}>
-                        <span className={styles.emptyIcon} aria-hidden="true"><ListChecks size={24} /></span>
+                        <span className={styles.emptyIcon} aria-hidden="true"><ListChecks size={20} /></span>
                         <p className={styles.emptyTitle}>No questions</p>
                         <p className={styles.note}>Add one, or import a spreadsheet.</p>
                     </div>
@@ -289,7 +289,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
                                             <p className={styles.questionText}>{q.question_text}</p>
                                             {q.rubric_criteria && (
                                                 <p className={styles.rubricText}>
-                                                    <ScrollText size={13} aria-hidden="true" />
+                                                    <ScrollText size={16} aria-hidden="true" />
                                                     <span><span className="sr-only">Rubric: </span>{q.rubric_criteria}</span>
                                                 </p>
                                             )}
@@ -306,7 +306,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
                                             <div className={styles.rowActions}>
                                                 {q.id && (
                                                     <Button size="sm" variant="secondary" className={styles.rowButton}
-                                                            icon={<ScrollText size={14} aria-hidden="true" />} aria-describedby={`${formId}-q${idx}`}
+                                                            icon={<ScrollText size={16} aria-hidden="true" />} aria-describedby={`${formId}-q${idx}`}
                                                             onClick={() => onOpenRubric({ id: q.id as string, label, text: q.question_text, maxScore: q.max_score })}>
                                                         Rubric
                                                     </Button>
@@ -327,7 +327,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
             )}
             {!empty && (
                 <p className={styles.editNote}>
-                    <Info size={14} aria-hidden="true" />
+                    <Info size={16} aria-hidden="true" />
                     <span>
                         Saved questions can&apos;t be edited here. To change how one is marked, open its <strong>Rubric</strong>;
                         to change its wording or marks, remove it and add it again, then save.
@@ -373,7 +373,7 @@ export default function QuestionsSection({ id, examId, questions, saved, dirty, 
                         </Button>
                     )}
                     <p className={styles.addedNote} role="status">
-                        {added && <><CheckCircle2 size={14} aria-hidden="true" />{added}</>}
+                        {added && <><CheckCircle2 size={16} aria-hidden="true" />{added}</>}
                     </p>
                 </div>
             </form>
@@ -392,11 +392,11 @@ function RemovedRow({ removed, onUndo, undoRef }: {
     return (
         <li className={styles.removedRow}>
             <span role="status">
-                <Trash2 size={14} aria-hidden="true" />
+                <Trash2 size={16} aria-hidden="true" />
                 {question.id ? `${label} removed from the list. It's deleted from the exam when you save.` : "The new question was removed from the list."}
             </span>
             <button ref={undoRef} type="button" className={styles.undo} onClick={onUndo}>
-                <RotateCcw size={14} aria-hidden="true" /> Undo<span className="sr-only"> removing {label}</span>
+                <RotateCcw size={16} aria-hidden="true" /> Undo<span className="sr-only"> removing {label}</span>
             </button>
         </li>
     );

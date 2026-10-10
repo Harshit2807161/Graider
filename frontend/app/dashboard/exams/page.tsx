@@ -1,20 +1,21 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowRight, Building2, ChevronDown, GraduationCap, Plus, Search } from "lucide-react";
+import { ArrowRight, Building2, ChevronDown, FileText, Plus, Search } from "lucide-react";
 import { useOrgContext } from "@/context/OrgContext";
 import { useExamContext } from "@/context/ExamContext";
 import Button from "@/components/ui/Button";
 import ButtonLink from "@/components/common/ButtonLink";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import PageHeader from "@/components/common/PageHeader";
+import { useHydrated } from "@/components/common/useHydrated";
 import ExamCard from "@/components/features/exams/ExamCard";
 import CreateExamModal from "@/components/features/exams/CreateExamModal";
 import InlineMessage from "@/components/ui/InlineMessage";
 import styles from "./page.module.css";
 
 export default function ExamsPage() {
-    const { orgs, activeOrg, setActiveOrg, isLoading: orgsLoading } = useOrgContext();
+    const { orgs, activeOrg, setActiveOrg, isLoading: orgsLoading, error: orgsError, refetch: refetchOrgs } = useOrgContext();
     const { exams, isLoading, error, fetchExams } = useExamContext();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [query, setQuery] = useState("");
@@ -22,9 +23,14 @@ export default function ExamsPage() {
     const [createdName, setCreatedName] = useState<string | null>(null);
     // The org whose exams are on screen (exams from another org may still be in the context)
     const [loadedOrgId, setLoadedOrgId] = useState<string | null>(null);
+    const hydrated = useHydrated();
 
     // The page follows the active organization (the one the sidebar shows)
     const selectedOrgId = activeOrg?.id ?? orgs[0]?.id ?? "";
+    // The organizations only start loading in the browser: until they're in, the exams are loading too
+    // (as on Classes), so "No organization yet" never shows in the server's HTML or before the list arrives
+    const orgsPending = !hydrated || (orgsLoading && orgs.length === 0);
+    const noOrg = !orgsPending && !orgsError && orgs.length === 0;
 
     useEffect(() => {
         if (!selectedOrgId) return;
@@ -40,7 +46,7 @@ export default function ExamsPage() {
         if (org) setActiveOrg(org);
     };
 
-    if (!selectedOrgId && !orgsLoading && orgs.length === 0) {
+    if (noOrg) {
         return (
             <div className={styles.page}>
                 <PageHeader title="Exams" subtitle="Set up exams, grade answer sheets, then review and publish results." />
@@ -54,7 +60,10 @@ export default function ExamsPage() {
         );
     }
 
-    const loading = isLoading || orgsLoading || !selectedOrgId || loadedOrgId !== selectedOrgId;
+    // Organizations that couldn't be loaded: say so (below) instead of loading forever
+    const orgsFailed = !!orgsError && !selectedOrgId;
+    const loading = !orgsFailed && (orgsPending || isLoading || !selectedOrgId || loadedOrgId !== selectedOrgId);
+    const failed = orgsFailed || !!error;
     const q = query.trim().toLowerCase();
     const shown = q ? exams.filter((e) => `${e.name} ${e.description ?? ""}`.toLowerCase().includes(q)) : exams;
     const selectedOrg = orgs.find((o) => o.id === selectedOrgId);
@@ -65,7 +74,7 @@ export default function ExamsPage() {
         <div className={styles.page}>
             <PageHeader
                 title="Exams"
-                subtitle={selectedOrg && !loading && !error
+                subtitle={selectedOrg && !loading && !failed
                     ? <>{exams.length} {exams.length === 1 ? "exam" : "exams"} in <strong className={styles.orgName}>{selectedOrg.name}</strong>. Set up
                         each exam&apos;s questions and rubrics, grade answer sheets, then review and publish results.</>
                     : "Set up an exam's questions and rubrics, grade answer sheets, then review and publish results."}
@@ -80,7 +89,7 @@ export default function ExamsPage() {
                 <InlineMessage kind="success" className={styles.created} onDismiss={() => setCreatedName(null)}
                                action={
                                    <ButtonLink href={`/dashboard/exams/${created.id}`} variant="outline" size="sm"
-                                               icon={<ArrowRight size={14} />} className={styles.createdAction}>
+                                               icon={<ArrowRight size={16} aria-hidden="true" />} className={styles.createdAction}>
                                        Add its questions
                                    </ButtonLink>
                                }>
@@ -114,7 +123,7 @@ export default function ExamsPage() {
                 </div>
                 )}
                 {/* Nothing to search before there are exams */}
-                {!error && (loading || exams.length > 0) && (
+                {!failed && (loading || exams.length > 0) && (
                     <div className={styles.searchWrap}>
                         <Search size={16} className={styles.selectLead} aria-hidden="true" />
                         <input type="search" className={styles.search} value={query} onChange={(e) => setQuery(e.target.value)}
@@ -126,19 +135,23 @@ export default function ExamsPage() {
                 </p>
             </div>
 
-            {error && (
+            {orgsFailed ? (
+                <ErrorBanner title="Your organizations couldn't be loaded"
+                             detail={orgsError === "Failed to load organizations" ? null : orgsError}
+                             onRetry={refetchOrgs} className={styles.errorBanner} />
+            ) : error && (
                 <ErrorBanner title="The exams couldn't be loaded" detail={error} onRetry={() => fetchExams(selectedOrgId)}
                              className={styles.errorBanner} />
             )}
 
-            {loading && !error ? (
+            {loading && !failed ? (
                 <div className={styles.grid} aria-busy="true">
                     <span className="sr-only" role="status">Loading exams…</span>
                     {[0, 1, 2].map((i) => <div key={i} className={styles.skeletonCard} />)}
                 </div>
-            ) : error ? null : exams.length === 0 ? (
+            ) : failed ? null : exams.length === 0 ? (
                 <div className={styles.empty}>
-                    <span className={styles.emptyIcon} aria-hidden="true"><GraduationCap size={32} /></span>
+                    <span className={styles.emptyIcon} aria-hidden="true"><FileText size={32} /></span>
                     <h2>No exams yet</h2>
                     <p>Create the first exam for this organization, then add its questions and rubrics.</p>
                     <Button variant="secondary" onClick={() => setIsCreateModalOpen(true)} icon={<Plus size={18} aria-hidden="true" />}>
@@ -147,7 +160,7 @@ export default function ExamsPage() {
                 </div>
             ) : shown.length === 0 ? (
                 <div className={styles.empty}>
-                    <span className={styles.emptyIcon} aria-hidden="true"><Search size={28} /></span>
+                    <span className={styles.emptyIcon} aria-hidden="true"><Search size={32} /></span>
                     <h2>No exams match &quot;{query.trim()}&quot;</h2>
                     <p>Try another name, or clear the search.</p>
                     <Button variant="secondary" onClick={() => setQuery("")}>Clear search</Button>

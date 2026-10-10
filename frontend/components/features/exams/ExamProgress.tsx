@@ -161,9 +161,9 @@ export default function ExamProgress({ examId, questions, dirty, rubrics, submis
                             )}
                             {step.value && !(sheetsLoading && i > 0) && (
                                 <p className={cn(styles.hint, styles[`hint_${step.tone}`])}>
-                                    {step.tone === "ok" && <CheckCircle2 size={14} aria-hidden="true" />}
-                                    {step.tone === "warn" && <AlertTriangle size={14} aria-hidden="true" />}
-                                    {step.tone === "busy" && <Loader2 size={14} className={styles.spin} aria-hidden="true" />}
+                                    {step.tone === "ok" && <CheckCircle2 size={16} aria-hidden="true" />}
+                                    {step.tone === "warn" && <AlertTriangle size={16} aria-hidden="true" />}
+                                    {step.tone === "busy" && <Loader2 size={16} className={styles.spin} aria-hidden="true" />}
                                     <span>{step.hint}</span>
                                 </p>
                             )}
@@ -180,7 +180,7 @@ export default function ExamProgress({ examId, questions, dirty, rubrics, submis
  *  link or a button (arrow right). Text links, so the page header keeps the only primary button. */
 function StepAction({ label, href, onClick }: { label: string; href?: string; onClick?: () => void }) {
     const inPage = href?.startsWith("#");
-    const content = <>{label}{inPage ? <ArrowDown size={14} aria-hidden="true" /> : <ArrowRight size={14} aria-hidden="true" />}</>;
+    const content = <>{label}{inPage ? <ArrowDown size={16} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}</>;
     if (onClick) return <button type="button" className={styles.action} onClick={onClick}>{content}</button>;
     if (inPage) return <a href={href} className={cn(styles.action, styles.actionDown)}>{content}</a>;
     return <Link href={href ?? "#"} className={styles.action}>{content}</Link>;
