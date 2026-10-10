@@ -6,9 +6,25 @@ Notable changes to Gr8r, newest first.
 
 ## [Unreleased]
 
-### M6: Review workflow API ([#14](https://github.com/Harshit2807161/Graider/pull/14), in review)
+### M7: Review UI (in review)
 
 #### Added
+- **Review screen** for one answer sheet: the page images beside the answers; for each answer the reason it needs review and what to do, the transcript with the evidence highlighted, the criteria, both examiners' positions and replies, earlier versions; accept, change scores, correct the transcript, approve, regrade, history.
+- **Review queue** across an exam, most urgent first.
+- **Exam page** as a workflow: questions and rubrics (rubric editor), answer sheets grouped by what needs action, review, publish; grading settings.
+- **Overview** with next steps, and a responsive shell (drawer on small screens, skip link).
+
+#### Changed
+- **The whole portal refined on the existing design** with the ui-ux-pro-max skill: shared tokens, dialogs, status badges, error banners; plain-language messages instead of raw errors; sign-in copy without an accuracy claim. Brand shown as Gr8r.
+- **Verified accessible:** AA contrast, keyboard paths and responsive layouts checked on every page.
+
+#### Fixed
+- **Photo ingestion** kept a colour cast on coloured ink (a whiteboard photo turned magenta), which the model also saw.
+- Frontend lint problems (30 → 0); loading buttons lost their label and keyboard focus.
+
+## M6: Review workflow API ([#14](https://github.com/Harshit2807161/Graider/pull/14), 2026-10-09)
+
+### Added
 - **Teacher actions on grades**, each recorded as a grade event (who, why, before and after) and saved as a new version, never a change:
   - **override** every criterion's score, with a mandatory reason; the scores pass the same checks as the model's, and a stale edit is refused instead of overwriting someone else's;
   - **resolve** an escalated answer by accepting its proposed score;
@@ -18,7 +34,7 @@ Notable changes to Gr8r, newest first.
 - **Review endpoints:** review queue (escalated first, then lowest evaluator agreement), review detail (pages, rubric spec, transcript, grade with every evaluator round, earlier versions), page images, and an audit timeline (runs, model calls, versions, actions; raw model requests and responses for owners and admins).
 - **Per-exam grading settings:** agreement threshold, spot-check rate, choice policy.
 
-#### Fixed
+### Fixed
 - **Students see only their own published results,** reduced to scores and feedback. Before, they could read transcripts and grading details as soon as grading finished.
 
 ## M5: Grading v2 ([#13](https://github.com/Harshit2807161/Graider/pull/13), 2026-10-09)
