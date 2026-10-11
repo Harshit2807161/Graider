@@ -50,6 +50,8 @@ logs/
 
 # Environment variables
 .env
+# API key files
+*_key.bin
 .env.local
 .env.*.local
 
