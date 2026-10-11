@@ -4,16 +4,64 @@ One real board paper, its official marking scheme and one real handwritten answe
 whole pipeline on 2026-10-11 with OpenAI models and a hard $2 budget. This is a smoke test on real
 material, not an accuracy measurement: CBSE does not publish the marks of the answer book.
 
-## Material (not committed)
-All three are public on cbse.gov.in. Download them yourself; the PDFs stay out of the repo.
+## Files
+| File | What it is |
+|---|---|
+| `papers/question_paper.pdf` | Board question paper, set 31/1/3, Hindi and English (27 pages) |
+| `papers/marking_scheme.pdf` | Official marking scheme for 31/1/3 (9 pages) |
+| `papers/answer_book.pdf` | A real handwritten answer book, published by CBSE as a model answer (31 pages) |
+| `questions.json` | The exam as entered: 51 gradable parts with rubric text, 9 choice groups, 80 marks |
+| `build_questions.py` | Rebuilds `questions.json` from the two PDFs' text layers |
+| `run.py` | Runs the paper through a running Gr8r and saves the results |
+| `runs/2026-10-11-gpt-4.1-mini/` | This run: `results.csv` (one row per part) and `review.json` (everything the review screen shows) |
 
-| What | Source | Pages |
-|---|---|---|
-| Question paper, set 31/1/3 (Hindi and English) | `cbsenew/question-paper/2025/X/086_Science.zip` | 27 |
-| Marking scheme for 31/1/3 | `cbsenew/Marking-Scheme/2025/X/Science.zip`, pages 27–35 of the 31/1/1–3 file | 9 |
-| "Model answer by a candidate", Science | `cbsenew/model-answer/2025/X/Science.zip`, without its cover | 31 |
+The PDFs are public on cbse.gov.in (`cbsenew/question-paper/2025/X/086_Science.zip`,
+`cbsenew/Marking-Scheme/2025/X/Science.zip`, `cbsenew/model-answer/2025/X/Science.zip`). The marking
+scheme here is pages 27–35 of the 31/1/1–3 file and the answer book is without its cover page. The
+answer book is from set 31/1/3: its multiple-choice answers match that set's questions and no other.
+They are CBSE's documents; keep this repository private while they are in it.
 
-The answer book is from set 31/1/3: its multiple-choice answers match that set's questions and no other.
+## Review this run without running anything
+- **Scores:** `runs/2026-10-11-gpt-4.1-mini/results.csv`.
+- **Why each score:** `review.json` has, for every part, the rubric criteria, the transcript of the
+  student's answer with its page segments, each criterion's score with quoted evidence and
+  justification, the evaluator's rounds, flags and the escalation reason. Open `papers/answer_book.pdf`
+  beside it to compare the transcript with the handwriting.
+- **A quick look:**
+  ```bash
+  python - <<'PY'
+  import json
+  r = json.load(open("runs/2026-10-11-gpt-4.1-mini/review.json"))
+  q = next(q for q in r["questions"] if q["label"] == "23")   # any label from results.csv
+  print(q["transcription"]["text"]); print(json.dumps(q["grade"]["criteria"], indent=1))
+  PY
+  ```
+
+## Run it yourself
+This makes paid model calls: about $0.30 for one run with the models below.
+
+1. Start Gr8r (`STARTUP_GUIDE.md`): API, worker, Postgres, Redis. The first superuser can create the
+   organization; any other staff user must pass `--org-id`.
+2. In `backend/.env`, choose the models and **give every model a price**, or the USD cap does not count
+   its calls. Profile E in `backend/.env.example` is what this run used. Set
+   `LLM__MAX_COST_USD_PER_SUBMISSION` (this run: 1.45; it needed 0.22).
+3. Run it, from `backend/` so its virtualenv is used:
+   ```bash
+   python ../docs/evals/cbse-x-science-2025/run.py --email you@example.com --name 2026-10-12-claude
+   ```
+   It asks before spending, prints the totals, saves `runs/<name>/` and lists every part whose score
+   or status differs from this run. Commit that folder to share your run.
+4. To see it as a teacher would, open the link it prints (the review screen).
+
+Things to know:
+- Rubric parsing is not deterministic. The script asks for a fresh parse of invalid rubrics twice;
+  any still invalid are listed, and those parts are escalated instead of graded.
+- The only budget across the whole exam is your own. To watch spend:
+  `select count(*), round(sum(cost_usd)::numeric, 4) from llm_calls;`
+- To stop a run, stop the worker **and** clear its queue (`redis-cli del celery unacked unacked_index`),
+  or the task is picked up again when a worker starts.
+- `run.py` has not completed a full run yet: a second run was stopped during grading, so everything
+  up to the upload is exercised and the saving of results was checked only against this run's data.
 
 ## Setup
 - Branch `v1-full` at `189db45`, plus the fix in this branch. Postgres 15, Redis, one Celery worker.
@@ -34,7 +82,9 @@ The answer book is from set 31/1/3: its multiple-choice answers match that set's
 | Grading the answer book | 118 | 0.222 | 61 seconds; `NEEDS_REVIEW`, provisional 42/80 |
 | **Total** | **284** | **0.513** | |
 
-Costs are computed from recorded token counts and list prices, not from an OpenAI invoice.
+Costs are computed from recorded token counts and list prices, not from an OpenAI invoice. A second run,
+started to test `run.py` and stopped during grading, cost a further $0.115 (108 calls); its results
+were not kept.
 
 ### Extraction did not survive a bilingual paper
 The question paper prints every question in Hindi and in English. The draft had both copies of each

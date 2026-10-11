@@ -1,9 +1,14 @@
 """Build the exam's questions (English text + official marking scheme) from the PDFs' text layers.
 
+    python build_questions.py papers/question_paper.pdf papers/marking_scheme.pdf questions.json
+
 One gradable question per top-level number (1-39); internal choices ("OR") stay inside the
 question, so the rubric carries both alternatives. Marks follow the paper's sections.
 """
-import json, re, sys
+import json
+import re
+import sys
+
 import pypdfium2 as pdfium
 
 SYMBOLS = {"": "×", "": "·", "": "⇒", "": "∴", "": "Ω", "": "→", "": "°"}
@@ -24,7 +29,7 @@ def ascii_share(t):
 def split_numbered(text, last, pattern):
     """Cut text at question numbers 1..last, accepted only in increasing order."""
     marks, want = [], 1
-    for m in re.finditer(pattern, text, flags=re.M):
+    for m in re.finditer(pattern, text, flags=re.MULTILINE):
         if int(m.group(1)) == want:
             marks.append((want, m.start(), m.end()))
             want += 1
@@ -65,7 +70,7 @@ def split_scheme(t, total):
     tokens = [x for line in col for x in re.split(r"\s*,\s*", line)]
     if tokens:  # the last number is the question's total, sometimes after a mark on the same line
         last = tokens.pop()
-        head = re.sub(r"\s*%d\s*$" % total, "", last).strip()
+        head = re.sub(rf"\s*{total}\s*$", "", last).strip()
         if head:
             tokens.append(head)
     values = [value(x) for x in tokens]
@@ -90,43 +95,56 @@ def rubric_text(body, col, total):
     return f"Official CBSE marking scheme. Maximum marks: {total}.\n{body}{marks}"
 
 def cut(t, pattern):
-    m = re.search(pattern, t, flags=re.M)
+    m = re.search(pattern, t, flags=re.MULTILINE)
     return (t[: m.start()].strip(), t[m.end():].strip()) if m else (t, None)
 
 OR = r"^\s*OR\s*$"
-qp, ms, dest = sys.argv[1], sys.argv[2], sys.argv[3]
-english = "\n".join(p for p in pages(qp) if ascii_share(p) > 0.9 and re.search(r"^\s*\d{1,2}\.\s", p, flags=re.M))
-questions = split_numbered(english, 39, r"^\s*(\d{1,2})\.[ \t]")
-# Scheme rows: "7 D / 1 : 8" for the MCQs, then "22.\n(a)" (number, dot, any whitespace)
-scheme = split_numbered("\n".join(pages(ms)), 39, r"^\s*(\d{1,2})(?:\.\s|[ \t](?=[A-D] /))")
 ASSERTION = ("\nChoose: (A) Both A and R are true and R is the correct explanation of A. (B) Both are true, but R is not "
              "the correct explanation of A. (C) A is true, but R is false. (D) A is false, but R is true.")
-out, groups = [], []
-for n in range(1, 40):
-    total = marks_for(n)
-    text = tidy_question(clean(questions[n])) + (ASSERTION if 17 <= n <= 20 else "")
-    body, col = split_scheme(clean(scheme[n]), total)
-    kind = "mcq" if n <= 20 else "descriptive"
-    first_t, second_t = cut(text, OR)
-    first_r, second_r = cut(body, OR)
-    if second_t is None or second_r is None:  # no internal choice
-        out.append({"label": str(n), "text": text, "rubric": rubric_text(body, col, total), "marks": total, "type": kind})
-        continue
-    if n >= 37:  # case study: (a) and (b) for everyone, then (c)(i) OR (c)(ii)
-        passage_ab, c1 = cut(first_t, r"^(?=\(c\))")
-        passage = cut(passage_ab, r"^(?=\(a\))")[0]
-        rub_ab, rub_c1 = cut(first_r, r"^(?=\(c\))")
-        ab, rest = take(col, 2); m1, rest = take(rest, 2); m2, _ = take(rest, 2)
-        parts = [(f"{n}(a)-(b)", passage_ab, rub_ab, ab, 2, None), (f"{n}(c)(i)", f"{passage}\n{c1}", rub_c1, m1, 2, f"g{n}"),
-                 (f"{n}(c)(ii)", f"{passage}\n{second_t}", second_r, m2, 2, f"g{n}")]
-    else:  # the whole question is (a) OR (b)
-        m1, rest = take(col, total); m2, _ = take(rest, total)
-        parts = [(f"{n}(a)", first_t, first_r, m1, total, f"g{n}"), (f"{n}(b)", second_t, second_r, m2, total, f"g{n}")]
-    for label, t, r, marks, mx, group in parts:
-        out.append({"label": label, "text": tidy_question(t), "rubric": rubric_text(r, marks, mx), "marks": mx, "type": kind, "choice_group": group})
-    groups.append({"id": f"g{n}", "labels": [p[0] for p in parts if p[5]], "pick": 1, "note": "Internal choice (OR)"})
-json.dump({"questions": out, "choice_groups": groups}, open(dest, "w"), ensure_ascii=False, indent=1)
-grouped = {l for g in groups for l in g["labels"]}
-print(len(out), "questions;", len(groups), "choice groups; total marks:",
-      sum(q["marks"] for q in out if q["label"] not in grouped) + sum(max(q["marks"] for q in out if q["label"] in g["labels"]) for g in groups))
-print("no marks column:", [q["label"] for q in out if "Marks for the points" not in q["rubric"]])
+
+
+def build(qp, ms):
+    """Questions and choice groups from the question paper and marking scheme PDFs."""
+    english = "\n".join(p for p in pages(qp) if ascii_share(p) > 0.9 and re.search(r"^\s*\d{1,2}\.\s", p, flags=re.MULTILINE))
+    questions = split_numbered(english, 39, r"^\s*(\d{1,2})\.[ \t]")
+    # Scheme rows: "7 D / 1 : 8" for the MCQs, then "22.\n(a)" (number, dot, any whitespace)
+    scheme = split_numbered("\n".join(pages(ms)), 39, r"^\s*(\d{1,2})(?:\.\s|[ \t](?=[A-D] /))")
+    out, groups = [], []
+    for n in range(1, 40):
+        total = marks_for(n)
+        text = tidy_question(clean(questions[n])) + (ASSERTION if 17 <= n <= 20 else "")
+        body, col = split_scheme(clean(scheme[n]), total)
+        kind = "mcq" if n <= 20 else "descriptive"
+        first_t, second_t = cut(text, OR)
+        first_r, second_r = cut(body, OR)
+        if second_t is None or second_r is None:  # no internal choice
+            out.append({"label": str(n), "text": text, "rubric": rubric_text(body, col, total), "marks": total, "type": kind})
+            continue
+        if n >= 37:  # case study: (a) and (b) for everyone, then (c)(i) OR (c)(ii)
+            passage_ab, c1 = cut(first_t, r"^(?=\(c\))")
+            passage = cut(passage_ab, r"^(?=\(a\))")[0]
+            rub_ab, rub_c1 = cut(first_r, r"^(?=\(c\))")
+            ab, rest = take(col, 2); m1, rest = take(rest, 2); m2, _ = take(rest, 2)
+            parts = [(f"{n}(a)-(b)", passage_ab, rub_ab, ab, 2, None), (f"{n}(c)(i)", f"{passage}\n{c1}", rub_c1, m1, 2, f"g{n}"),
+                     (f"{n}(c)(ii)", f"{passage}\n{second_t}", second_r, m2, 2, f"g{n}")]
+        else:  # the whole question is (a) OR (b)
+            m1, rest = take(col, total); m2, _ = take(rest, total)
+            parts = [(f"{n}(a)", first_t, first_r, m1, total, f"g{n}"), (f"{n}(b)", second_t, second_r, m2, total, f"g{n}")]
+        for label, t, r, marks, mx, group in parts:
+            out.append({"label": label, "text": tidy_question(t), "rubric": rubric_text(r, marks, mx), "marks": mx, "type": kind, "choice_group": group})
+        groups.append({"id": f"g{n}", "labels": [p[0] for p in parts if p[5]], "pick": 1, "note": "Internal choice (OR)"})
+    return {"questions": out, "choice_groups": groups}
+
+
+def total_marks(exam):
+    grouped = {label for g in exam["choice_groups"] for label in g["labels"]}
+    by_label = {q["label"]: q["marks"] for q in exam["questions"]}
+    return sum(m for label, m in by_label.items() if label not in grouped) + sum(
+        max(by_label[label] for label in g["labels"]) for g in exam["choice_groups"])
+
+
+if __name__ == "__main__":
+    exam = build(sys.argv[1], sys.argv[2])
+    with open(sys.argv[3], "w") as f:
+        json.dump(exam, f, ensure_ascii=False, indent=1)
+    print(len(exam["questions"]), "questions;", len(exam["choice_groups"]), "choice groups; total marks:", total_marks(exam))

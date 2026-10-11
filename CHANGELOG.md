@@ -10,6 +10,7 @@ Notable changes to Gr8r, newest first.
 
 #### Added
 - **Run report:** CBSE Class X Science 2025 (question paper, official marking scheme, a published candidate answer book) through the whole pipeline on OpenAI models for $0.51. See [docs/evals/cbse-x-science-2025](docs/evals/cbse-x-science-2025/README.md); eight new backlog items.
+- **The run can be reviewed and repeated:** the three CBSE PDFs, the questions as entered, the full review export, and `run.py`, which runs the paper against a running Gr8r and compares the result with this run.
 - **`.env.example`:** an OpenAI profile with prices, so the USD cap counts those calls.
 
 #### Fixed
