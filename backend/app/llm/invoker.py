@@ -84,6 +84,19 @@ def _jsonable(value: Any) -> Any:
     return json.loads(json.dumps(value, default=str))
 
 
+def _without_nul(value: Any) -> Any:
+    """Drop U+0000 from every string. Models write it for symbols they can't read (e.g. a
+    private-use glyph in a PDF's text layer), and Postgres rejects it in text and JSONB, which
+    would fail the audit write and with it the run."""
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {_without_nul(k): _without_nul(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_without_nul(v) for v in value]
+    return value
+
+
 def _api_key(target: ModelTarget) -> Optional[str]:
     name = target.resolved_api_key_env
     value = getattr(app_settings, name, None) or os.environ.get(name)
@@ -298,9 +311,9 @@ class LangChainInvoker:
         stop, provider_stop, refusal_detail = _stop(raw, target.provider)
         meta = raw.response_metadata or {}
         return InvokeResponse(
-            text=text,
-            parsed=parsed if isinstance(parsed, dict) else None,
-            parse_error=parse_error,
+            text=_without_nul(text),
+            parsed=_without_nul(parsed) if isinstance(parsed, dict) else None,
+            parse_error=_without_nul(parse_error),
             stop_reason=stop,
             provider_stop_reason=provider_stop,
             refusal_detail=refusal_detail,
@@ -308,13 +321,15 @@ class LangChainInvoker:
             response_id=meta.get("id") or raw.id,
             request_id=_request_id(raw),
             usage=_usage(raw),
-            raw=_jsonable(
-                {
-                    "content": raw.content,
-                    "response_metadata": meta,
-                    "usage_metadata": raw.usage_metadata,
-                    "additional_kwargs": raw.additional_kwargs,
-                }
+            raw=_without_nul(
+                _jsonable(
+                    {
+                        "content": raw.content,
+                        "response_metadata": meta,
+                        "usage_metadata": raw.usage_metadata,
+                        "additional_kwargs": raw.additional_kwargs,
+                    }
+                )
             ),
             request=request_record,
             degraded=degraded,

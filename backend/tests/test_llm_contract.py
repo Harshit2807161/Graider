@@ -15,7 +15,13 @@ import pytest
 from app.llm.invoker import InvokeRequest, LangChainInvoker
 from app.llm.schema import portable_schema
 from app.llm.types import ImagePart, LLMConfigError, LLMTransportError, ModelTarget, Provider, TextPart
+from pydantic import BaseModel
 from tests.test_llm_router import Answer
+
+
+class Note(BaseModel):
+    text: str
+
 
 PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC"
 
@@ -219,6 +225,21 @@ async def test_server_without_schema_support_uses_prompted_json(stub, qwen):
     assert "response_format" not in body
     assert '"value"' in body["messages"][0]["content"]  # schema is in the system prompt
     assert resp.degraded and resp.parsed == {"value": 7}
+
+
+async def test_nul_characters_are_removed_from_model_output(stub, qwen):
+    """Models sometimes write U+0000 for a symbol they can't read; Postgres can't store it in
+    text or JSONB, so the audit row (and with it the whole run) would fail."""
+    stub.responses["/v1/chat/completions"] = (200, chat_completion('{"text": "1 kW = 1 \\u0000 1000 W"}'), {})
+    request = InvokeRequest(
+        target=qwen, system="Read the page.", parts=[TextPart(text="Page 8")],
+        json_schema=portable_schema(Note), max_tokens=2000,
+    )
+
+    resp = await LangChainInvoker().invoke(request)
+
+    assert resp.parsed == {"text": "1 kW = 1  1000 W"}
+    assert "\x00" not in json.dumps(resp.model_dump(), ensure_ascii=False)
 
 
 # ===== Celery worker: tasks share one event loop per process =====
