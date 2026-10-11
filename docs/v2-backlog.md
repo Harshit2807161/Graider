@@ -74,3 +74,11 @@ _(Append entries as `- [M#, PR #] description: proposed handling`.)_
 - [M7] **Class pages.** Classes have no detail page (overview rows don't link) and don't show linked exams.
 - [M7] **Shared skeleton and spin animations** are duplicated across a few CSS modules (CSS Modules scope keyframes).
 - [Student results] **Per-criterion marks for students** (today: per-question marks and feedback) and a printable or downloadable graded copy.
+- [CBSE run, 2026-10-11] **Diagrams score 0 without escalating.** A drawn answer leaves nothing in the transcript, the grader says "no diagram" and the grade is final. Until page crops reach the grader (M5 item above), escalate any question whose rubric expects a drawing. See [the run](evals/cbse-x-science-2025/README.md).
+- [CBSE run] **Bilingual question papers** (Hindi and English on alternating pages) extract as duplicate questions. Detect the repeated numbering and keep one language, or let the teacher pick.
+- [CBSE run] **Evidence quotes fail on formatting only.** Compare quotes to the transcript after dropping control characters, LaTeX delimiters, ellipses and whitespace differences; 5 of 15 escalations were this.
+- [CBSE run] **Control characters other than NUL** (`\x02`, `\x1e`) reach transcripts where the model meant an arrow or a dot. Strip or map them when the page is read.
+- [CBSE run] **A draft stays `pending` forever** when extraction raises anything other than a document or model error. Mark it failed on any exception.
+- [CBSE run] **No budget covers a whole exam.** Extraction ($5) and each rubric parse ($1) have fixed caps, and a model without a price is not counted at all. Add an exam-level or org-level cap, and refuse to start with an unpriced API model.
+- [CBSE run] **Tests read `backend/.env`.** With `LLM__*` set there, 5 tests fail on model names. Make the test settings ignore the env file.
+- [CBSE run] **Internal choices inside one question** ("(a) … OR (b) …") only validate when entered as two questions in a choice group; as one question the criteria add up to more than the maximum. The draft editor should offer the split.
