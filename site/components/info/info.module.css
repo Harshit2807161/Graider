@@ -1,0 +1,157 @@
+/* Shared by the information pages (how it works, about, privacy, results): the fact table and the
+   labelled rows (a label in the margin column, the text beside it, as in the answer-book rows). */
+
+/* ===== fact table: rows a reader can check ===== */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--slate-700);
+}
+
+.caption {
+    caption-side: bottom;
+    padding-top: var(--space-3);
+    font-size: 0.875rem;
+    text-align: left;
+    color: var(--slate-600);
+}
+
+.table thead th {
+    padding: var(--space-3) var(--space-4) var(--space-3) 0;
+    border-top: 1.5px solid var(--slate-900);
+    border-bottom: 1px solid var(--slate-300);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+    vertical-align: bottom;
+    color: var(--slate-900);
+}
+
+.table tbody th,
+.table tbody td {
+    padding: var(--space-4) var(--space-4) var(--space-4) 0;
+    border-bottom: 1px solid var(--slate-200);
+    text-align: left;
+    vertical-align: top;
+    text-wrap: pretty;
+}
+
+.table tbody th {
+    width: 24%;
+    font-weight: 600;
+    color: var(--slate-900);
+}
+
+/* With column widths set, every column takes its given width */
+@media (min-width: 48rem) {
+    .fixed { table-layout: fixed; }
+    .fixed tbody th { width: auto; }
+}
+
+.table th:last-child,
+.table td:last-child { padding-right: 0; }
+
+/* Phone: each row stacks, its header first, then each cell under its column's name */
+@media (max-width: 47.99rem) {
+    .table,
+    .table tbody,
+    .table tr,
+    .table th,
+    .table td { display: block; }
+
+    .table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .table caption { display: block; }
+
+    .table tbody { border-top: 1.5px solid var(--slate-900); }
+
+    .table tbody tr {
+        padding: var(--space-4) 0;
+        border-bottom: 1px solid var(--slate-200);
+    }
+
+    .table tbody th,
+    .table tbody td {
+        width: auto;
+        padding: 0;
+        border: 0;
+    }
+
+    .table tbody th { font-size: 1rem; }
+
+    .table tbody td { margin-top: var(--space-3); }
+
+    .table tbody td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.125rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: var(--slate-500);
+    }
+}
+
+/* A link inside a sentence (the shared .link is a block-sized tap target) */
+.inlineLink {
+    touch-action: manipulation;
+    font-weight: 600;
+    color: var(--indigo-700);
+    text-decoration: underline;
+    text-decoration-color: var(--indigo-200);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.25em;
+    overflow-wrap: anywhere;
+}
+
+.inlineLink:hover { text-decoration-color: currentColor; }
+
+/* ===== labelled rows:a label in the margin column, the text beside it ===== */
+.rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1.5px solid var(--slate-900);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+    padding: var(--space-5) 0;
+    border-bottom: 1px solid var(--slate-200);
+}
+
+.rowLabel {
+    text-wrap: balance;
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--slate-900);
+}
+
+.rowBody {
+    max-width: 65ch;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--slate-700);
+}
+
+.rowBody > * + * { margin-top: var(--space-3); }
+
+@media (min-width: 48rem) {
+    .row {
+        grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+        gap: 2.5rem;
+    }
+}

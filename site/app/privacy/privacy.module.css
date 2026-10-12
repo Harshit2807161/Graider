@@ -1,0 +1,47 @@
+/* Privacy: the notice under the lede, and the list of this page's sections. */
+
+.notice {
+    max-width: 65ch;
+    margin-top: var(--space-6);
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--slate-300);
+    border-radius: var(--radius);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-800);
+}
+
+.contents { margin-top: var(--space-8); }
+
+.contentsLabel {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--slate-900);
+}
+
+.contentsList {
+    display: grid;
+    gap: 0 var(--space-8);
+    max-width: 52rem;
+    margin-top: var(--space-1);
+    padding: 0;
+    list-style: none;
+}
+
+@media (min-width: 48rem) {
+    .contentsList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.contentsLink {
+    touch-action: manipulation;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    font-size: 0.9375rem;
+    color: var(--indigo-700);
+    text-decoration: underline;
+    text-decoration-color: var(--indigo-200);
+    text-underline-offset: 0.25em;
+}
+
+.contentsLink:hover { text-decoration-color: currentColor; }

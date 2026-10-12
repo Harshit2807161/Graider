@@ -1,0 +1,81 @@
+/* Results: the empty comparison table in the answer book's "For examiner's use only" form (heavy
+   outer rule, ruled cells). It is wide, so it scrolls inside its own frame and never the page. */
+
+.next {
+    max-width: 60ch;
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--slate-200);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.scroller {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border-radius: 2px;
+}
+
+.scroller:focus-visible {
+    outline: 2px solid var(--indigo-600);
+    outline-offset: 3px;
+}
+
+.grid {
+    width: 100%;
+    min-width: 72rem;
+    border-collapse: collapse;
+    border: 1.5px solid var(--slate-700);
+    font-size: 0.875rem;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+}
+
+.grid th,
+.grid td {
+    padding: var(--space-3);
+    border: 1px solid var(--slate-400);
+    text-align: left;
+    vertical-align: bottom;
+}
+
+.grid thead th {
+    font-weight: 700;
+    color: var(--slate-900);
+    background-color: var(--slate-50);
+}
+
+/* The empty row is tall enough to read as ruled space waiting for answers */
+.grid .empty {
+    height: 9rem;
+    vertical-align: middle;
+    font-size: 0.9375rem;
+    color: var(--slate-600);
+}
+
+/* The note stays at the left edge of the frame, readable without scrolling */
+.emptyText {
+    position: sticky;
+    left: var(--space-3);
+    display: inline-block;
+    max-width: min(40rem, calc(100vw - 4rem));
+}
+
+.hint {
+    margin-top: var(--space-2);
+    font-size: 0.875rem;
+    color: var(--slate-500);
+}
+
+@media (min-width: 80rem) {
+    .grid { min-width: 0; }
+    .hint { display: none; }
+}
+
+.legend { max-width: 52rem; margin-top: 3rem; }
+
+.run { margin-top: var(--space-5); max-width: 60ch; }
+
+.afterRun { margin-top: var(--space-5); }
