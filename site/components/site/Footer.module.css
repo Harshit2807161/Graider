@@ -1,6 +1,7 @@
+/* Like the header, a page can seat the footer on its own surface with --site-footer-* variables. */
 .footer {
-    border-top: 1px solid var(--slate-200);
-    background-color: var(--color-surface);
+    border-top: 1px solid var(--site-footer-rule, var(--slate-200));
+    background-color: var(--site-footer-bg, var(--color-surface));
     font-size: 0.9375rem;
     color: var(--slate-600);
 }
@@ -11,9 +12,9 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2) var(--space-6);
-    max-width: calc(var(--site-content) + 2 * var(--site-gutter));
+    max-width: var(--site-footer-max, calc(var(--site-content) + 2 * var(--site-gutter)));
     margin: 0 auto;
-    padding: var(--space-6) var(--site-gutter) var(--space-8);
+    padding: var(--space-6) var(--site-footer-pr, var(--site-gutter)) var(--space-8) var(--site-footer-pl, var(--site-gutter));
 }
 
 .links {

@@ -1,0 +1,282 @@
+/* The hero's live sheet. Its children are grid items of the hero (see Home.module.css .hero):
+   label -> qlab (the margin), tabsRow -> tabs, panel -> sheet, rows -> rows. Everything drawn on the
+   scan is placed in % of the page and sized in cqw of the sheet, so it stays on its words. */
+
+.root { display: contents; }
+
+/* ---- the question's label and total, in the answer book's margin ---- */
+.label {
+    grid-area: qlab;
+    animation: labelIn 400ms var(--ease-out-strong) 700ms backwards;
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.qno {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--slate-900);
+    font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1024px) {
+    .label {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.5rem;
+        margin-top: 3.5rem;
+        padding-right: 0.875rem;
+        text-align: right;
+    }
+
+    .tabsRow { margin-top: 0; }
+
+    .qno { font-size: 1.5rem; }
+}
+
+/* ---- tabs: which answer, and which page ---- */
+.tabsRow {
+    grid-area: tabs;
+    margin-top: 2.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+}
+
+.tabs { display: flex; gap: 0.25rem; margin-left: -0.75rem; }
+
+.tab,
+.pageButton {
+    position: relative;
+    touch-action: manipulation;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 0;
+    background: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--slate-500);
+    font-variant-numeric: tabular-nums;
+    transition: color 150ms ease;
+}
+
+.tab::after,
+.pageButton::after {
+    content: "";
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.45rem;
+    height: 2px;
+    border-radius: 2px;
+    background-color: var(--ink-red);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 220ms var(--ease-out-strong);
+}
+
+.tab[aria-selected="true"],
+.pageButton[aria-pressed="true"] { color: var(--slate-900); }
+
+.tab[aria-selected="true"]::after,
+.pageButton[aria-pressed="true"]::after { transform: scaleX(1); }
+
+@media (hover: hover) and (pointer: fine) {
+    .tab:hover,
+    .pageButton:hover { color: var(--slate-900); }
+}
+
+.pages { display: flex; margin-right: -0.75rem; }
+
+.pageButton { font-size: 0.875rem; }
+
+.pageNote {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--slate-500);
+}
+
+/* ---- the scanned page ---- */
+.panel { grid-area: sheet; min-width: 0; margin-top: 0.5rem; }
+
+.sheet {
+    position: relative;
+    container-type: inline-size;
+    border-radius: 2px;
+    background-color: var(--paper-scan);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 18px 40px -22px rgba(15, 23, 42, 0.35);
+    animation: sheetIn 560ms var(--ease-out-strong) 420ms backwards;
+}
+
+@keyframes labelIn {
+    from { opacity: 0; }
+}
+
+@keyframes sheetIn {
+    from { opacity: 0; transform: translateX(40px); }
+}
+
+.scan {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 2px;
+}
+
+.marks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.band {
+    position: absolute;
+    border-radius: 0.3cqw;
+    background-color: var(--evidence-bg);
+    mix-blend-mode: multiply;
+    transform-origin: left center;
+    animation: draw 260ms var(--ease-out-strong) var(--d) backwards;
+    transition: opacity 180ms ease;
+}
+
+@keyframes draw {
+    from { transform: scaleX(0); }
+}
+
+.scanMark {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 0.4cqw;
+    margin-left: 1cqw;
+    translate: 0 -50%;
+    color: var(--ink-red);
+    font-size: max(0.75rem, 2.7cqw);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    transform-origin: left center;
+    animation: inkIn 200ms ease-out var(--d) backwards;
+    transition: opacity 180ms ease, scale 180ms var(--ease-out-strong);
+}
+
+@keyframes inkIn {
+    from { opacity: 0; }
+}
+
+.scanTick {
+    width: max(0.8rem, 2.8cqw);
+    height: max(0.8rem, 2.8cqw);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.scanTick path,
+.ring path {
+    stroke-dasharray: 1;
+    animation: pen 320ms var(--ease-out-strong) var(--d) backwards;
+}
+
+@keyframes pen {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
+
+.ring {
+    position: absolute;
+    overflow: visible;
+    fill: none;
+    stroke: var(--ink-red);
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    transition: opacity 180ms ease;
+}
+
+.ring path { animation-duration: 480ms; }
+
+/* A row in focus: its evidence and mark stay, the rest dim */
+.sheet[data-active] .point:not([data-on]) .band,
+.sheet[data-active] .point:not([data-on]) .scanMark,
+.sheet[data-active] .point:not([data-on]) .ring { opacity: 0.18; }
+
+.point[data-on] .scanMark { scale: 1.18; }
+
+/* ---- one row per point of the marking scheme ---- */
+.rows { grid-area: rows; min-width: 0; margin-top: 1.25rem; }
+
+.list {
+    display: grid;
+    list-style: none;
+    border-top: 1px solid var(--rule-line);
+}
+
+.list > li { border-bottom: 1px solid var(--rule-line); transition: opacity 180ms ease; }
+
+.list[data-active] > li:not([data-on]) { opacity: 0.45; }
+
+.row {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    align-items: baseline;
+    width: 100%;
+    padding: 0.875rem 0.5rem 0.875rem 0;
+    border: 0;
+    border-radius: 2px;
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    touch-action: manipulation;
+    transition: background-color 180ms ease;
+}
+
+.list > li[data-on] .row,
+.row[aria-pressed="true"] { background-color: rgba(254, 240, 138, 0.45); }
+
+.rowMark { font-size: 1.75rem; justify-self: end; }
+
+.rowText { display: block; min-width: 0; }
+
+.pointText {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.45;
+    color: var(--slate-900);
+}
+
+.note {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--slate-600);
+}
+
+.note strong { font-weight: 700; color: var(--ink-red); }
+
+@media (min-width: 640px) {
+    .row { grid-template-columns: 7.5rem minmax(0, 1fr); }
+    .rowMark { font-size: 2.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .label,
+    .sheet,
+    .band,
+    .scanMark,
+    .scanTick path,
+    .ring path { animation: none; }
+}

@@ -1,0 +1,143 @@
+.rounds {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.5rem 0 0;
+    border-top: 1.5px solid var(--slate-300);
+}
+
+.heading {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    color: var(--slate-900);
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+}
+
+.steps { display: flex; margin-left: -0.75rem; }
+
+.step {
+    position: relative;
+    touch-action: manipulation;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 0;
+    background: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--slate-500);
+    transition: color 150ms ease;
+}
+
+.step::after {
+    content: "";
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.45rem;
+    height: 2px;
+    border-radius: 2px;
+    background-color: var(--ink-red);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 220ms var(--ease-out-strong);
+}
+
+.step[aria-pressed="true"] { color: var(--slate-900); }
+.step[aria-pressed="true"]::after { transform: scaleX(1); }
+
+@media (hover: hover) and (pointer: fine) {
+    .step:hover { color: var(--slate-900); }
+}
+
+.next {
+    touch-action: manipulation;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border: 1.5px solid var(--slate-300);
+    border-radius: var(--radius);
+    background-color: transparent;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--slate-900);
+    transition: border-color 150ms ease, transform 160ms var(--ease-out-strong);
+}
+
+.next:active { transform: scale(0.97); }
+
+@media (hover: hover) and (pointer: fine) {
+    .next:hover { border-color: var(--slate-500); }
+}
+
+/* Both totals, large, with the state between them */
+.board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: end;
+    gap: 1rem;
+}
+
+.total { display: grid; gap: 0.25rem; }
+
+.total:last-child { justify-items: end; text-align: right; }
+
+.who { font-size: 0.9375rem; font-weight: 500; color: var(--slate-600); }
+
+.big {
+    display: inline-flex;
+    align-items: baseline;
+    font-size: clamp(3rem, 6vw, 4.5rem);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: var(--slate-900);
+    font-variant-numeric: tabular-nums;
+}
+
+.red { color: var(--ink-red); }
+
+.figure {
+    display: inline-block;
+    animation: write 220ms var(--ease-out-strong);
+}
+
+@keyframes write {
+    from { opacity: 0.2; transform: translateY(0.12em); }
+}
+
+.max { margin-left: 0.04em; font-size: 0.38em; font-weight: 600; letter-spacing: 0; }
+
+.state {
+    padding-bottom: 0.6rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--slate-500);
+}
+
+.state[data-agreed] { color: var(--ink-red); }
+
+.point {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--rule-line);
+    font-size: 0.9375rem;
+    color: var(--slate-600);
+}
+
+.pair { display: flex; gap: 1.25rem; }
+
+.point strong { font-weight: 700; color: var(--slate-900); font-variant-numeric: tabular-nums; }
+.point strong.red { color: var(--ink-red); }
+
+@media (prefers-reduced-motion: reduce) {
+    .figure { animation: none; }
+}

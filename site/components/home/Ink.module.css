@@ -1,0 +1,57 @@
+/* The examiner's mark: red ink, the score large and "/max" small, a tick drawn with the pen. */
+
+.mark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.12em;
+    color: var(--ink-red);
+    font-weight: 700;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.s { font-size: 1.5rem; }
+.m { font-size: 2.25rem; }
+.l { font-size: clamp(2.25rem, 3.2vw, 3rem); }
+.xl { font-size: clamp(3.25rem, 6vw, 5rem); }
+
+.num { display: inline-flex; align-items: baseline; transition: opacity 120ms ease; }
+
+/* Armed to count but not yet in view: hidden, never shown as a zero */
+.mark[data-armed] .num { opacity: 0; }
+
+.max {
+    margin-left: 0.04em;
+    font-size: 0.38em;
+    font-weight: 600;
+    letter-spacing: 0;
+}
+
+.tick {
+    flex: none;
+    align-self: center;
+    width: 0.62em;
+    height: 0.62em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    overflow: visible;
+}
+
+.s .tick { stroke-width: 3; }
+
+.tick path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition: stroke-dashoffset 340ms var(--ease-out) var(--ink-delay, 0ms);
+}
+
+.mark[data-go] .tick path { stroke-dashoffset: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .tick path { stroke-dashoffset: 0; transition: none; }
+}

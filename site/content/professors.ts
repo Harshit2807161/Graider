@@ -1,10 +1,20 @@
-import home from "./home";
 import type { ProfessorsContent } from "./types-audience";
+import type { AnswerRows } from "./types";
+
+/** Q35(a) as answer rows (moved from home.ts when the home page became the answer book; unchanged). */
+const Q35A_ROWS: AnswerRows = {
+    question: "35(a)",
+    caption: "Question 35(a), scanned pages 23 and 24. The yellow highlights are drawn on the scan from Gr8r’s grade record for this illustration; the product shows them in the transcript, not on the scan. The red ticks on the pages belong to CBSE’s examiner, not to Gr8r.",
+    notes: {
+        c1: "This point asks for the eggs and the female hormones. The student names only the eggs, and Gr8r still gave the full mark. A teacher can change it, with a reason.",
+        c5: "Wrong. The student struck out a false start just above this line, and Gr8r’s reader took the vasectomy line as crossed out too, so neither examiner ever saw the word. CBSE’s examiner’s tick credits it. The answer went to the teacher, though for another reason: a page break read as a second attempt.",
+    },
+};
 
 /** /professors: for a professor or lecturer who runs one course and wants the method in detail.
  *  Copy from docs/pitch/copy/professors.md, trimmed (FAQ items the method sections already answer
  *  are dropped; "spec" is said as "list of criteria"); the sources of every claim are listed at the
- *  end of that draft. The answer rows reuse the home page's Q35(a) with its notes (home.ts). */
+ *  end of that draft. The answer rows show Q35(a) with its notes (Q35A_ROWS above). */
 const professors: ProfessorsContent = {
     meta: {
         title: "For college professors",
@@ -42,13 +52,13 @@ const professors: ProfessorsContent = {
             { body: "For any answer you can open the page image beside the transcript, with the quoted words highlighted, and read each criterion’s score and justification. Below that are the second examiner’s scores and reasons for each round, and the grader’s reply to each point." },
             { body: "Here is question 35(a) from a CBSE Class X Science 2025 answer book that CBSE published as a model answer. It runs across two pages, and Gr8r made two mistakes on it: the notes under the rows say what they were and how the answer reached a teacher." },
         ],
-        answers: [home.wrong.answers[0]],
+        answers: [Q35A_ROWS],
         after: [
             { body: "Nothing is changed in place. Transcripts and grades are versioned, so a correction or a regrade adds a new version and the earlier ones stay readable." },
             { body: "Each model call is recorded with what was sent, what came back, the tokens, the cost and the time taken. Owners and admins can open the raw inputs and outputs from each answer sheet’s timeline. Page images are recorded as a reference and a fingerprint rather than stored a second time." },
             { body: "Teacher actions are recorded too: overrides, proposed marks accepted, transcript corrections, regrades, approvals and publishing, each with who did it, the reason, and the before and after." },
         ],
-        link: home.wrong.link,
+        link: { label: "See the three rounds", href: "/sample/#q35a" },
     },
 
     disagree: {

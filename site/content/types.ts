@@ -233,18 +233,82 @@ export interface DeskLabels {
     pages: string;
 }
 
+/* ---- the home page: an answer book ---- */
+
+/** A question shown in the hero's live sheet: the tab's label and short notes under some points. */
+export interface HomeSheetTab {
+    /** The question's label in the sample data */
+    question: string;
+    /** Under a point, keyed by its id in the sample data: `label` in red ("Wrong."), then the text */
+    notes?: Record<string, { label?: string; text: string }>;
+}
+
+export interface HomeHero extends Hero {
+    /** The tab row's name for screen readers */
+    tabsLabel: string;
+    tabs: HomeSheetTab[];
+    /** For screen readers, before the rows: what tapping a row does */
+    rowsHint: string;
+    /** Above the scan on a phone and in the margin: "Page {page}" */
+    page: string;
+    /** Said once, under the hero's rows: highlights and marks are drawn for this illustration */
+    illustration: string;
+    /** What the marks on the scan are, added to each page's own alt text */
+    marksAlt: string;
+}
+
+/** One answer shown as rows of crops: which points, and an optional note under a point. */
+export interface HomeAnswer {
+    question: string;
+    /** Point ids to show, in order (2 or 3) */
+    points: string[];
+    notes?: Record<string, string>;
+}
+
 export interface HomeContent {
     meta: PageMeta;
-    hero: Hero;
-    heroFigure: Figure;
+    hero: HomeHero;
     runLine: RunLine;
-    marked: CriterionRowsSection;
-    steps: StepsSection;
-    wrong: CriterionRowsSection;
-    reasons: ReasonsSection;
-    audiences: AudiencesSection;
-    honest: HonestSection;
-    closing: ClosingCta;
+    marked: { id: string; heading: string; intro: string; answers: HomeAnswer[]; link: Cta };
+    /** Under each full-bleed strip of handwriting: whose words and which point, for screen readers */
+    strips: { alt: string }[];
+    steps: { id: string; heading: string; steps: { title: string; body: string }[]; link: Cta };
+    wrong: {
+        id: string;
+        heading: string;
+        /** The question and the point that went wrong */
+        question: string;
+        point: string;
+        /** Two sentences */
+        body: string[];
+        /** In red beside the wrong mark */
+        wrongLabel: string;
+        missedAlt: string;
+        rounds: {
+            heading: string;
+            grader: string;
+            examiner: string;
+            /** "Round {n}" */
+            round: string;
+            next: string;
+            /** The contested point, in words */
+            point: string;
+            agreed: string;
+            apart: string;
+        };
+        link: Cta;
+    };
+    honest: { id: string; heading: string; groups: { heading: string; items: string[] }[]; after: string };
+    audiences: { id: string; heading: string; audiences: { name: string; body: string; link: Cta }[] };
+    closing: {
+        heading: string;
+        /** The grid's printed title, as on an answer book's cover */
+        gridTitle: string;
+        cells: { label: string; value: string }[];
+        terms: { label: string; value: string };
+        body: string;
+        cta: Cta;
+    };
 }
 
 export interface SampleContent {

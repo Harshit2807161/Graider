@@ -1,16 +1,18 @@
+/* A page can set the --site-header-* variables to seat the header on its own surface (the home
+   page's answer book does); every other page gets the defaults. */
 .header {
     position: relative;
-    border-bottom: 1px solid var(--slate-200);
-    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--site-header-rule, var(--slate-200));
+    background-color: var(--site-header-bg, var(--color-surface));
 }
 
 .inner {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    max-width: calc(var(--site-content) + 2 * var(--site-gutter));
+    max-width: var(--site-header-max, calc(var(--site-content) + 2 * var(--site-gutter)));
     margin: 0 auto;
-    padding: var(--space-3) var(--site-gutter);
+    padding: var(--space-3) var(--site-header-pr, var(--site-gutter)) var(--space-3) var(--site-header-pl, var(--site-gutter));
 }
 
 .brand {
@@ -100,7 +102,7 @@
     flex-direction: column;
     padding: var(--space-2) var(--site-gutter) var(--space-4);
     border-bottom: 1px solid var(--slate-200);
-    background-color: var(--color-surface);
+    background-color: var(--site-header-menu-bg, var(--color-surface));
     box-shadow: var(--shadow-sm);
     list-style: none;
 }

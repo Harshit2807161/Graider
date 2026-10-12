@@ -1,0 +1,62 @@
+/* A window onto a scanned page. The page image sits behind the window, scaled so the window's box
+   fills it; the window keeps the box's aspect ratio. Never wider than the scan at 1.1x. */
+
+.crop {
+    --ratio: var(--t-ratio);
+    --pw: var(--t-pw);
+    --pl: var(--t-pl);
+    --pt: var(--t-pt);
+    --srcw: var(--t-srcw);
+    width: min(100%, calc(var(--srcw) * 1.1px));
+}
+
+@media (min-width: 48rem) {
+    .crop {
+        --ratio: var(--w-ratio);
+        --pw: var(--w-pw);
+        --pl: var(--w-pl);
+        --pt: var(--w-pt);
+        --srcw: var(--w-srcw);
+    }
+}
+
+.frame {
+    position: relative;
+    aspect-ratio: var(--ratio);
+    overflow: hidden;
+    border-radius: 2px;
+    background-color: var(--paper-scan);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.page {
+    position: absolute;
+    left: var(--pl);
+    top: var(--pt);
+    width: var(--pw);
+    aspect-ratio: 1348 / 954;
+    container-type: inline-size;
+}
+
+.page img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* The highlight draws in, line by line, the first time the row scrolls into view */
+.band {
+    position: absolute;
+    border-radius: 0.3cqw;
+    background-color: var(--evidence-bg);
+    mix-blend-mode: multiply;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 360ms var(--ease-out-strong) calc(120ms + var(--i, 0) * 70ms);
+}
+
+[data-seen] .band { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .band { transform: none; transition: none; }
+}

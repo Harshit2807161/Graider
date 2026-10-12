@@ -226,6 +226,15 @@ button {
   --site-h1: 2.5rem;
   --site-h2: 1.75rem;
   --site-lede: 1.125rem;
+
+  /* The answer book (home page): paper, its ruled lines, the printed red margin rule, the
+     examiner's red ink. Ink red is --red-700; the highlighter stays --evidence-bg. */
+  --paper: #fdfcf9;
+  --paper-scan: #f4f3ef;
+  --rule-line: rgba(84, 118, 160, 0.22);
+  --margin-red: #e0646b;
+  --ink-red: var(--red-700);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @media (min-width: 640px) {

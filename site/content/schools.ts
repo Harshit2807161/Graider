@@ -1,10 +1,15 @@
-import home from "./home";
 import type { SchoolsContent } from "./types-audience";
+import type { AnswerRows } from "./types";
+
+/** Q24(b) as answer rows (moved from home.ts when the home page became the answer book; unchanged). */
+const Q24B_ROWS: AnswerRows = {
+    question: "24(b)",
+    caption: "Question 24(b), scanned page 7. The yellow highlights are drawn on the scan from Gr8r’s grade record for this illustration; the product shows them in the transcript, not on the scan. The red ticks on the page belong to CBSE’s examiner, not to Gr8r.",
+};
 
 /** /schools: for a principal, trustee, director or coaching-centre head with two minutes.
  *  Copy from docs/pitch/copy/schools.md, trimmed; the sources of every claim are listed at the end
- *  of that draft. The answer rows reuse the home page's Q24(b) (data from the sample, caption from
- *  home.ts) so both pages show the same thing. */
+ *  of that draft. The answer rows show Q24(b) (data from the sample, caption in Q24B_ROWS above). */
 const schools: SchoolsContent = {
     meta: {
         title: "For schools and coaching institutes",
@@ -35,7 +40,7 @@ const schools: SchoolsContent = {
         intro: [
             { body: "For each answer: the student’s page, the text Gr8r read from it, the marking-scheme points, the mark for each point, and the words in the student’s answer that earned it, highlighted. On the sample page you can also see what the second examiner thought and where the two disagreed." },
         ],
-        answers: [home.marked.answers[0]],
+        answers: [Q24B_ROWS],
         after: [
             { body: "If Gr8r sent an answer to the teacher, the reason is at the top in plain words, for example “Handwriting hard to read” or “The two examiners disagree”. The teacher accepts the proposed mark or changes it." },
             { body: "If Gr8r misread a word, the teacher corrects the text and that answer is marked again." },

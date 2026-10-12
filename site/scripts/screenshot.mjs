@@ -32,6 +32,15 @@ for (const route of routes) {
         await page.goto(new URL(route, baseUrl).toString(), { waitUntil: "networkidle" });
         await page.waitForTimeout(1500); // let the one load animation finish
         await page.screenshot({ path: path.join(outDir, `${name}-${vp.name}-first.png`) });
+        // Scroll through once, as a reader would, so marks and highlights that draw on view are drawn
+        await page.evaluate(async () => {
+            for (let y = 0; y < document.documentElement.scrollHeight; y += Math.round(innerHeight * 0.6)) {
+                window.scrollTo(0, y);
+                await new Promise((r) => setTimeout(r, 120));
+            }
+            window.scrollTo(0, 0);
+        });
+        await page.waitForTimeout(900);
         await page.screenshot({ path: path.join(outDir, `${name}-${vp.name}-full.png`), fullPage: true });
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
         console.log(`${name} @${vp.name}: ${overflow ? "HORIZONTAL OVERFLOW" : "ok"}`);

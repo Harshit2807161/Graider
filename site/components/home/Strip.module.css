@@ -1,0 +1,86 @@
+/* A full-bleed strip of a scanned page. --s is the scan's scale (1 = the image's own pixels); the
+   page is placed so its printed red margin rule (--rx, px of the image) falls on the site's spine. */
+
+.strip {
+    --s: 0.84;
+    position: relative;
+    z-index: 1;
+}
+
+.window {
+    position: relative;
+    height: calc(var(--rows) * var(--s) * 1px);
+    overflow: hidden;
+    background-color: #f6f6f3;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.07), 0 -1px 0 rgba(15, 23, 42, 0.07);
+}
+
+@media (min-width: 640px) { .strip { --s: 0.95; } }
+@media (min-width: 1024px) { .strip { --s: 0.96; } }
+@media (min-width: 1600px) { .strip { --s: 1.06; } }
+
+.sheet {
+    position: absolute;
+    left: calc(var(--spine) - var(--rx) * var(--s) * 1px);
+    top: calc(var(--y0) * var(--s) * -1px);
+    width: calc(1348px * var(--s));
+    aspect-ratio: 1348 / 954;
+    container-type: inline-size;
+}
+
+.sheet img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.band {
+    position: absolute;
+    border-radius: 0.3cqw;
+    background-color: var(--evidence-bg);
+    mix-blend-mode: multiply;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 380ms var(--ease-out-strong) calc(80ms + var(--i, 0) * 90ms);
+}
+
+[data-seen] .band { transform: none; }
+
+/* Gr8r's mark: on a phone the scan's margin is off screen, so the mark is written on the paper just
+   under the strip, in the writing column; wider, it sits in the scan's own right margin */
+.mark {
+    margin: 0.75rem 0 0 calc(var(--spine) + var(--gap));
+}
+
+@media (min-width: 1024px) {
+    .mark {
+        position: absolute;
+        left: min(
+            calc(var(--spine) + (var(--rr) - var(--rx)) * var(--s) * 1px + 1.25rem),
+            calc(100% - var(--gr) - 9.5rem)
+        );
+        top: calc(var(--my) * var(--s) * 1px);
+        translate: 0 -50%;
+        margin: 0;
+    }
+}
+
+/* The page drifts against the scroll: depth, not decoration (transform only, on the compositor) */
+@supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+        .sheet {
+            animation: drift linear both;
+            animation-timeline: view();
+            animation-range: cover;
+        }
+    }
+}
+
+@keyframes drift {
+    from { transform: translateY(-18px); }
+    to { transform: translateY(18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .band { transform: none; transition: none; }
+}
