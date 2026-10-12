@@ -1,0 +1,14 @@
+/* /professors: page-specific layout only; everything else is page.module.css and the audience blocks. */
+
+h1.title { max-width: 32ch; }
+
+/* "When you disagree" and "Which models it runs on": two short sections side by side from 900px */
+.twin { gap: var(--site-section); }
+
+@media (min-width: 900px) {
+    .twin { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4rem; }
+}
+
+.part { min-width: 0; scroll-margin-top: var(--space-4); }
+
+.faqHead { margin-bottom: var(--space-6); }

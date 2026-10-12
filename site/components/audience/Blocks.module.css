@@ -1,0 +1,109 @@
+/* Blocks shared by the audience pages. Spacing, type and colour follow components/site/page.module.css. */
+
+/* ===== steps: a real sequence, so numbered (same treatment as the home page) ===== */
+.steps {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 68ch;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+}
+
+.steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    column-gap: var(--space-3);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.steps li::before {
+    content: counter(step) ".";
+    font-weight: 600;
+    color: var(--slate-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.steps strong { font-weight: 600; color: var(--slate-900); }
+
+@media (min-width: 1024px) {
+    .stepsWide {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-8) 3rem;
+        max-width: none;
+    }
+}
+
+/* ===== points with a bold lead-in ===== */
+.leads {
+    display: grid;
+    gap: var(--space-5);
+    max-width: 65ch;
+    padding: 0;
+    list-style: none;
+}
+
+.leads li {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.leads strong { font-weight: 600; color: var(--slate-900); }
+
+@media (min-width: 1024px) {
+    .leadsWide {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-6) 3rem;
+        max-width: none;
+    }
+}
+
+/* ===== the honest section's groups ===== */
+.groups {
+    display: grid;
+    gap: var(--space-8);
+}
+
+@media (min-width: 1024px) {
+    .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3rem; }
+    .groups3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.groupHead { margin-bottom: var(--space-3); text-wrap: balance; }
+
+/* ===== questions and answers, always open ===== */
+.faq {
+    border-top: 1px solid var(--slate-300);
+}
+
+.faqItem {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-6) 0;
+    border-bottom: 1px solid var(--slate-200);
+}
+
+@media (min-width: 56rem) {
+    .faqItem {
+        grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+        gap: 3rem;
+    }
+}
+
+.faqQ {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: var(--slate-900);
+    text-wrap: balance;
+}
+
+.faqA > * + * { margin-top: var(--space-3); }
+
+/* ===== closing ===== */
+.note { margin-top: var(--space-4); }

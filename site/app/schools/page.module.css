@@ -1,0 +1,61 @@
+/* /schools: the hero shares its row with the steps from desktop up, so the first screen holds what
+   Gr8r does, who signs off and what happens to the sheets. Everything else uses page.module.css. */
+
+.hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--site-section);
+    max-width: calc(var(--site-content) + 2 * var(--site-gutter));
+    margin: 0 auto;
+    padding: var(--space-6) var(--site-gutter) var(--site-section);
+}
+
+.heroText { min-width: 0; }
+
+h1.title { max-width: 22ch; text-wrap: pretty; }
+
+@media (min-width: 1024px) {
+    h1.title { text-wrap: balance; }
+}
+
+.heroSteps {
+    min-width: 0;
+    scroll-margin-top: var(--space-4);
+    padding-top: var(--site-section);
+    border-top: 1px solid var(--slate-200);
+}
+
+.stepsHead {
+    margin-bottom: var(--space-6);
+    font-size: var(--site-h2);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--slate-900);
+}
+
+@media (min-width: 1024px) {
+    .hero {
+        grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+        gap: 4rem;
+        align-items: start;
+        padding-top: 4rem;
+    }
+
+    .heroSteps {
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .stepsHead { font-size: 1.25rem; }
+}
+
+.pilotHead { margin-bottom: var(--space-6); }
+
+@media (min-width: 900px) {
+    /* What we need sits level with the first term, under the heading's line */
+    .pilotNeeds { padding-top: 3.25rem; }
+}
+
+.faqHead { margin-bottom: var(--space-6); }
