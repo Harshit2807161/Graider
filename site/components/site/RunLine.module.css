@@ -1,0 +1,9 @@
+.run {
+    max-width: 52ch;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--slate-200);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-600);
+    text-wrap: pretty;
+}

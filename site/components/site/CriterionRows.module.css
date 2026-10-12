@@ -1,0 +1,238 @@
+/* An answer as rows of the answer book. From a tablet up: a margin column for the question number and
+   the examiner's red marks, the book's red double rule, then the writing column. On a phone: no
+   margin column and no double rule; each mark sits above its crop. */
+
+.answer {
+    --margin: 0px;
+    --margin-gap: 0px;
+    --scale: 0.75;          /* px on screen per px of the scanned page, for crops */
+    position: relative;
+    border-top: 1px solid var(--slate-400);
+    border-bottom: 1px solid var(--slate-400);
+    background-color: var(--color-surface);
+}
+
+.answer + .answer { margin-top: var(--space-8); }
+
+@media (min-width: 48rem) {
+    .answer { --margin: 6rem; --margin-gap: 1.5rem; }
+
+    /* The red double margin, the full height of the answer */
+    .answer::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: var(--margin);
+        width: 4px;
+        border-left: 1px solid var(--red-700);
+        border-right: 1px solid var(--red-700);
+        pointer-events: none;
+    }
+}
+
+@media (min-width: 64rem) {
+    .answer { --margin: 7rem; --margin-gap: 2rem; --scale: 0.62; }
+}
+
+/* ===== rows ===== */
+.row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--slate-200);
+}
+
+.head { border-top: none; }
+
+.margin {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+}
+
+.writing { min-width: 0; }
+
+@media (min-width: 48rem) {
+    .row {
+        display: grid;
+        grid-template-columns: var(--margin) minmax(0, 1fr);
+        gap: 0;
+        padding: 0;
+    }
+
+    .margin {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: var(--space-1);
+        padding: var(--space-4) var(--space-4) var(--space-4) 0;
+        text-align: right;
+    }
+
+    .writing {
+        padding: var(--space-4) 0 var(--space-4) calc(4px + var(--margin-gap));
+    }
+}
+
+.qno {
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--slate-900);
+    font-variant-numeric: tabular-nums;
+}
+
+/* An examiner's mark: the score large, what it is out of smaller; Inter's plain zero */
+.mark {
+    color: var(--red-700);
+    font-weight: 700;
+    font-size: 1.375rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.outOf {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.status {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--slate-600);
+}
+
+@media (min-width: 48rem) {
+    .mark { font-size: 1.625rem; }
+    .outOf { font-size: 1rem; }
+}
+
+.questionText {
+    max-width: 68ch;
+    color: var(--slate-600);
+    line-height: 1.6;
+}
+
+/* ===== a point's line: the crop, then what it was marked against ===== */
+.line {
+    display: grid;
+    gap: var(--space-3);
+}
+
+@media (min-width: 64rem) {
+    .line {
+        grid-template-columns: minmax(0, 40rem) minmax(15rem, 1fr);
+        gap: var(--space-8);
+        align-items: start;
+    }
+}
+
+.criterion { max-width: 36em; }
+
+.point {
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--slate-900);
+}
+
+.reason {
+    margin-top: var(--space-2);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--slate-600);
+}
+
+.note {
+    margin-top: var(--space-3);
+    padding-left: var(--space-3);
+    border-left: 2px solid var(--slate-300);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--slate-800);
+}
+
+.quoteLine {
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.quote {
+    padding: 0.0625rem 0.1875rem;
+    border-radius: 3px;
+    background-color: var(--evidence-bg);
+    color: inherit;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.caption {
+    max-width: 68ch;
+    padding: var(--space-3) 0 var(--space-4);
+    border-top: 1px solid var(--slate-200);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--slate-600);
+}
+
+@media (min-width: 48rem) {
+    .caption { margin-left: calc(var(--margin) + 4px + var(--margin-gap)); padding-top: var(--space-3); }
+}
+
+/* ===== scan crop ===== */
+.crop {
+    --ratio: var(--t-ratio);
+    --pw: var(--t-pw);
+    --pl: var(--t-pl);
+    --pt: var(--t-pt);
+    --srcw: var(--t-srcw);
+    width: min(100%, calc(var(--srcw) * var(--scale) * 1px));
+}
+
+@media (min-width: 48rem) {
+    .crop {
+        --ratio: var(--w-ratio);
+        --pw: var(--w-pw);
+        --pl: var(--w-pl);
+        --pt: var(--w-pt);
+        --srcw: var(--w-srcw);
+    }
+}
+
+.frame {
+    position: relative;
+    aspect-ratio: var(--ratio);
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    outline: 1px solid var(--slate-200);
+    background-color: var(--color-surface);
+}
+
+.page {
+    position: absolute;
+    left: var(--pl);
+    top: var(--pt);
+    width: var(--pw);
+    aspect-ratio: 1348 / 954;
+}
+
+.page img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.band {
+    position: absolute;
+    border-radius: 3px;
+    background-color: var(--evidence-bg);
+    mix-blend-mode: multiply;
+}
+
+.cropCaption {
+    margin-top: var(--space-1);
+    font-size: 0.8125rem;
+    color: var(--slate-500);
+}

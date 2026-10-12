@@ -1,0 +1,297 @@
+/* Shared page layout for designed pages: containers, section rhythm, headings, prose, buttons. */
+
+.container {
+    max-width: calc(var(--site-content) + 2 * var(--site-gutter));
+    margin: 0 auto;
+    padding: 0 var(--site-gutter);
+}
+
+/* ===== first screen: headline left, the examined page right (from v1) ===== */
+.hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "text"
+        "scan"
+        "run";
+    gap: var(--space-8);
+    max-width: calc(var(--site-content) + 2 * var(--site-gutter));
+    margin: 0 auto;
+    padding: var(--space-6) var(--site-gutter) var(--site-section);
+}
+
+.heroText { grid-area: text; min-width: 0; }
+.heroScan { grid-area: scan; min-width: 0; }
+.heroRun { grid-area: run; }
+
+.title {
+    font-size: var(--site-h1);
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    color: var(--slate-900);
+}
+
+.titleLine { display: block; }
+
+.lede {
+    max-width: 60ch;
+    margin-top: var(--space-5);
+    font-size: var(--site-lede);
+    line-height: 1.6;
+    color: var(--slate-700);
+    text-wrap: pretty;
+}
+
+@media (min-width: 1024px) {
+    .hero {
+        grid-template-columns: minmax(0, 5.5fr) minmax(0, 6.5fr);
+        grid-template-rows: 1fr auto;
+        grid-template-areas:
+            "text scan"
+            "run scan";
+        gap: var(--space-8) 3rem;
+        padding-top: 4rem;
+    }
+
+    .heroText { align-self: end; }
+    .heroScan { align-self: center; }
+    .heroRun { align-self: start; }
+}
+
+/* ===== buttons and links ===== */
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-6);
+    margin-top: var(--space-6);
+}
+
+.primary {
+    touch-action: manipulation;
+    display: inline-flex;
+    align-items: center;
+    min-height: 3rem;
+    padding: 0 var(--space-6);
+    border-radius: var(--radius);
+    background-color: var(--indigo-600);
+    color: var(--color-on-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.primary:hover { background-color: var(--indigo-700); }
+
+.secondary,
+.link {
+    touch-action: manipulation;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--indigo-700);
+    text-decoration: underline;
+    text-decoration-color: var(--indigo-200);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color 0.15s ease;
+}
+
+.secondary { min-height: 3rem; }
+
+.secondary:hover,
+.link:hover { text-decoration-color: currentColor; }
+
+.linkRow { margin-top: var(--space-5); }
+
+/* ===== sections ===== */
+.section {
+    padding: var(--site-section) 0;
+    border-top: 1px solid var(--slate-200);
+    scroll-margin-top: var(--space-4);
+}
+
+.tinted { background-color: var(--slate-50); }
+
+.sectionHead {
+    max-width: 65ch;
+    margin-bottom: var(--space-8);
+}
+
+.pageHead {
+    padding: var(--space-8) 0 var(--site-section);
+}
+
+@media (min-width: 1024px) {
+    .pageHead { padding-top: 4rem; }
+}
+
+/* A question as the paper words it */
+.question {
+    padding-left: var(--space-4);
+    border-left: 3px solid var(--slate-300);
+    color: var(--slate-600);
+}
+
+.h1Page {
+    max-width: 22ch;
+    font-size: var(--site-h1);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.h2 {
+    font-size: var(--site-h2);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    color: var(--slate-900);
+}
+
+.h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--slate-900);
+}
+
+.prose {
+    max-width: 65ch;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--slate-700);
+}
+
+.prose > * + * { margin-top: var(--space-4); }
+
+.sectionHead .prose,
+.h2 + .prose,
+.h3 + .prose { margin-top: var(--space-3); }
+
+.prose strong { font-weight: 600; color: var(--slate-900); }
+
+.small {
+    max-width: 65ch;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--slate-600);
+}
+
+.after { margin-top: var(--space-8); }
+
+/* ===== lists ===== */
+.list {
+    max-width: 62ch;
+    padding-left: 1.25rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.list li + li { margin-top: var(--space-2); }
+
+.list li::marker { color: var(--slate-400); }
+
+/* The steps are a sequence, so they are numbered */
+.steps {
+    display: grid;
+    gap: var(--space-6);
+    max-width: 68ch;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+}
+
+.steps li {
+    counter-increment: step;
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    column-gap: var(--space-3);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.steps li::before {
+    content: counter(step) ".";
+    font-weight: 600;
+    color: var(--slate-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.steps strong { font-weight: 600; color: var(--slate-900); }
+
+@media (min-width: 1024px) {
+    .steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-8) 3rem;
+        max-width: none;
+    }
+}
+
+/* ===== two columns: text and an illustration or example ===== */
+.pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    align-items: start;
+}
+
+@media (min-width: 900px) {
+    .pair { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 3rem; }
+}
+
+.example {
+    margin-top: 3rem;
+}
+
+.example > .h3 + .prose { margin-bottom: var(--space-6); }
+
+/* ===== who it's for: paragraphs, not cards ===== */
+.audiences {
+    display: grid;
+    gap: var(--space-6);
+    max-width: 65ch;
+}
+
+@media (min-width: 1024px) {
+    .audiences {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 3rem;
+        max-width: none;
+    }
+}
+
+.audiences p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.audiences strong { font-weight: 600; color: var(--slate-900); }
+
+.audiences .link { margin-top: var(--space-1); }
+
+/* ===== the honest section ===== */
+.groups {
+    display: grid;
+    gap: var(--space-8);
+}
+
+@media (min-width: 1024px) {
+    .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3rem; }
+}
+
+.groups .h3 { margin-bottom: var(--space-3); }
+
+/* ===== closing ===== */
+.closing .prose { margin-top: var(--space-3); }

@@ -11,8 +11,9 @@ const repoRoot = path.join(__dirname, "..");
 // Files under ../frontend would otherwise resolve react, clsx and lucide-react from
 // frontend/node_modules (a second copy of React breaks hooks, and CI may not have that folder).
 const shared = ["react", "react-dom", "clsx", "lucide-react"];
-// Turbopack reads alias paths relative to its root, so these are relative, not absolute.
-const alias = Object.fromEntries(shared.map((name) => [name, `./site/node_modules/${name}`]));
+// Turbopack resolves relative alias paths from the project directory (site/), not from its root:
+// "./site/node_modules/..." pointed at site/site/ and only worked where frontend/node_modules existed.
+const alias = Object.fromEntries(shared.map((name) => [name, `./node_modules/${name}`]));
 
 const nextConfig: NextConfig = {
   output: "export",
