@@ -49,14 +49,25 @@ See `checkpoint-1.md` once written.
 - Hero answer: Q24(b), page 7.
 
 ## Phase 3: build (→ checkpoint 3)
-- [ ] Home page + `/sample` from the hybrid; shared site components; content modules wired (Opus, worktree)
-- [ ] Pilot-form Worker: Turnstile + Resend, not deployed (Sonnet, worktree)
+- [x] Home page + `/sample` from the hybrid; shared site components in `site/components/site/`; content modules `home.ts`, `sample.ts`, `sample-marks.ts`, `claims.ts` (merged `5ccecb3`)
+- [x] Pilot-form Worker in `site/worker/` (Turnstile + Resend + rate limit; 63 tests; not deployed; `CHANGE_ME` entries in `wrangler.jsonc`)
 - [ ] Audience pages: schools, professors, investors
 - [ ] How it works, pilot, privacy, about; results page hidden
 - [ ] Claims register (`site/content/claims.ts` + `docs/pitch/claims-register.md`)
 - [ ] Screenshots of every page at 390/820/1440, Fable's own review, fixes
 - [ ] Lighthouse mobile per page; humanizer pass; fresh-reader checks per audience
-- [ ] Full campaign plan; CHANGELOG entry; PR
+- [x] Full campaign plan (`campaign-plan.md`, targets for 6 Dec 2026)
+- [ ] CHANGELOG entry; PR
+
+## PAUSED 2026-10-12 19:35, resume at 20:40 (usage limit)
+State: branch `pitch/website-and-campaign` at the commit below, clean. Home and sample pages built and reviewed by Fable from the static build (`scratchpad/review1`; hero and marks correct; full-page shots show the criterion-row crops as blank yellow, scrolled shots were taken but not yet examined: `review1/home-scroll-{900,1700,3300}.png`).
+Three page builders were launched and stopped before they wrote anything; their worktrees are removed. **On resume, relaunch exactly these three (Opus, worktree, same prompts as in the session; they are reproducible from this file):**
+1. `/schools`, `/professors`, `/investors` from `docs/pitch/copy/*.md`; new types in `content/types-audience.ts`; reuse `CriterionRows` for Q24(b); FAQ as visible headings; commit `feat(site): schools, professors and investors pages`.
+2. `/how-it-works`, `/about`, `/privacy`, `/results` (hidden, noindex); types in `content/types-info.ts`; privacy as Flint-style tables; `ReviewDesk` for Q21 on how-it-works; commit `feat(site): how it works, about, privacy and results pages`.
+3. `/pilot` with the form wired to `site/worker` (fields from `worker/src/validate.ts`, Turnstile action `pilot`, env `NEXT_PUBLIC_PILOT_ENDPOINT` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, disabled state when unset, `.env.example`, end-to-end test against `wrangler dev` with `EMAIL_DRY_RUN=true`) + single-column hero on `/sample`; commit `feat(site): pilot page with the request form; single-column sample hero`.
+Rules for all three: do not edit `types.ts`, `site.ts`, `layout.tsx`, `components/site/*`, `app/page.tsx`, `variants/`; verify with `npm run typecheck && npm run lint && npm run build`, serve `out/`, `scripts/screenshot.mjs` at 390/820/1440, web-design-guidelines pass; worktrees must start from `pitch/website-and-campaign` (they are created from master; `git reset --hard pitch/website-and-campaign` first).
+Then: merge, build, Fable reviews every page from screenshots (and the scrolled shots), fixes; Lighthouse mobile per page (`npx lighthouse --chrome-path` to Playwright's Chromium); humanizer pass on the content modules; fresh-reader checks per audience (Opus); claims register from `content/claims.ts` into `docs/pitch/claims-register.md`; CHANGELOG entry; checkpoint 3.
+Open items for checkpoint 3: founder backgrounds, contact email, domain + Cloudflare/Resend accounts, the CBSE material in public (team-written sample recommended), the first ten names.
 
 ## Later phases
 - Phase 2 (after checkpoint 1): design direction, 2–3 rendered home-page first screens + sample-sheet section → checkpoint 2.
