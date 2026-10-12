@@ -1,0 +1,9 @@
+/* The sample's first screen is one column: the title runs as wide as it needs, the lede at a
+   measure of about 70 characters, so the screen doesn't read as a missing right-hand column. */
+.hero h1 {
+    max-width: none;
+}
+
+.hero p {
+    max-width: 70ch;
+}

@@ -1,0 +1,128 @@
+/* The pilot page. The terms are drawn like the answer book cover's "For examiner's use only" grid
+   (heavy outer rule, ruled rows); everything else uses the shared layout in page.module.css. */
+
+/* The first screen is one column; the lede at the same measure as the sample page's */
+.hero p {
+    max-width: 70ch;
+}
+
+/* ===== the terms ===== */
+.terms {
+    max-width: 56rem;
+    border: 1.5px solid var(--slate-700);
+    background-color: var(--color-surface);
+}
+
+.term {
+    display: grid;
+    gap: var(--space-1);
+    padding: var(--space-4);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.term + .term {
+    border-top: 1px solid var(--slate-400);
+}
+
+.term dt {
+    font-weight: 700;
+    color: var(--slate-900);
+}
+
+.term dd {
+    max-width: 65ch;
+    color: var(--slate-700);
+}
+
+.termList {
+    margin-top: var(--space-2);
+    padding-left: 1.25rem;
+}
+
+.termList li + li {
+    margin-top: var(--space-1);
+}
+
+.termList li::marker {
+    color: var(--slate-400);
+}
+
+@media (min-width: 640px) {
+    .term {
+        grid-template-columns: 11rem minmax(0, 1fr);
+        gap: 0;
+        padding: 0;
+    }
+
+    .term dt,
+    .term dd {
+        padding: var(--space-4) var(--space-5);
+    }
+
+    .term dt {
+        border-right: 1px solid var(--slate-400);
+    }
+}
+
+/* ===== what we ask, how we'll judge it ===== */
+.columns {
+    display: grid;
+    gap: 3rem;
+}
+
+@media (min-width: 1024px) {
+    .columns {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.listAfterHeading {
+    margin-top: var(--space-4);
+}
+
+/* ===== good to know, and the form ===== */
+.formPair {
+    display: grid;
+    gap: 3rem;
+    align-items: start;
+}
+
+@media (min-width: 1024px) {
+    .formPair {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+        gap: 4rem;
+    }
+}
+
+.notes {
+    max-width: 65ch;
+}
+
+/* Beside the long form, the notes stay in view (the header is not sticky at this width) */
+@media (min-width: 1024px) {
+    .notes {
+        position: sticky;
+        top: var(--space-8);
+    }
+}
+
+.notes > * + * {
+    margin-top: var(--space-4);
+}
+
+.request {
+    scroll-margin-top: var(--space-6);
+}
+
+.request > h2 + * {
+    margin-top: var(--space-3);
+}
+
+/* Where the two blocks stack, a rule between them, like the rules between sections */
+@media (max-width: 1023px) {
+    .request {
+        padding-top: 3rem;
+        border-top: 1px solid var(--slate-200);
+    }
+}

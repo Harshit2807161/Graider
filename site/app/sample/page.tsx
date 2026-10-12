@@ -5,6 +5,7 @@ import ReviewDesk from "@/components/site/ReviewDesk";
 import Slip from "@/components/site/Slip";
 import s from "@/components/site/page.module.css";
 import sample from "@/content/sample";
+import own from "./page.module.css";
 
 export const metadata: Metadata = { title: sample.meta.title, description: sample.meta.description };
 
@@ -13,7 +14,7 @@ export default function Page() {
 
     return (
         <>
-            <section className={s.pageHead} aria-labelledby="sample-title">
+            <section className={`${s.pageHead} ${own.hero}`} aria-labelledby="sample-title">
                 <div className={s.container}>
                     <h1 id="sample-title" className={s.h1Page}>{sample.title}</h1>
                     <p className={s.lede}>{sample.lede}</p>
