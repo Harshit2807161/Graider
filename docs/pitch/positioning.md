@@ -66,7 +66,7 @@ Order on the site: schools first, professors second, investors third. Depth of m
 
 ## The honest section ("What it does well today, and what it sends to you")
 
-Every audience page carries this, written for that audience. It is a feature, not a disclaimer: no comparable company publishes one.
+Every audience page carries this, written for that audience. It is a feature, not a disclaimer: of the competitors surveyed only CoGrader publishes limitations, none offers a graded sheet a visitor can inspect, and no Indian competitor publishes a method or a price (`research/claims.md` §6).
 
 Does well today: clean handwriting; answers in text; multiple-choice (19 of 20 correct in the real run); marking schemes with point-wise criteria; choice questions; long answers that run across pages when the question number is written.
 

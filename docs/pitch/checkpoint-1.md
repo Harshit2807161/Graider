@@ -17,6 +17,15 @@ Please answer in any form; short answers are fine. The ones marked **blocks** st
 10. **Skills to install** (they run third-party code): Emil Kowalski's animation skills and Vercel's `web-design-guidelines` audit. Yes or no to each. Not needed to start.
 11. **Tone check**: the headline "AI marking for handwritten answer sheets. It shows its working." (see `positioning.md`). Keep, or prefer an alternative?
 
+12. **Form email**: Cloudflare's own Email Sending is still a public beta and needs the Workers Paid plan ($5/month). My plan unless you object: the pilot form posts to a free Worker that sends through Resend's free tier (3,000 emails/month) to your address, with Turnstile (free) against spam; the privacy page names Resend as the form's processor. Alternative: pay for Workers and use Cloudflare's beta.
+
+## Facts the checking changed (so you aren't surprised later)
+- School budgets: the consultancy source says February–March, not October–February, and warns against expecting sales from August to January. The campaign still starts with schools and coaching, but pilots now are aimed at the February–March budget decision.
+- CBSE 2026: the vendor-portal vulnerability and the hand-marked illegible scripts are confirmed; the parliamentary "summons" was an invitation; "AI not used" comes from press reports, not a CBSE document.
+- DPDP: the gazette (G.S.R. 846(E), 13 Nov 2025) brings parental-consent and the main duties into force about 13 May 2027; the educational-institution exemption covers only tracking and behavioural monitoring, and names institutions, not their vendors. A proposal to shorten the timeline to 12 months was not notified as of September 2026. The privacy page will say nothing about compliance and ask for a lawyer's review.
+- YC comparables: Edexia is W25, Frizzle is S25; nothing public says either raised on pilots alone.
+- Competitors: CoGrader publishes a price, a method and limitations; Edexia publishes an accuracy figure with a thin method. The rest publish nothing. None shows a graded sheet.
+
 ## For your review (no decision needed unless you disagree)
 - `positioning.md`: category, headline, mechanism, per-audience message, proof we can show, what we won't say.
 - `site-map.md`: pages, each page's job and CTA.

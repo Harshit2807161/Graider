@@ -7,7 +7,7 @@ Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (f
 
 ## Phase 1: before checkpoint 1
 - [x] Branch created
-- [ ] Research: claims in the brief verified against primary sources → `research/claims.md` (Sonnet)
+- [x] Research: claims in the brief verified against primary sources → `research/claims.md` (Sonnet). Several quotes came via summarising fetches; recheck on the live page before anything goes public.
 - [ ] Research: reference sites torn down in a real browser → `research/reference-sites.md` (Opus)
 - [x] Research: review components, eval data, tokens, product facts for the sample sheet (Sonnet) → `research/sample-sheet-facts.md`
 - [x] `positioning.md`: category headline, mechanism, per-audience message, proof today, what we don't claim
@@ -18,6 +18,7 @@ Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (f
 
 ## Decisions made without Kirtan (brief says: make reasonable choices, note them)
 - Branch from the eval branch rather than `v1-full`, because the sample sheet needs `review.json` and the brief lives here. The PR target is decided later with Kirtan (the eval branch may merge first).
+- Form email: Resend free tier from a Worker, not Cloudflare Email Sending (beta, paid plan). Kirtan can overrule at checkpoint 1 (question 12).
 - The superpowers brainstorming skill was not run: the brief is the output of that step and says not to ask outside checkpoints.
 
 ## Open questions (collected for checkpoint 1)

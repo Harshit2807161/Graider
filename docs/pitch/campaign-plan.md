@@ -1,12 +1,12 @@
 # First eight weeks: campaign plan (outline)
 
-Status: outline for checkpoint 1. The full plan (target-list method, message sequence, measures) is written after Kirtan answers the checkpoint questions. Items marked *(verify)* wait for `research/claims.md`.
+Status: outline for checkpoint 1. The full plan (target-list method, message sequence, measures) is written after Kirtan answers the checkpoint questions. Facts were checked in `research/claims.md` (2026-10-12).
 
 ## Why schools and coaching centres first
-- The school budget window is open now: budgets set October to February, cycles of four to nine months *(verify; single consultancy source)*. A pilot agreed in November on a unit test or pre-board can convert in the same budget year.
+- The brief's "budget window is open now" did not survive checking. The one consultancy source (RAYSolute, India) says cycles run four to nine months, the principal is the gatekeeper and a trustee or director approves larger spend, but that budgets are set in **February–March** and that sales should not be expected in August–January. The argument for schools now is therefore different: a pilot run in November–January on a unit test or pre-board is what puts Gr8r into a February–March budget decision. Start pilots now; expect money in Q1 2027.
 - Coaching centres run mock tests weekly, decide fast (owner decides), and have the acute pain: hundreds of handwritten sheets per test. They are the shortest path to a running pilot.
 - Professors are cheap to run in parallel: one course, one instructor, no procurement. They produce the method write-up investors and schools both want.
-- Investors come last, with design partners in hand. Indian edtech funding is at multi-year lows *(verify: Inc42 2025 figure)*; the pitch is vertical AI for assessment with a human in the loop, and it needs pilots to be credible.
+- Investors come last, with design partners in hand. Indian edtech funding fell to $249M across 31 deals in 2025, down 56% (Inc42, 15 Jan 2026, confirmed); the pitch is vertical AI for assessment with a human in the loop, and it needs pilots to be credible. Comparable YC companies exist (Edexia W25, Frizzle S25), but "raised on pilots alone" could not be verified and will not be said.
 
 ## Sequence
 
@@ -31,6 +31,6 @@ Messages sent → replies → demos → pilots agreed → sheets graded in pilot
 - Never: a figure without its method beside it.
 
 ## Things to avoid
-- Any school conversation that drifts to board-exam marking: the CBSE 2026 on-screen-marking episode *(verify details)* makes "AI marking" a loaded phrase with parents and trustees; keep to internal exams and lead with teacher sign-off and scan quality.
+- Any school conversation that drifts to board-exam marking. The CBSE 2026 on-screen-marking episode is confirmed in substance: CBSE admitted vulnerabilities in its vendor's portal (31 May 2026), the Education Secretary conceded over 13,000 illegible scripts marked by hand, the parliamentary Standing Committee invited CBSE's chairman (an invitation, not a summons), and press reports quote CBSE saying AI was not used (no primary CBSE text found). "AI marking" is a loaded phrase with parents and trustees; keep to internal exams and lead with teacher sign-off and scan quality.
 - Sending outreach from the product: Kirtan sends every message personally.
 - Pilots without written success criteria and a conversion date.
