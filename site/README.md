@@ -78,3 +78,5 @@ content/             all copy, typed (types.ts), sample-data/
 lib/                 base.ts (withBase), sample.ts
 public/sample/pages/ page images for the sample
 ```
+
+The "Request a pilot" form posts to the Cloudflare Worker in `worker/` (setup, deploy and the `NEXT_PUBLIC_PILOT_ENDPOINT` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` variables: `worker/README.md`).
