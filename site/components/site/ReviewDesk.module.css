@@ -1,0 +1,78 @@
+/* The product's review desk (frontend review.module.css: .desk, .viewerSlot, .answers), sized for a
+   marketing page: the page is the larger column so the handwriting reads at desktop widths. The
+   container names `review`, `viewer` and `answers` are the ones the product's CSS queries. */
+
+.wrap {
+    container: review / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+}
+
+.viewerColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.viewerSlot {
+    container: viewer / inline-size;
+    min-width: 0;
+}
+
+.notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 40rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.notes strong {
+    font-weight: 600;
+    color: var(--slate-900);
+}
+
+.answers {
+    container: answers / inline-size;
+    min-width: 0;
+}
+
+/* The card's own examiner discussion, moved under the desk (see ReviewDesk) */
+.roundsMoved article > div > details:first-of-type { display: none; }
+
+.rounds {
+    container: answers / inline-size;
+    min-width: 0;
+}
+
+.discussion { background-color: var(--card); }
+
+@media (min-width: 60rem) {
+    .desk {
+        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+        gap: var(--space-6);
+    }
+
+    .wrap { gap: var(--space-6); }
+
+    .notes { padding: 0 var(--space-1); }
+}
+
+/* The page and its notes stay in view while the card scrolls past, when the screen is tall enough */
+@media (min-width: 60rem) and (min-height: 50rem) {
+    .viewerColumn {
+        position: sticky;
+        top: var(--space-6);
+    }
+}

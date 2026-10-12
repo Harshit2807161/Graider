@@ -216,10 +216,35 @@ button {
 }
 
 /* ---- site: marketing-only tokens ----
-   Left empty on purpose; the design pass adds them here (hero scale, section spacing, etc.).
-   Never redefine a product token above; add new names instead. */
+   Never redefine a product token above; add new names instead. One family (Inter, from the root
+   layout). Colours keep one meaning each: indigo is the action, red-700 is the examiner's ink on
+   paper only, --evidence-bg is the highlight on quoted evidence only. */
 :root {
-  /* TODO: marketing tokens */
+  --site-content: 75rem;      /* content width */
+  --site-gutter: 1rem;        /* side padding: 16px at phone, 24px from 640px */
+  --site-section: 3.5rem;     /* vertical space around a section */
+  --site-h1: 2.5rem;
+  --site-h2: 1.75rem;
+  --site-lede: 1.125rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --site-gutter: 1.5rem;
+    --site-section: 5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --site-h1: clamp(2.75rem, 3.4vw, 3rem);
+    --site-lede: 1.25rem;
+  }
+}
+
+/* The page is paper */
+body {
+  background-color: var(--color-surface);
 }
 
 /* Skip link: off screen until focused */

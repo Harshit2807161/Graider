@@ -1,0 +1,54 @@
+/* The answer book cover's "For examiner's use only" grid: heavy outer rule, ruled cells. */
+.wrap {
+    max-width: 44rem;
+    overflow-x: auto;
+}
+
+.grid {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid var(--slate-700);
+    font-variant-numeric: tabular-nums;
+}
+
+.grid caption {
+    caption-side: bottom;
+    padding-top: var(--space-3);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    text-align: left;
+    color: var(--slate-600);
+}
+
+.grid th,
+.grid td {
+    padding: var(--space-3);
+    border: 1px solid var(--slate-400);
+    text-align: left;
+    vertical-align: top;
+}
+
+.grid thead th {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--slate-900);
+    background-color: var(--slate-50);
+}
+
+.grid tbody th {
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.illustration th,
+.illustration td {
+    border-style: dashed;
+    color: var(--slate-600);
+}
+
+@media (max-width: 30rem) {
+    .grid th,
+    .grid td { padding: var(--space-2) 0.375rem; }
+    .grid { font-size: 0.875rem; line-height: 1.45; }
+    .grid tbody th { white-space: normal; }
+}

@@ -1,0 +1,106 @@
+/* A scanned page with Gr8r's marks on it. Everything on the page is positioned in % of the image
+   (content/sample-marks.ts) and sized in cqw of the sheet, so the marks stay on their words at any
+   width. */
+
+.figure {
+    min-width: 0;
+}
+
+.sheet {
+    position: relative;
+    container-type: inline-size;
+    border: 1px solid var(--slate-200);
+    border-radius: 2px;
+    background-color: var(--slate-100);
+    box-shadow: var(--shadow-sm);
+}
+
+.scan {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.marks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* ---- the evidence highlight ---- */
+.band {
+    position: absolute;
+    border-radius: 0.3cqw;
+    background-color: var(--evidence-bg);
+    mix-blend-mode: multiply;
+    animation: sweep 200ms var(--ease-out) var(--delay) backwards;
+}
+
+@keyframes sweep {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0 0 0 0); }
+}
+
+/* ---- the examiner's marks, in the margin right of the printed red rule ---- */
+.mark {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 0.4cqw;
+    margin-left: 1.4cqw;
+    translate: 0 -50%;
+    color: var(--red-700);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    animation: markIn 220ms var(--ease-out) var(--delay) backwards;
+}
+
+@keyframes markIn {
+    from { opacity: 0; scale: 0.94; }
+    to { opacity: 1; scale: 1; }
+}
+
+.tick {
+    width: max(0.75rem, 2.6cqw);
+    height: max(0.75rem, 2.6cqw);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.tick path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    animation: pen 220ms var(--ease-out) var(--delay) backwards;
+}
+
+@keyframes pen {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
+
+.score {
+    font-size: max(0.6875rem, 2.6cqw);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+/* Reduced motion: the final state, at once */
+@media (prefers-reduced-motion: reduce) {
+    .band,
+    .mark,
+    .tick path {
+        animation: none;
+    }
+}
+
+.caption {
+    max-width: 62ch;
+    margin-top: var(--space-3);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    color: var(--slate-600);
+}
