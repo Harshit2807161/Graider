@@ -1,0 +1,24 @@
+/* next/font has no metrics for Atkinson Hyperlegible Next and skips its fallback, so the swap would
+   reflow the text. This local face is sized to match (measured: Atkinson at 400 sets ~98% of
+   Arial's width; line heights are explicit everywhere, so only width matters). */
+@font-face {
+    font-family: "Atkinson Fallback";
+    src: local("Arial"), local("Liberation Sans"), local("Helvetica");
+    size-adjust: 98%;
+}
+
+.root {
+    --font-site-stack: var(--font-site), "Atkinson Fallback", system-ui, sans-serif;
+    font-family: var(--font-site-stack);
+    background-color: var(--color-surface);
+}
+
+/* v3 draws its own header (the book's top strip). Until the root layout lets a route opt out of the
+   shared placeholder header, hide that one on pages that contain this variant only. */
+:global(body):has(.root) > :global(header) {
+    display: none;
+}
+
+:global(body):has(.root) {
+    background-color: var(--color-surface);
+}
