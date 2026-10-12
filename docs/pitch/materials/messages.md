@@ -30,7 +30,7 @@ Kirtan sends every message himself. Each first contact asks for 20 minutes and o
 
 **First contact**
 
-> Dear Prof. [Name], I'm Kirtan Jain, co-founder of Gr8r. We mark handwritten answer sheets with AI, and I'd value your view on our method. Each mark cites a criterion from your rubric and a quote from the student's writing, and code checks that the quote is really in the transcript. A second, different model marks independently first, and disagreements beyond a threshold go to you. We haven't measured agreement with teachers yet, which is why I'm writing: would you compare its marks with yours on one test in one course? Could we start with 20 minutes, with one answer sheet and your rubric, marked live? Regards, Kirtan Jain
+> Dear Prof. [Name], I'm Kirtan Jain, co-founder of Gr8r. We mark handwritten answer sheets with AI, and I'd value your view on our method. Each mark cites a criterion from your rubric and a quote from the student's writing, and code checks that the quote is really in the transcript. A second, different model scores the answer itself before it reviews the first grade, and disagreements beyond a threshold go to you. We haven't measured agreement with teachers yet, which is why I'm writing: would you compare its marks with yours on one test in one course? Could we start with 20 minutes, with one answer sheet and your rubric, marked live? Regards, Kirtan Jain
 
 **Follow-up**
 

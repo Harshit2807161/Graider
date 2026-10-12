@@ -34,7 +34,7 @@ We do the setup. You give us the question paper and marking scheme; we type them
 ## Professors
 
 **"Why not just paste answers into ChatGPT?"**
-A chat window gives you a mark with no check on it. Gr8r reads whole handwritten answer books, files each answer under its question, marks each criterion of your rubric with a quote that code checks is in the transcript, has a second, different model mark independently, sends disagreements to you, and records every call and change. It can use the same kinds of models. Want to compare the two on one of your tests?
+A chat window gives you a mark with no check on it. Gr8r reads whole handwritten answer books, files each answer under its question, marks each criterion of your rubric with a quote that code checks is in the transcript, has a second, different model score it before reviewing the first grade, sends disagreements to you, and records every call and change. It can use the same kinds of models. Want to compare the two on one of your tests?
 
 **"Can I run it on our own models?"**
 Yes. Every model role (page reading, rubric parsing, marking, checking) can run on an open-weight model you host with vLLM or SGLang, on Claude or OpenAI, or a mix, with fallback either way and a switch that forbids falling back to an outside provider. Which open model is good enough for each role hasn't been measured yet; a comparison on your course would be useful to both of us.

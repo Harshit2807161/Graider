@@ -23,7 +23,7 @@ Frame: Gr8r is vertical AI for assessment with a teacher in the loop, not edtech
 ## 4. How it works
 
 **Must prove:** that the method is specific and checkable, not a single prompt.
-**Evidence today:** pages read in parallel and answers stitched across pages; each mark cites a rubric criterion, a quote and a justification, and code checks the quote is in the transcript; a second, different model marks independently first, then reviews; disagreement beyond a threshold goes to revision (at most two) and then to the teacher (`positioning.md` proof table; Proposal 002 §2 and §7; `backend/app/grading/question.py`, `checks.py`).
+**Evidence today:** pages read in parallel and answers stitched across pages; each mark cites a rubric criterion, a quote and a justification, and code checks the quote is in the transcript; a second, different model scores the answer itself first, then reviews the grader's evidence in the same call; disagreement beyond a threshold goes to revision (at most two) and then to the teacher (`positioning.md` proof table; Proposal 002 §2 and §7; `backend/app/grading/question.py`, `checks.py`).
 **Slot to fill:** a one-page diagram of the flow.
 
 ## 5. It shows its working: one graded answer
