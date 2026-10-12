@@ -1,0 +1,81 @@
+.header {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.inner {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "brand nav button";
+    align-items: center;
+    gap: var(--space-3) var(--space-8);
+    max-width: var(--v2-content, 75rem);
+    min-height: 4.5rem;
+    margin: 0 auto;
+    padding: var(--space-3) var(--v2-gutter, var(--space-4));
+}
+
+.brand {
+    grid-area: brand;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--foreground);
+}
+
+.nav {
+    grid-area: nav;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+}
+
+.link {
+    font-size: var(--text-md);
+    color: var(--slate-600);
+    transition: color 0.15s ease;
+}
+
+.link:hover { color: var(--slate-900); }
+
+.button {
+    grid-area: button;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.5rem;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius);
+    background-color: var(--primary);
+    color: var(--color-on-primary);
+    font-size: var(--text-md);
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.button:hover { background-color: var(--color-primary-hover); }
+
+/* Phones and narrow tablets: name and button on the first row, the links on the second */
+@media (max-width: 56rem) {
+    .inner {
+        grid-template-columns: 1fr auto;
+        grid-template-areas: "brand button" "nav nav";
+        gap: var(--space-3) var(--space-4);
+        padding-top: var(--space-3);
+        padding-bottom: var(--space-2);
+    }
+
+    .nav { gap: 0 var(--space-4); }
+
+    .link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.5rem;
+        font-size: var(--text-base);
+    }
+}
+
+/* Phones: the five links share one row */
+@media (max-width: 30rem) {
+    .nav { justify-content: space-between; gap: 0 var(--space-2); }
+}

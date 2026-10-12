@@ -1,0 +1,263 @@
+/* v2, "The review screen": the product's own review desk is the subject; the page around it is
+   white, quiet and left-aligned, and the band it sits on is the product's canvas (slate-50). */
+
+.root {
+    --v2-content: 75rem;
+    --v2-gutter: var(--space-4);
+    --v2-h1: 2.5rem;
+    --v2-lede: 1.125rem;
+    --v2-h2: 1.75rem;
+    background-color: var(--color-surface);
+    color: var(--foreground);
+}
+
+.root a { touch-action: manipulation; }
+
+/* The shared site header is replaced by this variant's own (five links and a button) */
+:global(body):has(.root) > :global(header) { display: none; }
+
+@media (min-width: 48rem) {
+    .root {
+        --v2-gutter: var(--space-6);
+        --v2-lede: 1.25rem;
+    }
+}
+
+@media (min-width: 64rem) {
+    .root { --v2-h1: 3.5rem; }
+}
+
+.container,
+.wide {
+    max-width: var(--v2-content);
+    margin: 0 auto;
+    padding: 0 var(--v2-gutter);
+}
+
+/* ===== first screen ===== */
+.hero {
+    padding: var(--space-8) 0 var(--space-8);
+}
+
+.h1 {
+    max-width: 22ch;
+    font-size: var(--v2-h1);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.h1Line { display: block; }
+
+.leadRow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-top: var(--space-5);
+}
+
+.lede {
+    max-width: 41rem;
+    font-size: var(--v2-lede);
+    line-height: 1.6;
+    color: var(--slate-600);
+    text-wrap: pretty;
+}
+
+.ctas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-6);
+}
+
+.primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: 0 var(--space-6);
+    border-radius: var(--radius);
+    background-color: var(--primary);
+    color: var(--color-on-primary);
+    font-size: var(--text-md);
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 0.15s ease;
+}
+
+.primary:hover { background-color: var(--color-primary-hover); }
+
+.secondary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 3rem;
+    font-size: var(--text-md);
+    font-weight: 600;
+    color: var(--indigo-700);
+    text-decoration: underline;
+    text-decoration-color: var(--indigo-200);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color 0.15s ease;
+}
+
+.secondary:hover { text-decoration-color: currentColor; }
+
+@media (min-width: 48rem) {
+    .hero { padding: var(--space-8) 0 3rem; }
+}
+
+@media (min-width: 64rem) {
+    .hero { padding: 3.25rem 0 2.5rem; }
+
+    .h1 { max-width: none; }
+
+    .leadRow {
+        flex-direction: row;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: var(--space-8);
+        margin-top: var(--space-6);
+    }
+
+    .ctas { flex-shrink: 0; padding-bottom: 0.25rem; }
+}
+
+/* ===== the review screen ===== */
+.band {
+    padding: var(--space-6) 0 3rem;
+    background-color: var(--slate-50);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.figure {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+.caption {
+    font-size: var(--text-md);
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.run {
+    max-width: 44rem;
+    margin-top: 3rem;
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+    font-size: var(--v2-lede);
+    line-height: 1.55;
+    color: var(--slate-900);
+    text-wrap: pretty;
+}
+
+@media (min-width: 60rem) {
+    .band { padding: 2rem 0 4.5rem; }
+
+    /* The panel is the subject: wider than the text column on large screens */
+    .wide { max-width: 86rem; }
+}
+
+/* ===== more from the same answer book ===== */
+.more {
+    padding: 4rem 0 2rem;
+    scroll-margin-top: var(--space-4);   /* the "See a graded sheet" link lands here */
+}
+
+.sectionHead {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-8);
+}
+
+.h2 {
+    font-size: var(--v2-h2);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+}
+
+.intro {
+    max-width: 38rem;
+    font-size: var(--text-md);
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.example {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: var(--space-8) 0 3rem;
+    border-top: 1px solid var(--border);
+}
+
+.example:last-child { padding-bottom: 0; }
+
+.exampleText {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: 38rem;
+    font-size: var(--text-md);
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.h3 {
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--foreground);
+}
+
+.pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-8) var(--space-6);
+}
+
+.pairItem {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.pairCaption {
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+@media (min-width: 60rem) {
+    .more { padding: 5.5rem 0 2rem; }
+
+    .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+/* ===== the one next step, once more ===== */
+.close {
+    padding: 4rem 0 5rem;
+}
+
+.close .container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+}
+
+.closeText {
+    max-width: 38rem;
+    font-size: var(--v2-lede);
+    line-height: 1.6;
+    color: var(--slate-600);
+}
