@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Figure } from "@/content/types";
-import { HERO_MARKS, PAGE_IMAGE, pageSrc, type SheetMarks } from "@/content/sample-marks";
+import { HERO_MARKS, PAGE_IMAGE, pageSrc, pageSrcSmall, type SheetMarks } from "@/content/sample-marks";
 import { withBase } from "@/lib/base";
 import { sampleQuestion } from "@/lib/sample";
 import { markText } from "./format";
@@ -44,7 +44,10 @@ export default function ExaminedPage({ figure, marks = HERO_MARKS }: { figure: F
         <figure className={styles.figure}>
             <div className={styles.sheet}>
                 {/* eslint-disable-next-line @next/next/no-img-element -- static export, images are unoptimized */}
-                <img src={withBase(pageSrc(marks.page))} width={PAGE_IMAGE.width} height={PAGE_IMAGE.height} alt={figure.alt}
+                <img src={withBase(pageSrc(marks.page))}
+                     srcSet={`${withBase(pageSrcSmall(marks.page))} 720w, ${withBase(pageSrc(marks.page))} 1348w`}
+                     sizes="(max-width: 820px) 100vw, 624px"
+                     width={PAGE_IMAGE.width} height={PAGE_IMAGE.height} alt={figure.alt}
                      className={styles.scan} fetchPriority="high" decoding="async" />
                 <div className={styles.marks} aria-hidden="true">
                     {marks.criteria.map((c, ci) => (

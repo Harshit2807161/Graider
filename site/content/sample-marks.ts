@@ -20,6 +20,11 @@ export interface Box {
 export const PAGE_IMAGE = { width: 1348, height: 954 } as const;
 
 /** The image file for a scanned page number. */
+/** A 720px-wide version of the page for phones (same file name with "-720"). */
+export function pageSrcSmall(page: number): string {
+    return pageSrc(page).replace(/\.webp$/, "-720.webp");
+}
+
 export function pageSrc(page: number): string {
     return `/sample/pages/p${String(page).padStart(2, "0")}.webp`;
 }

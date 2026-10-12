@@ -26,7 +26,7 @@ export default function ScanCrop({ crop, caption }: { crop: Crop; caption: strin
                         highlight never sits on an empty frame. */}
                     {/* eslint-disable-next-line @next/next/no-img-element -- static export, images are unoptimized */}
                     <img src={withBase(pageSrc(crop.page))} width={PAGE_IMAGE.width} height={PAGE_IMAGE.height} alt={crop.alt}
-                         decoding="async" />
+                         loading="lazy" decoding="async" />
                     {crop.bands.map((band, i) => (
                         <span key={i} className={styles.band} aria-hidden="true"
                               style={{ left: `${band.x}%`, top: `${band.y}%`, width: `${band.w}%`, height: `${band.h}%` }} />
