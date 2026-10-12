@@ -5,7 +5,7 @@ import Header from "@/components/site/Header";
 import site from "@/content/site";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "fallback" });
 
 export const metadata: Metadata = {
   title: { default: site.name, template: `%s | ${site.name}` },
