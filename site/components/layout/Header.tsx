@@ -10,6 +10,7 @@ export default function Header() {
                 {site.nav.map((item) => (
                     <Link key={item.href} href={item.href} className={styles.link}>{item.label}</Link>
                 ))}
+                <Link href="/pilot/" className={styles.cta}>{site.cta.pilot}</Link>
             </nav>
         </header>
     );

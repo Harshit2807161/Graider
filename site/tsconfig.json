@@ -18,6 +18,7 @@
       "@product/*": ["../frontend/*"],
       "@/*": ["./*", "../frontend/*"],
       "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
       "clsx": ["./node_modules/clsx"],
       "lucide-react": ["./node_modules/lucide-react"]
     }

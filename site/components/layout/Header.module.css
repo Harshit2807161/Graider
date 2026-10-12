@@ -27,3 +27,15 @@
 .link:hover {
     color: var(--slate-900);
 }
+
+.cta {
+    color: var(--color-on-primary);
+    background: var(--color-primary);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius);
+    font-weight: 600;
+}
+
+.cta:hover {
+    background: var(--color-primary-hover);
+}

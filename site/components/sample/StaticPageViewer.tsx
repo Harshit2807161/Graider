@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, ScanLine, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "@product/lib/utils";
 import styles from "./StaticPageViewer.module.css";
@@ -11,20 +11,25 @@ export interface StaticPage {
     src: string;
     width?: number;
     height?: number;
+    /** Alt text for this page's image */
+    alt?: string;
 }
 
 /** A static copy of the product's PageViewer (frontend/components/features/review/PageViewer.tsx):
  *  same markup and classes, but the images are plain URLs, so it needs no API. `captions` says what
  *  is on each page (e.g. "Q1, Q2"); `flagged` pages get a dot. Arrow keys move between pages, Home
  *  and End jump to the first and last; a zoomed page scrolls with the arrow keys once focused. */
-export default function StaticPageViewer({ pages, page, onPageChange, captions, flagged = [] }: {
+export default function StaticPageViewer({ pages, page, onPageChange, captions, flagged = [], total }: {
     pages: StaticPage[];
     page: number;
     onPageChange: (page: number) => void;
     captions?: Record<number, string>;
     /** Pages with writing not matched to a question: marked so the reader looks there */
     flagged?: number[];
+    /** Total pages in the answer book, when only some are shown */
+    total?: number;
 }) {
+    const titleId = useId();
     const [zoomed, setZoomed] = useState(false);
     const pagerRef = useRef<HTMLDivElement>(null);
     // Dragging a zoomed page with the mouse moves it, as in a document viewer
@@ -56,8 +61,8 @@ export default function StaticPageViewer({ pages, page, onPageChange, captions, 
     const canZoom = !!url;
 
     return (
-        <section className={styles.viewer} aria-labelledby="viewer-title">
-            <h2 id="viewer-title" className="sr-only">Answer sheet</h2>
+        <section className={styles.viewer} aria-labelledby={titleId}>
+            <h2 id={titleId} className="sr-only">Answer sheet</h2>
             {(pages.length > 1 || canZoom) && (
                 <div className={styles.bar}>
                     {pages.length > 1 && (
@@ -107,7 +112,7 @@ export default function StaticPageViewer({ pages, page, onPageChange, captions, 
                 </div>
             )}
             <p className={styles.caption} aria-live="polite">
-                <strong>Page {page} of {pages.length}</strong>
+                <strong>Page {page} of {total ?? pages.length}</strong>
                 {caption && <> · {caption}</>}
             </p>
             {/* Zoomed, the page is a scroll area: focusable, so the arrow keys can move around it */}
@@ -134,7 +139,7 @@ export default function StaticPageViewer({ pages, page, onPageChange, captions, 
                 ) : (
                     <div className={styles.sheet} style={{ aspectRatio: aspect }}>
                         {/* eslint-disable-next-line @next/next/no-img-element -- static export, images are unoptimized */}
-                        <img src={current.src} alt={`Page ${page} of ${pages.length} of the answer sheet`} className={styles.image} draggable={false} />
+                        <img src={current.src} alt={current.alt ?? `Page ${page} of ${total ?? pages.length} of the answer sheet`} className={styles.image} draggable={false} />
                     </div>
                 )}
             </div>
