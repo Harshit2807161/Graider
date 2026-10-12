@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "gr8r-pilot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+
+  // Free *.workers.dev URL is on by default; add a custom route here later if wanted.
+  "workers_dev": true,
+
+  "observability": { "enabled": true },
+
+  // Non-secret settings. Edit these, then `npm run deploy`.
+  // Secrets (RESEND_API_KEY, TURNSTILE_SECRET_KEY) are NOT here: use `wrangler secret put`.
+  "vars": {
+    // Browser origins allowed to call the Worker, comma-separated, no trailing slash, no path.
+    // Replace the last entry with the real site origin before deploying.
+    "ALLOWED_ORIGINS": "http://localhost:3100,http://localhost:3000,https://CHANGE_ME-your-site-domain",
+    // Must be an address on a domain verified in Resend (or "onboarding@resend.dev" while testing).
+    "FROM_EMAIL": "Gr8r <onboarding@resend.dev>",
+    // Where pilot requests land. With the onboarding@resend.dev sender, Resend only delivers to
+    // the email address of your own Resend account.
+    "TO_EMAIL": "CHANGE_ME@your-inbox.example"
+  },
+
+  // Per-IP rate limit (5 requests / 60 s). Needs Wrangler >= 4.36. If your plan rejects the
+  // binding at deploy time, delete this block: the Worker falls back to a per-isolate in-memory limiter.
+  "ratelimits": [
+    {
+      "name": "PILOT_LIMITER",
+      "namespace_id": "38271",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# Copy to .dev.vars (git-ignored) for `wrangler dev`. Values here override wrangler.jsonc "vars" locally.
+
+# Cloudflare's published test secret: every Turnstile token is accepted.
+# Pair it with the test sitekey 1x00000000000000000000AA in the site.
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
+# Skip the real Resend calls locally (the request is validated and verified, then logged).
+# Remove this line and set a real RESEND_API_KEY to send real mail.
+EMAIL_DRY_RUN=true
+RESEND_API_KEY=re_replace_me
+
+# Local overrides of the vars in wrangler.jsonc. TO_EMAIL must be changed from the CHANGE_ME
+# placeholder or the Worker answers 500 "not configured".
+TO_EMAIL=you@example.com
+FROM_EMAIL=Gr8r <onboarding@resend.dev>
+ALLOWED_ORIGINS=http://localhost:3100,http://localhost:3000
