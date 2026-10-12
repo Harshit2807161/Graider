@@ -24,13 +24,13 @@ const professors: ProfessorsContent = {
         steps: [
             { title: "Your rubric becomes a checked list of criteria.", body: "Gr8r turns your rubric into criteria, each with its points and any partial-credit levels (“half the points if only the formula is given”). The list is checked in code: criteria must add up to the question’s marks, and a question whose criteria fail the checks is sent to you instead of being marked. You can read the list and replace it with your own." },
             { title: "Gr8r reads the pages, then puts the answers together.", body: "A vision model reads each page and labels each piece of writing with the question it answers, skipping printed text and work the student crossed out. Code then joins answers that run across pages. Writing it can’t place under any question is kept and shown to you." },
-            { title: "The grader marks each criterion with evidence.", body: "For every criterion it gives a score, a quote from the transcript, and a justification. Code checks that each quote is in the transcript and that scores stay within each criterion’s points. One repair is allowed; after that the answer comes to you. The grader can also flag an answer as illegible, off topic, answering another question, or incompletely read, and a flag sends it to you." },
+            { title: "The grader marks each criterion with evidence.", body: "For every criterion it gives a score and a justification, and every criterion that earns marks has a quote from the transcript. Code checks that each quote is in the transcript and that scores stay within each criterion’s points. One repair is allowed; after that the answer comes to you. The grader can also flag an answer as illegible, off topic, answering another question, or incompletely read, and a flag sends it to you." },
             { title: "A second examiner scores it again.", body: "A different model is told to score every criterion itself before it reviews the grader’s marks, then to compare and send back specific points. The grader’s marks are in the same request, so this is an instruction the model follows, not a blind second marking; the record keeps its own scores apart from its review so you can see both." },
             { title: "They settle it, or you do.", body: "If the two totals are too far apart, or any single criterion differs by more than a quarter of its points, the grader revises, accepting or rejecting each point with a reason. After at most two revisions, an answer they still disagree on comes to you with both positions." },
             { title: "Some answers come to you anyway.", body: "Gr8r also sends you answers on a page it read with low confidence, answers that look like a second attempt, and an optional random sample of answers, with the proposed mark kept." },
         ],
         after: [
-            { body: "How close the two examiners must be is set per exam. If the grader’s model fails, its fallback is chosen so that it never matches the second examiner’s model, and the other way round." },
+            { body: "How close the two examiners must be is set per exam. When the grader and the second examiner have fallbacks, they never use each other’s model." },
         ],
         link: { label: "How it works, step by step", href: "/how-it-works/" },
     },
@@ -65,7 +65,7 @@ const professors: ProfessorsContent = {
         id: "models",
         heading: "Which models it runs on",
         body: [
-            { body: "Every model role (reading pages, reading the rubric, grading, second examiner) can run on Claude, on OpenAI, or on an open-weight model you host with vLLM or SGLang. Each role has a primary model and fallbacks, and switching is a configuration change. A setting forbids a self-hosted model from falling back to an external API, so pages need not leave your servers." },
+            { body: "Every model role (reading pages, reading the rubric, grading, second examiner) can run on Claude, on OpenAI, or on an open-weight model you host with vLLM or SGLang. Each role has a primary model and can have fallbacks, and switching is a configuration change. A setting forbids a self-hosted model from falling back to an external API, so pages need not leave your servers." },
             { body: "We haven’t measured which open models are good enough for reading handwriting, so treat that as something to test." },
             { body: "By default, the page reader, rubric reader and second examiner use Claude Opus 5.5, and the grader uses Claude Sonnet 5.5. These defaults have not yet been run on a real answer book; our first real test used smaller OpenAI models." },
         ],
@@ -113,9 +113,9 @@ const professors: ProfessorsContent = {
                 items: [
                     "Drawings and diagrams. A drawing leaves nothing in the transcript, and the grader never sees the image, so a drawn answer can score low without being flagged.",
                     "Reading and filing errors pass the second examiner. It reads the same transcript as the grader and checks the marking, not the reading, so a misread word or an answer filed under the wrong question gets through it. Your review of the page is the check for those.",
-                    "Sub-parts across pages. Each page is read on its own, so a page that starts with a bare “(b)” can be filed under the wrong question. A fix is in progress.",
-                    "Crossed-out words. One struck word can make the reader drop the whole passage around it. A fix is in progress.",
-                    "Measured accuracy. We haven’t published an accuracy figure because we don’t have one yet. The first hand-marked comparison is under way, and the method and every case will be public before any figure is.",
+                    "Sub-parts across pages. Each page is read on its own, so a page that starts with a bare “(b)” can be filed under the wrong question. It is on our fix list.",
+                    "Crossed-out words. One struck word can make the reader drop the whole passage around it. It is on our fix list.",
+                    "Measured accuracy. We haven’t measured it yet; the first hand-marked comparison is planned, and we will publish the method and every case before any figure.",
                 ],
             },
         ],

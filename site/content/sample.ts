@@ -95,7 +95,7 @@ const sample: SampleContent = {
         heading: "What a teacher would correct on 35(a)",
         body: [
             { body: "Both examiners gave nothing for the second contraceptive method, vasectomy, and both were wrong. On scanned page 24, the student wrote “(b) Surgical method → vasectomy”. The line above it, a false start, is struck through. Gr8r’s reader treated the whole passage as crossed out and left it out of the transcript, so neither examiner ever saw the word." },
-            { body: "This is a reading error, and the second examiner can’t catch reading errors: it reads the same transcript as the grader. A teacher looking at page 24 would see the line and add the mark. We are fixing the cause, so that one struck word no longer removes the writing around it." },
+            { body: "This is a reading error, and the second examiner can’t catch reading errors: it reads the same transcript as the grader. A teacher looking at page 24 would see the line and add the mark. Fixing the cause, so that one struck word no longer removes the writing around it, is on our fix list." },
             { body: "Gr8r also gave the ovary point its full mark, although the point asks for the female hormones too and the student names only the eggs. A teacher can change that mark, with a reason." },
             { body: "In this run, 35(a) was also sent to the teacher, with the reason “Several attempts at this answer”. That reason was wrong: the reader took the move from page 23 to page 24 for a second attempt. It is the same fault that sent other answers in this run to the teacher for the wrong reasons, and it is on our list to fix." },
         ],
@@ -106,7 +106,7 @@ const sample: SampleContent = {
         heading: "When Gr8r sends an answer to the teacher",
         body: [
             { body: "When Gr8r can’t settle an answer, it doesn’t guess. The answer goes to the top of the teacher’s list with the reason in plain words and, where it has one, the mark it proposes. The teacher accepts the proposed mark or sets the marks themselves, with a reason." },
-            { body: "None of the answers this run sent to the teacher went for a sound reason. Each was caused by a filing error or a bug we’re fixing. So rather than present one of them as a good example, we show the note as an illustration." },
+            { body: "None of the answers this run sent to the teacher went for a sound reason. Each was caused by a filing error or a bug on our fix list. So rather than present one of them as a good example, we show the note as an illustration." },
         ],
         slip: {
             label: "Sent to you",

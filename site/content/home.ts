@@ -17,8 +17,8 @@ const home: HomeContent = {
     },
 
     heroFigure: {
-        alt: "Page 7 of a handwritten CBSE Class X science answer book: the student’s answer to question 24(b), on transport in plants, in blue ink on ruled paper. Gr8r’s yellow highlights cover the two passages it quoted as evidence, and its mark for each, 1 out of 1, is written in red in the right margin.",
-        caption: "Page 7, question 24(b). In yellow, the words Gr8r quoted as evidence; in the margin, its mark for each point. The red ticks on the writing are CBSE’s examiner’s.",
+        alt: "Page 7 of a handwritten CBSE Class X science answer book: the student’s answer to question 24(b), on transport in plants, in blue ink on ruled paper. Drawn over it for this illustration, from Gr8r’s grade record: yellow highlights on the two passages Gr8r quoted as evidence, and its mark for each, 1 out of 1, in red in the right margin.",
+        caption: "Page 7, question 24(b). In yellow, the words Gr8r quoted as evidence; in the margin, its mark for each point. Both are drawn on the scan from Gr8r’s grade record for this illustration; the product shows them with the transcript, not on the scan. The red ticks on the writing are CBSE’s examiner’s.",
     },
 
     runLine: {
@@ -35,11 +35,11 @@ const home: HomeContent = {
         answers: [
             {
                 question: "24(b)",
-                caption: "Question 24(b), scanned page 7. The red ticks on the page belong to CBSE’s examiner, not to Gr8r.",
+                caption: "Question 24(b), scanned page 7. The yellow highlights are drawn on the scan from Gr8r’s grade record for this illustration; the product shows them in the transcript, not on the scan. The red ticks on the page belong to CBSE’s examiner, not to Gr8r.",
             },
             {
                 question: "21",
-                caption: "Question 21, scanned page 4. The red ticks on the page belong to CBSE’s examiner, not to Gr8r.",
+                caption: "Question 21, scanned page 4. The yellow highlights are drawn on the scan from Gr8r’s grade record for this illustration; the product shows them in the transcript, not on the scan. The red ticks on the page belong to CBSE’s examiner, not to Gr8r.",
                 notes: {
                     c1: "The student never wrote “u = −10 cm” or “f = −15 cm” on its own line. Both examiners gave the half mark because the signs are right in this first equation. Your marking scheme may want the values written out; a teacher decides.",
                 },
@@ -52,8 +52,8 @@ const home: HomeContent = {
         id: "how",
         heading: "How a mark is made",
         steps: [
-            { title: "Read.", body: "Gr8r reads every page and copies out the student’s writing, answer by answer, under the question number the student wrote." },
-            { title: "Mark.", body: "Each point in your marking scheme gets a score, a quote from the student’s writing, and a reason. If the quote isn’t in the student’s answer, the score doesn’t count." },
+            { title: "Read.", body: "Gr8r reads every page and copies out the student’s writing, answer by answer, under the question it answers." },
+            { title: "Mark.", body: "Each point in your marking scheme gets a score and a reason, and every point that earns marks has a quote from the student’s writing. If the quote isn’t in the student’s answer, the score doesn’t count." },
             { title: "Check.", body: "A second, different model scores the same answer itself, then reviews the first model’s marks and evidence. If they still disagree after two rounds of revision, the answer goes to the teacher." },
             { title: "Sign off.", body: "Your teachers see every mark with its evidence, change any mark they disagree with (a reason is required), and approve. Students see a result only after that, and every change is kept." },
         ],
@@ -69,7 +69,7 @@ const home: HomeContent = {
         answers: [
             {
                 question: "35(a)",
-                caption: "Question 35(a), scanned pages 23 and 24. The red ticks on the pages belong to CBSE’s examiner, not to Gr8r.",
+                caption: "Question 35(a), scanned pages 23 and 24. The yellow highlights are drawn on the scan from Gr8r’s grade record for this illustration; the product shows them in the transcript, not on the scan. The red ticks on the pages belong to CBSE’s examiner, not to Gr8r.",
                 notes: {
                     c1: "This point asks for the eggs and the female hormones. The student names only the eggs, and Gr8r still gave the full mark. A teacher can change it, with a reason.",
                     c5: "Wrong. The student struck out a false start just above this line, and Gr8r’s reader took the vasectomy line as crossed out too, so neither examiner ever saw the word. CBSE’s examiner’s tick credits it. The answer went to the teacher, though for another reason: a page break read as a second attempt.",
@@ -129,7 +129,7 @@ const home: HomeContent = {
             },
             {
                 name: "Investors.",
-                body: "The product works end to end and every mark can be audited. The evaluation against teachers’ marks is still running.",
+                body: "The product works end to end and every mark can be audited. We haven’t measured it against teachers’ marks yet; the first hand-marked comparison is planned, and we will publish the method and every case before any figure.",
                 link: { label: "For investors", href: "/investors/" },
             },
         ],
@@ -155,8 +155,8 @@ const home: HomeContent = {
                 heading: "Not yet",
                 items: [
                     "Drawings and diagrams. A drawing leaves nothing in the transcript today, so a drawn answer can get a low mark without being sent to the teacher. Your teachers should check every answer with a drawing.",
-                    "Answer books where a sub-part continues on a new page without its number. Gr8r can file that writing under the wrong question. We are fixing it.",
-                    "Measured accuracy against teachers’ marks. We are measuring it, and we will publish the method and every case before we publish a figure.",
+                    "Answer books where a sub-part continues on a new page without its number. Gr8r can file that writing under the wrong question. It is on our fix list.",
+                    "Measured accuracy against teachers’ marks. We haven’t measured it yet; the first hand-marked comparison is planned, and we will publish the method and every case before any figure.",
                 ],
             },
         ],

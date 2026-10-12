@@ -65,8 +65,8 @@ export const claims: Claim[] = [
     },
     {
         id: "pilot-form",
-        text: "The pilot form is emailed through Resend and checked by Cloudflare Turnstile; nothing from it goes into Gr8r.",
-        source: "site/worker/README.md; site/worker/src/index.ts (nothing stored, the email is the record)",
+        text: "The pilot form is received by a Cloudflare Worker, which doesn't store it and emails it to us through Resend with an acknowledgement to the requester; Cloudflare Turnstile checks it; nothing from it goes into Gr8r.",
+        source: "site/worker/README.md; site/worker/src/index.ts (nothing stored, the email is the record; logs carry only event names and institution type; acknowledgement email to the requester); site/worker/wrangler.jsonc",
     },
 
     // ----- The CBSE test run and the sample (docs/evals/cbse-x-science-2025/) -----

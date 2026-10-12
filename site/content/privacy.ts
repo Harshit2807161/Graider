@@ -72,7 +72,7 @@ const privacy: PrivacyContent = {
         id: "providers",
         heading: "Which model providers see what",
         intro: [
-            { body: "Gr8r uses AI models from outside companies for four steps. Which company runs each step is a setting of the Gr8r installation, not of each school; by default all four are Anthropic. On our hosted service, ask us which providers your pilot will use." },
+            { body: "Gr8r uses AI models from outside companies for four steps. Which company runs each step is a setting of the Gr8r installation, not of each school; by default all four are Anthropic. When Gr8r hosts your pilot, ask us which providers it will use." },
         ],
         table: {
             caption: "The four model steps, what is sent to each, the default provider and the other options.",
@@ -90,7 +90,7 @@ const privacy: PrivacyContent = {
                 { lead: "Names stay out of prompts.", body: "Gr8r never puts a student’s name, email or roll number into a prompt. A page image is sent as it is, though, so anything written on the page, such as a name on the cover, goes with it." },
                 { lead: "Only the page reader sees the pages.", body: "Marking and the second examiner work from the transcript, not the image." },
                 { lead: "Fallbacks.", body: "If a model fails, Gr8r can try another, which may be at another provider. Every attempt is recorded. On a self-hosted installation, a setting stops any fallback to an outside provider." },
-                { lead: "How long providers keep it.", body: "Each provider keeps what it receives under its own terms for API customers." },
+                { lead: "How long providers keep it.", body: "Each provider handles what it receives under its own API terms; we will link them here." },
             ],
         },
     },
@@ -147,6 +147,7 @@ const privacy: PrivacyContent = {
             columns: ["What", "Who processes it", "Why"],
             widths: ["30%", "40%", "30%"],
             rows: [
+                ["Receiving the pilot request form", "A Cloudflare Worker, which sees the form’s fields and passes them on by email through Resend, with an acknowledgement email to you. The Worker doesn’t store them", "So your request reaches us and you know it arrived"],
                 ["The pilot request form", "Resend, which emails it to us", "So we can reply to you"],
                 ["The bot check on the form", "Cloudflare Turnstile", "To stop spam"],
             ],

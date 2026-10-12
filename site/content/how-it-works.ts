@@ -35,7 +35,7 @@ const howItWorks: HowItWorksContent = {
             {
                 title: "Uploading the answer sheets",
                 body: [
-                    { body: "A student’s answers can be one file or several: scanned PDFs, phone photos (JPEG, PNG, HEIC and others), Word, ODT, RTF or PowerPoint files. PDFs are turned into page images; photos are rotated upright and straightened." },
+                    { body: "A student’s answers can be one file or several: scanned PDFs, phone photos (JPEG, PNG, HEIC and others), Word, ODT, RTF or PowerPoint files. PDFs are turned into page images; photos are straightened, and rotated upright when the photo carries orientation data." },
                 ],
                 checks: [
                     "Each file is identified by its contents, not its name.",
@@ -56,7 +56,7 @@ const howItWorks: HowItWorksContent = {
             {
                 title: "Marking each answer",
                 body: [
-                    { body: "Each question is marked separately. For every criterion the grader gives a score, a quote from the student’s answer as evidence, and a justification." },
+                    { body: "Each question is marked separately. For every criterion the grader gives a score and a justification, and every criterion that earns marks has a quote from the student’s answer as evidence." },
                     { body: "The grader can also flag an answer as illegible, off topic, answering another question, or incompletely read. A flag sends the answer to the teacher." },
                     { body: "If no answer is found for a question, it is never given zero automatically; it goes to the teacher. For an “attempt any one” question, the alternatives the student didn’t answer are marked “not attempted” and don’t count." },
                 ],
@@ -162,7 +162,7 @@ const howItWorks: HowItWorksContent = {
             ],
         },
         after: [
-            { body: "Each role has fallbacks, and the grader’s and second examiner’s fallbacks never use each other’s model." },
+            { body: "Each role can have fallbacks, and when the grader and the second examiner have fallbacks, they never use each other’s model." },
             { body: "The defaults haven’t been run on a real answer book yet; our first real test used small OpenAI models. We haven’t measured which open-weight models are good enough for each role." },
         ],
     },
@@ -198,12 +198,12 @@ const howItWorks: HowItWorksContent = {
                 heading: "Not yet",
                 items: [
                     { lead: "Drawings and diagrams.", body: "A drawing leaves nothing in the transcript and the grader never sees the image, so a drawn answer can score low without being flagged. A teacher should mark these." },
-                    { lead: "Sub-parts across pages.", body: "Each page is read on its own, so a page starting with a bare “(b)” can be filed under the wrong question, and a booklet’s printed page number can be mistaken for a question number. A fix is in progress." },
-                    { lead: "Crossed-out words.", body: "One struck word can make the reader drop the whole passage around it. A fix is in progress." },
+                    { lead: "Sub-parts across pages.", body: "Each page is read on its own, so a page starting with a bare “(b)” can be filed under the wrong question, and a booklet’s printed page number can be mistaken for a question number. It is on our fix list." },
+                    { lead: "Crossed-out words.", body: "One struck word can make the reader drop the whole passage around it. It is on our fix list." },
                     { lead: "Reading errors the second examiner can’t see.", body: "It reads the same transcript as the grader, so a misread or misfiled answer gets past it. The teacher’s review of the page is the check." },
                     { lead: "Untidy handwriting.", body: "We haven’t tested it properly yet; our one real test used a neat answer book." },
                     { lead: "Drafting the exam from PDFs.", body: "On the board paper we tested, the draft wasn’t usable, and the questions were entered from the paper’s text instead." },
-                    { lead: "Measured accuracy against teachers’ marks.", body: "We are measuring it now, and we’ll publish the method and every case before any figure." },
+                    { lead: "Measured accuracy against teachers’ marks.", body: "We haven’t measured it yet; the first hand-marked comparison is planned, and we will publish the method and every case before any figure." },
                 ],
             },
         ],

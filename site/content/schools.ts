@@ -22,7 +22,7 @@ const schools: SchoolsContent = {
         heading: "What happens to a stack of answer sheets",
         steps: [
             { title: "You set up the exam once.", body: "Give us the question paper and your marking scheme. Gr8r turns the marking scheme into a list of points with marks, and a teacher checks it before any sheet is marked." },
-            { title: "You upload the sheets.", body: "Scanned PDFs or phone photos. Gr8r straightens and rotates photos before reading them." },
+            { title: "You upload the sheets.", body: "Scanned PDFs or phone photos. Photos are straightened, and rotated upright when the photo carries orientation data." },
             { title: "Gr8r marks each answer.", body: "Every mark names a point from your marking scheme and quotes the student’s writing. A second model scores the same answer again and checks the first one’s evidence." },
             { title: "Your teachers review.", body: "Answers Gr8r wasn’t sure about come first, each with the reason. A teacher can change any mark, with a reason, and every change is kept." },
             { title: "You publish.", body: "When a teacher approves a sheet, it can be published. Students with an account then see their marks, the feedback and their own pages." },
@@ -75,7 +75,7 @@ const schools: SchoolsContent = {
                 heading: "Not yet",
                 items: [
                     "Drawings and diagrams. A drawing leaves nothing in what Gr8r reads, so a drawn answer can get a low mark without being sent to your teachers. A teacher should mark any question that needs a drawing.",
-                    "Answer books where a sub-part continues on a new page without its number. Gr8r can file that writing under the wrong question. We are fixing it.",
+                    "Answer books where a sub-part continues on a new page without its number. Gr8r can file that writing under the wrong question. It is on our fix list.",
                     "Untidy handwriting. We haven’t tested it properly yet; our one real test used a neat answer book.",
                     "We haven’t yet measured how often Gr8r’s marks match your teachers’. That is what a pilot measures, on your own sheets.",
                 ],
@@ -122,7 +122,7 @@ const schools: SchoolsContent = {
             },
             {
                 question: "Does student data have to leave our school?",
-                answer: ["On our hosted service, page images and text go to the model providers named on our data page. Gr8r can also run on your own servers with models you host, so pages need not leave your premises. We haven’t yet measured how well self-hosted models mark."],
+                answer: ["When Gr8r hosts the pilot, page images and text go to the model providers named on our data page. Gr8r can also run on your own servers with models you host, so pages need not leave your premises. We haven’t yet measured how well self-hosted models mark."],
             },
             {
                 question: "What if it gives a wrong mark?",

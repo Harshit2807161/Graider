@@ -20,7 +20,7 @@ const about: AboutContent = {
         id: "why",
         heading: "Why we built it",
         body: [
-            { body: "Unit tests, pre-boards, mock tests and internal assessments are written by hand and marked by hand, usually by the teachers who teach the class. Current models can read neat handwriting and follow a marking scheme. But if a teacher can’t see why a model gave a mark, they have to mark the answer again anyway, and a student or parent has no reason to accept it." },
+            { body: "Unit tests, pre-boards, mock tests and internal assessments are written by hand and mostly marked by hand. Current models can read neat handwriting and follow a marking scheme. But if a teacher can’t see why a model gave a mark, they have to mark the answer again anyway, and a student or parent has no reason to accept it." },
             { body: "So we built Gr8r around the habit every student is taught: show your working. Every mark refers to an item in the marking scheme and quotes the student’s own words. A second model checks it. What the system can’t settle goes to the teacher, and nothing reaches a student until a teacher approves it. We also say plainly what it can’t do yet, on every page where it matters." },
         ],
     },
@@ -47,12 +47,12 @@ const about: AboutContent = {
             },
             {
                 name: "Harshit Dhankhar",
-                education: "Mathematics and computing, IIT Patna (2025); MS in computer science, UC San Diego.",
+                education: "Mathematics and computing, IIT Patna (2025); MS in computer science at UC San Diego (2027).",
                 work: [
                     {
-                        text: "Machine-learning researcher and engineer, with work at AWS, UCSD, Paris Dauphine-PSL and IIIT Hyderabad, and papers at AAAI 2025 and IEEE BigData 2023.",
+                        text: "Machine-learning researcher and engineer, with work at AWS, UCSD, Paris Dauphine-PSL and IIIT Hyderabad, and papers at the AAAI 2025 QC+AI workshop and IEEE BigData 2023.",
                         namesEmployer: true,
-                        withoutEmployer: "Machine-learning researcher and engineer, with papers at AAAI 2025 and IEEE BigData 2023.",
+                        withoutEmployer: "Machine-learning researcher and engineer, with papers at the AAAI 2025 QC+AI workshop and IEEE BigData 2023.",
                     },
                     { text: "Wrote most of Gr8r." },
                 ],
