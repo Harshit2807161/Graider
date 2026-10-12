@@ -6,6 +6,14 @@ Notable changes to Gr8r, newest first.
 
 ## [Unreleased]
 
+### Website and first pitch campaign (branch `pitch/website-and-campaign`)
+
+#### Added
+- **Marketing site** in `site/`: a Next.js 16 static export on the product's design tokens and shared review components, with a home page whose hero is a real answer-book page carrying Gr8r's marks, a sample page that renders the product's review screen on three real answers (one shown with the two reading errors the model made), pages for schools, professors and investors, how it works, a pilot-request page with its form, a plain-language privacy and data page, an about page, and a hidden results page that stays empty until a hand-marked comparison exists. Every claim lives in typed content modules under `site/content/`, with sources in `claims.ts`. Three design variants are kept at `/variants/v1..v3`.
+- **Pilot-request Worker** in `site/worker/`: a Cloudflare Worker with Turnstile, Resend and a rate limit, tested locally; not deployed.
+- **Pitch materials** in `docs/pitch/`: positioning, site map, design brief, an eight-week campaign plan with Delhi NCR target lists, a one-page pilot offer, outreach messages and follow-ups per audience, a pre-seed deck outline, an objection sheet, the founders' backgrounds, verified research with sources, and the checkpoint records.
+
+
 ### First run on a real board paper
 
 #### Added

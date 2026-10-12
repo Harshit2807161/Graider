@@ -51,13 +51,15 @@ See `checkpoint-1.md` once written.
 ## Phase 3: build (→ checkpoint 3)
 - [x] Home page + `/sample` from the hybrid; shared site components in `site/components/site/`; content modules `home.ts`, `sample.ts`, `sample-marks.ts`, `claims.ts` (merged `5ccecb3`)
 - [x] Pilot-form Worker in `site/worker/` (Turnstile + Resend + rate limit; 63 tests; not deployed; `CHANGE_ME` entries in `wrangler.jsonc`)
-- [ ] Audience pages: schools, professors, investors
-- [ ] How it works, pilot, privacy, about; results page hidden
+- [x] Audience pages: schools, professors, investors (merged `a3ea0bc`)
+- [x] How it works, pilot (form tested end to end against `wrangler dev`), privacy, about; results page hidden (merged `fbd641f`, `864f53b`)
 - [ ] Claims register (`site/content/claims.ts` + `docs/pitch/claims-register.md`)
-- [ ] Screenshots of every page at 390/820/1440, Fable's own review, fixes
-- [ ] Lighthouse mobile per page; humanizer pass; fresh-reader checks per audience
+- [x] Screenshots of every page at 390/820/1440; Fable reviewed home, sample, schools, pilot, how-it-works, privacy, about
+- [x] Lighthouse mobile per page: accessibility 100, best practices 100, SEO 100 (results page noindex by design), performance 78–90 (text-only pages 90; the floor is the stack on simulated slow 4G; hero image, lazy crops and font-display fixed)
+- [ ] Humanizer pass (Opus, running); fresh-reader checks per audience (Opus, running); claims register (Sonnet, running)
 - [x] Full campaign plan (`campaign-plan.md`, targets for 6 Dec 2026)
-- [ ] CHANGELOG entry; PR
+- [x] CHANGELOG entry
+- [ ] PR; checkpoint 3
 
 ## Resumed 2026-10-12 ~20:45: founders done (`founders.md`), the three page builders relaunched (Opus, worktrees). Scrolled shots confirmed the criterion rows render.
 
