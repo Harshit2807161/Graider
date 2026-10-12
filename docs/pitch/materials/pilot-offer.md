@@ -43,7 +43,7 @@ Gr8r keeps the uploaded sheets and their page images as files on the server it r
 
 ## After the pilot
 
-Conversion date: **______** (the end of week four). On that date the school decides, in writing, either to continue on a paid basis, priced per answer sheet at a rate agreed then, or to stop. If the school stops, nothing is owed, and nothing is charged automatically.
+Conversion date: **______** (the end of week four). On that date the school decides, in writing, one of three things: to continue on a paid basis, priced per answer sheet at a rate agreed then; to put Gr8r into its next budget discussion, with the month and the approver named in writing; or to stop. If the school stops, nothing is owed, and nothing is charged automatically. The pilot is not extended for free.
 
 ## Signatures
 
