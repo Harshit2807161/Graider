@@ -1,0 +1,14 @@
+/* About: each founder's education under the name in the margin column; the contact line reads as
+   the section's first fact. */
+
+.education {
+    margin-top: var(--space-1);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--slate-600);
+}
+
+.contactLine {
+    font-size: 1.0625rem;
+    color: var(--slate-900);
+}

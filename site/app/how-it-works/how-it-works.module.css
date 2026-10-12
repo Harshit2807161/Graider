@@ -1,0 +1,132 @@
+/* How it works: the seven steps as numbered rows (the number in the margin, the step in plain words,
+   what code does beside it), and the honest section in three groups. */
+
+.stepsHeading { margin-bottom: var(--space-6); }
+
+.steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1.5px solid var(--slate-900);
+}
+
+.step {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    grid-template-areas:
+        "num text"
+        ".   checks"
+        "table table";
+    column-gap: var(--space-3);
+    padding: var(--space-8) 0;
+    border-bottom: 1px solid var(--slate-200);
+}
+
+.number {
+    grid-area: num;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--slate-500);
+    font-variant-numeric: tabular-nums;
+}
+
+.stepText { grid-area: text; min-width: 0; }
+
+.stepText h3 { margin-bottom: var(--space-3); }
+
+/* What code does at this step: a plain list under a short heading, set apart by a rule */
+.checks {
+    grid-area: checks;
+    min-width: 0;
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--slate-200);
+}
+
+.checksLabel {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--slate-900);
+}
+
+.checkList {
+    margin-top: var(--space-2);
+    padding-left: 1.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--slate-700);
+}
+
+.checkList li + li { margin-top: var(--space-2); }
+
+.checkList li::marker { color: var(--slate-400); }
+
+.stepTable {
+    grid-area: table;
+    min-width: 0;
+    margin-top: var(--space-6);
+}
+
+.stepAfter { margin-top: var(--space-5); }
+
+@media (min-width: 48rem) {
+    .step {
+        grid-template-columns: 3.5rem minmax(0, 1fr);
+        grid-template-areas:
+            "num text"
+            ".   checks"
+            ".   table";
+    }
+
+    .number { font-size: 1.75rem; line-height: 1.1; }
+}
+
+@media (min-width: 64rem) {
+    .step {
+        grid-template-columns: 4rem minmax(0, 7fr) minmax(0, 5fr);
+        grid-template-areas:
+            "num text  checks"
+            ".   table table";
+        column-gap: 3rem;
+        padding: 2.5rem 0;
+    }
+
+    /* Beside the text, the checks sit like notes in the margin */
+    .checks {
+        margin-top: 0;
+        padding-top: 0;
+        padding-left: var(--space-6);
+        border-top: 0;
+        border-left: 1px solid var(--slate-200);
+    }
+}
+
+/* ===== what it does well today, and what it sends to you ===== */
+.groups {
+    display: grid;
+    gap: var(--space-8);
+}
+
+.group h3 { margin-bottom: var(--space-3); }
+
+.groupList { max-width: 62ch; }
+
+@media (min-width: 64rem) {
+    .groups {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 3rem;
+    }
+
+    /* "Not yet" is the longest list: it runs across both columns */
+    .group:nth-child(3) { grid-column: 1 / -1; }
+
+    .group:nth-child(3) .groupList {
+        max-width: none;
+        columns: 2;
+        column-gap: 3rem;
+    }
+
+    .group:nth-child(3) .groupList li { break-inside: avoid; }
+}
