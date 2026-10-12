@@ -1,0 +1,28 @@
+/* As on the review screen: the pages above the answer on narrow screens, beside it (sticky) on wide. */
+.answer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+}
+
+.viewer,
+.card {
+    min-width: 0;
+}
+
+@media (min-width: 1024px) {
+    .answer {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+        gap: var(--space-6);
+    }
+
+    .viewer {
+        position: sticky;
+        top: var(--space-6);
+    }
+
+    .compact {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    }
+}

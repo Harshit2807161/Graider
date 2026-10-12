@@ -1,0 +1,214 @@
+/* Home v1, "The examined page". Paper-white page, product tokens, one family (Inter). */
+
+.page {
+    --v1-content: 75rem;
+    --v1-gutter: 1rem;
+    --v1-section: 3.5rem;
+    background-color: var(--color-surface);
+    color: var(--slate-900);
+}
+
+@media (min-width: 640px) {
+    .page { --v1-gutter: 1.5rem; --v1-section: 5rem; }
+}
+
+/* This variant brings its own header (five links and the pilot button); the shared one is hidden
+   on this route only. */
+body:has(.page) > header {
+    display: none;
+}
+
+.inner {
+    max-width: calc(var(--v1-content) + 2 * var(--v1-gutter));
+    margin: 0 auto;
+    padding: 0 var(--v1-gutter);
+}
+
+/* ===== hero: headline left, the examined page right ===== */
+.hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "text"
+        "scan"
+        "run";
+    gap: var(--space-8);
+    max-width: calc(var(--v1-content) + 2 * var(--v1-gutter));
+    margin: 0 auto;
+    padding: var(--space-6) var(--v1-gutter) var(--v1-section);
+}
+
+.heroText { grid-area: text; min-width: 0; }
+.heroScan { grid-area: scan; min-width: 0; }
+
+.title {
+    font-size: 2.5rem;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.titleLine { display: block; }
+
+.lede {
+    max-width: 60ch;
+    margin-top: var(--space-5);
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-6);
+    margin-top: var(--space-6);
+}
+
+.primary {
+    touch-action: manipulation;
+    display: inline-flex;
+    align-items: center;
+    min-height: 3rem;
+    padding: 0 var(--space-6);
+    border-radius: var(--radius);
+    background-color: var(--indigo-600);
+    color: var(--color-on-primary);
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background-color 0.15s ease;
+}
+
+.primary:hover { background-color: var(--indigo-700); }
+
+.secondary {
+    touch-action: manipulation;
+    display: inline-flex;
+    align-items: center;
+    min-height: 3rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--indigo-700);
+    text-decoration: underline;
+    text-decoration-color: var(--indigo-200);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color 0.15s ease;
+}
+
+.secondary:hover { text-decoration-color: currentColor; }
+
+.run {
+    grid-area: run;
+    max-width: 52ch;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--slate-200);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+@media (min-width: 1024px) {
+    .hero {
+        grid-template-columns: minmax(0, 5.5fr) minmax(0, 6.5fr);
+        grid-template-rows: 1fr auto;
+        grid-template-areas:
+            "text scan"
+            "run scan";
+        gap: var(--space-8) 3rem;
+        padding-top: 4rem;
+    }
+
+    .heroText { align-self: end; }
+    .heroScan { align-self: center; }
+    .run { align-self: start; }
+
+    .title { font-size: clamp(2.75rem, 3.6vw, 3.25rem); }
+    .lede { font-size: 1.25rem; }
+}
+
+/* ===== sections ===== */
+.sample,
+.escalation,
+.close {
+    padding: var(--v1-section) 0;
+    border-top: 1px solid var(--slate-200);
+}
+
+.sample { background-color: var(--slate-50); }
+.close { background-color: var(--slate-50); }
+
+.sectionHead {
+    max-width: 65ch;
+    margin-bottom: var(--space-6);
+}
+
+.h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+}
+
+.h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+}
+
+.intro {
+    margin-top: var(--space-3);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.check {
+    max-width: 70ch;
+    margin-top: var(--space-5);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-700);
+}
+
+.second {
+    margin-top: 4rem;
+}
+
+/* ===== escalation: an illustration and a real "attempt any one" outcome ===== */
+.pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-8);
+    align-items: start;
+}
+
+@media (min-width: 900px) {
+    .pair { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 3rem; }
+}
+
+.example {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.exampleCaption {
+    max-width: 60ch;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.slipStage {
+    max-width: 22rem;
+    padding: var(--space-3) var(--space-2) 0;
+}
+
+.close .actions { margin-top: var(--space-6); }
+.close .intro { max-width: 60ch; }

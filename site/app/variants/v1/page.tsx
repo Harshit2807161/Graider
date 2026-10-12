@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import Home from "@/components/variants/v1/Home";
 
-// Design variant placeholder: filled in during the design pass. Not linked from the nav.
-export const metadata: Metadata = { title: "Variant v1", robots: { index: false } };
+// Design variant v1, "The examined page". Not linked from the nav.
+export const metadata: Metadata = { title: "Gr8r: AI marking for handwritten answer sheets", robots: { index: false } };
 
 export default function Page() {
-    return <p>TODO: design variant v1</p>;
+    return <Home />;
 }
