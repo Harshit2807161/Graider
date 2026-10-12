@@ -3,7 +3,7 @@
 Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (from `eval/cbse-science-first-run`, which holds the eval data). Orchestrator: Fable; subagents on Opus (anything a visitor reads or sees) or Sonnet (mechanical work).
 
 ## Status
-- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 built and reviewed; **waiting on checkpoint 2** (`checkpoint-2.md`).
+- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 done; checkpoint 2 answered (hybrid, Inter, Q35(a) on home, keep variants). Phase 3 (build) in progress.
 
 ## Phase 1: before checkpoint 1
 - [x] Branch created
@@ -47,6 +47,16 @@ See `checkpoint-1.md` once written.
 - Q35(a): reader dropped the "vasectomy" line as crossed out (0/1 vs the examiner's tick); c1 credited without the hormone being named; escalation reason was a page-break artefact. Q24(b) and Q21 are clean (Q21's transcript misreads one cancelled fraction, no mark depended on it).
 - The second examiner scores first but sees the grader's marks in the same request: say "checks", never "independently".
 - Hero answer: Q24(b), page 7.
+
+## Phase 3: build (→ checkpoint 3)
+- [ ] Home page + `/sample` from the hybrid; shared site components; content modules wired (Opus, worktree)
+- [ ] Pilot-form Worker: Turnstile + Resend, not deployed (Sonnet, worktree)
+- [ ] Audience pages: schools, professors, investors
+- [ ] How it works, pilot, privacy, about; results page hidden
+- [ ] Claims register (`site/content/claims.ts` + `docs/pitch/claims-register.md`)
+- [ ] Screenshots of every page at 390/820/1440, Fable's own review, fixes
+- [ ] Lighthouse mobile per page; humanizer pass; fresh-reader checks per audience
+- [ ] Full campaign plan; CHANGELOG entry; PR
 
 ## Later phases
 - Phase 2 (after checkpoint 1): design direction, 2–3 rendered home-page first screens + sample-sheet section → checkpoint 2.

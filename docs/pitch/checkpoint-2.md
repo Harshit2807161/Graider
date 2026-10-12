@@ -40,3 +40,9 @@ Defects it found that are fixed before anything is shown: `TODO@example.com` and
 3. **Q35(a) on the home page** as "what it got wrong, and what happened next", or only on `/sample`. I recommend the home page: the honest section is the positioning, and a real example is worth more than a paragraph.
 
 Everything else in the list above I'll do without asking. After your answer: the chosen direction becomes the site's shared components and tokens, the content modules get the copy drafts, and the other pages are built on it.
+
+## Answers (Kirtan, 2026-10-12)
+1. The hybrid. Keep the three variants in the repo for later mixing and matching; do not delete them.
+2. Inter.
+3. Q35(a) on the home page as "what it got wrong, and what happened next".
+4. Reviews: Fable reviews the pages itself (subagent reviewers may still be used in addition).
