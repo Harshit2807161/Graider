@@ -9,11 +9,11 @@ Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (f
 - [x] Branch created
 - [ ] Research: claims in the brief verified against primary sources → `research/claims.md` (Sonnet)
 - [ ] Research: reference sites torn down in a real browser → `research/reference-sites.md` (Opus)
-- [ ] Research: review components, eval data, tokens, product facts for the sample sheet (Sonnet)
-- [ ] `positioning.md`: category headline, mechanism, per-audience message, proof today, what we don't claim
-- [ ] `site-map.md`: pages, each page's job, primary CTA, content module per page
-- [ ] `campaign-plan.md` (outline only at checkpoint 1)
-- [ ] `checkpoint-1.md`: the questions only Kirtan can answer, in one batch
+- [x] Research: review components, eval data, tokens, product facts for the sample sheet (Sonnet) → `research/sample-sheet-facts.md`
+- [x] `positioning.md`: category headline, mechanism, per-audience message, proof today, what we don't claim
+- [x] `site-map.md`: pages, each page's job, primary CTA, content module per page
+- [x] `campaign-plan.md` (outline; facts marked *(verify)* pending)
+- [x] `checkpoint-1.md`: the questions only Kirtan can answer, in one batch
 - [ ] Commit, then stop for Kirtan
 
 ## Decisions made without Kirtan (brief says: make reasonable choices, note them)

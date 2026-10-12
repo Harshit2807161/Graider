@@ -60,6 +60,8 @@ Order on the site: schools first, professors second, investors third. Depth of m
 - No "any language" or "Hindi handwriting" claim until it has been tried on real Hindi sheets. The question is on Kirtan's list.
 - No board-exam marking. Internal exams, unit tests, pre-boards, mock tests, college internal assessments.
 - No price. Cost per sheet in model costs is a fact we can show with its source; a price is Kirtan's call (checkpoint 1).
+- No encryption-at-rest, retention-period, deletion or erasure claim: none exists in the product today (soft delete only; files stay on disk). The privacy page says what is true and lists these as planned, not done.
+- No "student data never leaves your servers": true only on the fully self-hosted profile. By default page images go to the vision model's provider (Anthropic or OpenAI); text goes to the grader's and evaluator's providers. Say exactly that.
 - No "replaces teachers" or "saves X hours": no measurement yet. "About a minute a sheet" is a measured fact about one run; say it as that.
 
 ## The honest section ("What it does well today, and what it sends to you")
