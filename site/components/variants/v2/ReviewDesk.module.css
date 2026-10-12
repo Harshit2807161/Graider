@@ -1,0 +1,112 @@
+/* The product's review desk (frontend review.module.css: .desk, .viewerSlot, .answers), sized for a
+   marketing page: the page is the larger column so the handwriting reads at desktop widths. The
+   container names `review`, `viewer` and `answers` are the ones the product's CSS queries. */
+
+.wrap {
+    container: review / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-4);
+}
+
+.viewerColumn {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-width: 0;
+}
+
+.viewerSlot {
+    container: viewer / inline-size;
+    min-width: 0;
+}
+
+.notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 40rem;
+    font-size: var(--text-md);
+    line-height: 1.6;
+    color: var(--slate-600);
+}
+
+.notes strong {
+    font-weight: 600;
+    color: var(--slate-900);
+}
+
+.answers {
+    container: answers / inline-size;
+    min-width: 0;
+}
+
+/* The card's own examiner discussion, moved under the desk (see ReviewDesk) */
+.roundsMoved article > div > details:first-of-type { display: none; }
+
+.rounds {
+    container: answers / inline-size;
+    min-width: 0;
+}
+
+.discussion { background-color: var(--card); }
+
+/* Beside each other from small laptops up; the page stays in view while the card scrolls past it */
+@media (min-width: 60rem) {
+    .desk {
+        grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+        gap: var(--space-6);
+    }
+
+    .wrap { gap: var(--space-6); }
+
+    .notes { padding: 0 var(--space-1); }
+}
+
+/* The page (and its notes) stay in view while the card scrolls past, when the screen is tall enough */
+@media (min-width: 60rem) and (min-height: 50rem) {
+    .viewerColumn {
+        position: sticky;
+        top: var(--space-6);
+    }
+}
+
+/* ===== the one load animation =====
+   The evidence in the transcript is marked in sequence, like a highlighter going over the words,
+   then the product's own .evidence styles take over (backwards fill, no forwards), so hovering a
+   criterion still dims the other quotes. Paint-only, on four inline elements, once per visit. */
+.sweep pre mark {
+    animation: v2-highlight 300ms var(--ease-out) backwards;
+}
+
+.sweep pre mark:nth-of-type(1) { animation-delay: 200ms; }
+.sweep pre mark:nth-of-type(2) { animation-delay: 450ms; }
+.sweep pre mark:nth-of-type(3) { animation-delay: 700ms; }
+.sweep pre mark:nth-of-type(n + 4) { animation-delay: 950ms; }
+
+@keyframes v2-highlight {
+    from {
+        background-color: transparent;
+        background-image: linear-gradient(var(--evidence-bg), var(--evidence-bg));
+        background-repeat: no-repeat;
+        background-size: 0% 100%;
+    }
+
+    to {
+        background-color: transparent;
+        background-image: linear-gradient(var(--evidence-bg), var(--evidence-bg));
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sweep pre mark { animation: none; }
+}
