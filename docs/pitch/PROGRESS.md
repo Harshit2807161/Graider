@@ -3,7 +3,7 @@
 Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (from `eval/cbse-science-first-run`, which holds the eval data). Orchestrator: Fable; subagents on Opus (anything a visitor reads or sees) or Sonnet (mechanical work).
 
 ## Status
-- 2026-10-12: started. Phase 1 complete; **waiting on checkpoint 1** (`checkpoint-1.md`).
+- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 (design direction) in progress.
 
 ## Phase 1: before checkpoint 1
 - [x] Branch created
@@ -28,6 +28,14 @@ See `checkpoint-1.md` once written.
 - Headline device = "shows its working": a real handwritten page carrying Gr8r's marks in examiner's red, the evidence highlight as the only proof visual, a "sent to you" margin slip for escalations, the "For examiner's use only" grid as the table form, a run receipt line of real figures.
 - Avoid the category's serif-on-off-white default (all three education references use it); consider a single grotesk, black and white, red ink and highlighter as the only colours. Content width about 1150–1250px.
 - No sticky floating CTAs on phone; no icon discs over tables.
+
+## Phase 2: design direction (→ checkpoint 2)
+- [ ] Install skills: emilkowalski/skills (animation), vercel-labs web-design-guidelines
+- [ ] Scaffold `site/` (Next 16 static export, configurable basePath, tokens, shared review components, static PageViewer, content modules)
+- [ ] Render answer-book pages for the sample (private preview only)
+- [ ] Design brief (device, type, colour, layout) from the teardown
+- [ ] 2–3 built home first screens + sample section, screenshots at 390 / 820 / 1440
+- [ ] Recommendation → checkpoint 2
 
 ## Later phases
 - Phase 2 (after checkpoint 1): design direction, 2–3 rendered home-page first screens + sample-sheet section → checkpoint 2.

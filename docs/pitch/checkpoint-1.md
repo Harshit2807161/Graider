@@ -30,3 +30,13 @@ Please answer in any form; short answers are fine. The ones marked **blocks** st
 - `positioning.md`: category, headline, mechanism, per-audience message, proof we can show, what we won't say.
 - `site-map.md`: pages, each page's job and CTA.
 - `campaign-plan.md`: eight-week outline, schools and coaching first.
+
+## Answers (Kirtan, 2026-10-12)
+1. Founders: Kirtan Jain, Parth Agarwal, Harshit Dhankhar. Backgrounds, photos and links not given yet → slots in the about page; ask at checkpoint 3.
+2. Company: legal name Graider, based in Delhi, India.
+3. No domain yet; will host soon. Possibly `kirtanjain.com/graider` for now → build with a configurable base path; deploy later. No Cloudflare account confirmed.
+4. First ten conversations: not answered → campaign plan uses types; ask at checkpoint 3.
+5. Pilot: proposal accepted (free, one exam for one class, four weeks, success criteria agreed up front, paid-or-stop at the end).
+6. Pricing: not answered → recommendation stands (pilots free, pricing per sheet, no number).
+7. CBSE material in public: not answered → design and preview with the real run's data privately; the public sample is decided at checkpoint 3 (team-written sample still recommended). Repo stays private.
+8. English only. 9. Do not mention Hindi anywhere. 10. Install the animation and web-design-guidelines skills: yes. 11. Headline: no objection, kept. 12. Form email: not answered → Resend from a Worker.
