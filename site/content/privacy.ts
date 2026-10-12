@@ -64,7 +64,7 @@ const privacy: PrivacyContent = {
             ],
         },
         after: [
-            { body: "Page images are sent to browsers with instructions not to cache them." },
+            { body: "Gr8r sends page images to browsers with instructions not to cache them." },
         ],
     },
 

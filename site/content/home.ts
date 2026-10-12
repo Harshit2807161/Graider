@@ -22,7 +22,7 @@ const home: HomeContent = {
     },
 
     runLine: {
-        text: "One real 31-page answer book: read and graded in about a minute, for about 22\u00a0US cents in model costs. Fifteen answers sent to the teacher.",
+        text: "One real 31-page answer book, on small OpenAI models in October 2026: read and graded in about a minute, for about 22\u00a0US cents in model costs. Fifteen of its 44 answers were sent to the teacher.",
         source: "docs/evals/cbse-x-science-2025/README.md (\"What happened\"; \"Grading\": 15 escalated for review)",
     },
 
@@ -64,7 +64,7 @@ const home: HomeContent = {
         id: "wrong",
         heading: "What it got wrong, and what happened next",
         intro: [
-            { body: "Question 35(a), from the same answer book, runs across two pages. Gr8r made two mistakes on it. This is what they look like, and how the answer reached a teacher." },
+            { body: "Question 35(a), from the same answer book, runs across two pages. Gr8r made two mistakes on it. The notes under the rows say what they were and how the answer reached a teacher." },
         ],
         answers: [
             {
@@ -95,7 +95,7 @@ const home: HomeContent = {
             "A marking scheme it couldn’t turn into clear points.",
             "An answer the marking model flags as illegible or off topic.",
         ],
-        after: "A missing answer is never given zero automatically.",
+        after: "Gr8r never gives a missing answer zero automatically.",
         slip: {
             label: "Sent to you",
             reason: "The two examiners disagree",
@@ -137,8 +137,8 @@ const home: HomeContent = {
 
     honest: {
         id: "today",
-        heading: "What it does well today, and what it sends to you",
-        intro: "Gr8r gets some marks wrong. This list says where it is reliable today and what it can’t do yet. What it hands to your teachers is listed above.",
+        heading: "What it does well today, and what it can’t do yet",
+        intro: "Gr8r gets some marks wrong. This list says where it is reliable today and what it can’t do yet. What it hands to your teachers instead of guessing is in the section above.",
         groups: [
             {
                 heading: "Does well today",

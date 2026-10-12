@@ -13,7 +13,7 @@ const investors: InvestorsContent = {
 
     hero: {
         title: ["Marking handwritten exams, with the teacher in the loop."],
-        lede: "Gr8r is vertical AI for one job: marking handwritten answer sheets against a school’s own marking scheme. The product works end to end today. What it doesn’t have yet is a measured accuracy figure, and the work of getting one is under way and will be published in full.",
+        lede: "Gr8r is vertical AI for one job: marking handwritten answer sheets against a school’s own marking scheme. The product works end to end today. It doesn’t yet have a measured accuracy figure; the work to get one is under way, and we will publish it in full.",
         primary: { label: "Talk to the founders", href: "/about/" },
     },
 
@@ -31,7 +31,7 @@ const investors: InvestorsContent = {
         heading: "Why now",
         body: [
             { body: "Current models read neat handwriting well: in our one test so far, a small model transcribed a 31-page model answer book and marked it against criteria for about 22 US cents in model costs. Handwritten answer books are also being scanned: in 2026 CBSE moved Class 12 marking on-screen, the rollout drew public complaints about scan quality and portal security, and CBSE said AI was not used to mark papers; teachers marked them." },
-            { body: "Our reading of it is that marking is moving onto scans and screens, and that people will expect any automated part to be checkable. We don’t sell to boards; Gr8r is for exams that institutions set and mark themselves." },
+            { body: "We think marking is moving onto scans and screens, and that people will expect any automated part to be checkable. We don’t sell to boards; Gr8r is for exams that institutions set and mark themselves." },
         ],
     },
 
@@ -53,7 +53,7 @@ const investors: InvestorsContent = {
         heading: "What has been measured, and what hasn’t",
         body: [
             { body: "One real run so far. We took a CBSE Class X Science 2025 paper, its official marking scheme and a 31-page handwritten answer book that CBSE published as a model answer. Gr8r read every page and marked or sent to the teacher 44 answers in about a minute, for about 22 US cents in model costs on small OpenAI models; that is one run in October 2026, with costs worked out from token counts and list prices, not an invoice." },
-            { body: "It was a smoke test, not an accuracy measurement. It showed the system holds together on real material, and it showed where marks go wrong: mostly before marking starts, in reading pages and deciding which question a piece of writing belongs to. Some answers got a wrong mark without a flag. We wrote all of this up, and those failures are the first things being fixed." },
+            { body: "It was a smoke test, not an accuracy measurement. It showed the system holds together on real material, and it showed where marks go wrong: mostly before marking starts, in reading pages and deciding which question a piece of writing belongs to. Some answers got a wrong mark without a flag. We wrote all of this up, and we are fixing those failures first." },
             { body: "We publish no accuracy figure until we have a comparison against marks given by hand. When we do, we’ll publish the method and caveats with it, and every case, including the wrong marks that were not flagged." },
         ],
     },

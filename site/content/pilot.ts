@@ -66,8 +66,8 @@ const pilot: PilotContent = {
         heading: "Good to know before you ask",
         items: [
             { lead: "Internal exams only.", body: "Unit tests, half-yearlies, pre-boards, mock tests and college internal assessments. Not board exams." },
-            { lead: "Drawings aren’t marked yet.", body: "If your exam has questions answered with a diagram, your teachers mark those." },
-            { lead: "Your data.", body: "Sheets and marks are stored by Gr8r for the pilot, and page images are read by a model provider. When the pilot ends, tell us if you want your data deleted, and we delete it." },
+            { lead: "Drawings aren’t marked reliably yet.", body: "A drawn answer can get a low mark without being flagged, so if your exam has questions answered with a diagram, your teachers mark those." },
+            { lead: "Your data.", body: "Gr8r stores sheets and marks for the pilot, and a model provider reads the page images. When the pilot ends, tell us if you want your data deleted, and we delete it." },
         ],
         link: { label: "Privacy and data", href: "/privacy/" },
     },
@@ -128,8 +128,8 @@ const pilot: PilotContent = {
             sendFailedEmail: "Your request didn’t go through. Please try again, or email us at {email}.",
         },
         unavailable: {
-            withEmail: "This form isn’t switched on yet. Requests can be sent by email instead, to {email}.",
-            withoutEmail: "This form isn’t switched on yet. Requests can be sent by email instead. Contact details are on their way.",
+            withEmail: "This form isn’t switched on yet. You can send your request by email instead, to {email}.",
+            withoutEmail: "This form isn’t switched on yet. You can send your request by email instead. Contact details are on their way.",
         },
         success: {
             heading: "Thank you. We’ve got your request.",

@@ -33,7 +33,7 @@ const schools: SchoolsContent = {
         id: "teachers",
         heading: "What your teachers see",
         intro: [
-            { body: "For each answer: the student’s page, the text Gr8r read from it, the marking-scheme points, the mark for each point, and the words in the student’s answer that earned it, highlighted. Below that, what the second examiner thought and where the two disagreed." },
+            { body: "For each answer: the student’s page, the text Gr8r read from it, the marking-scheme points, the mark for each point, and the words in the student’s answer that earned it, highlighted. On the sample page you can also see what the second examiner thought and where the two disagreed." },
         ],
         answers: [home.marked.answers[0]],
         after: [
@@ -76,7 +76,7 @@ const schools: SchoolsContent = {
                 items: [
                     "Drawings and diagrams. A drawing leaves nothing in what Gr8r reads, so a drawn answer can get a low mark without being sent to your teachers. A teacher should mark any question that needs a drawing.",
                     "Answer books where a sub-part continues on a new page without its number. Gr8r can file that writing under the wrong question. We are fixing it.",
-                    "Untidy handwriting has not been tested properly yet; our one real test used a neat answer book.",
+                    "Untidy handwriting. We haven’t tested it properly yet; our one real test used a neat answer book.",
                     "We haven’t yet measured how often Gr8r’s marks match your teachers’. That is what a pilot measures, on your own sheets.",
                 ],
             },
@@ -110,7 +110,7 @@ const schools: SchoolsContent = {
             },
             {
                 question: "What does it cost per sheet?",
-                answer: ["The pilot is free. After it, pricing is per sheet, and we agree the price with you before the pilot ends. For reference, the model costs in our first test were about 22 US cents for a 31-page answer book, on small models, in one run in October 2026; the larger models Gr8r uses by default cost more."],
+                answer: ["The pilot is free. After it, pricing is per sheet, and we agree the price with you before the pilot ends. In our first test, the model costs were about 22 US cents for a 31-page answer book, on small models, in one run in October 2026; the larger models Gr8r uses by default cost more."],
             },
             {
                 question: "What happens to student data?",

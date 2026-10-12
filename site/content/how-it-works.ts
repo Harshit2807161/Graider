@@ -11,7 +11,7 @@ const howItWorks: HowItWorksContent = {
 
     head: {
         title: "How Gr8r marks an answer sheet",
-        lede: "From the marking scheme to a published result, in seven steps. At each step, this page says what Gr8r does, what it checks, and what it hands to a teacher.",
+        lede: "From the marking scheme to a published result, in seven steps. For each step: what Gr8r does, what it checks, and what it hands to a teacher.",
         cta: { label: "See a graded sheet", href: "/sample/" },
     },
 
