@@ -30,12 +30,17 @@ See `checkpoint-1.md` once written.
 - No sticky floating CTAs on phone; no icon discs over tables.
 
 ## Phase 2: design direction (→ checkpoint 2)
-- [ ] Install skills: emilkowalski/skills (animation), vercel-labs web-design-guidelines
-- [ ] Scaffold `site/` (Next 16 static export, configurable basePath, tokens, shared review components, static PageViewer, content modules)
-- [ ] Render answer-book pages for the sample (private preview only)
-- [ ] Design brief (device, type, colour, layout) from the teardown
-- [ ] 2–3 built home first screens + sample section, screenshots at 390 / 820 / 1440
+- [x] Install skills: emilkowalski/skills (animation), vercel-labs web-design-guidelines (committed under `.agents/skills`)
+- [x] Scaffold `site/` (Next 16 static export, configurable basePath, tokens, shared review components, static PageViewer, content modules)
+- [x] Render answer-book pages for the sample (private preview only): `site/public/sample/pages/p{04,07,08,23,24,30}.webp`
+- [x] Design brief → `design-brief.md`
+- [ ] 3 built home first screens + sample section (Opus builders in worktrees, `/variants/v1..v3`), screenshots at 390 / 820 / 1440 via `site/scripts/screenshot.mjs`
 - [ ] Recommendation → checkpoint 2
+
+## Phase 3 work started early (independent of the design choice)
+- [ ] Pitch materials → `materials/` (pilot offer, messages, deck outline, objections) (Opus)
+- [ ] Site copy drafts → `copy/` per page (Opus, humanizer pass)
+- [ ] Target-list method and starter lists for Delhi NCR → `research/target-lists.md` (Sonnet)
 
 ## Later phases
 - Phase 2 (after checkpoint 1): design direction, 2–3 rendered home-page first screens + sample-sheet section → checkpoint 2.
