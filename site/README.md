@@ -108,3 +108,34 @@ public/sample/pages/ page images for the sample
 ```
 
 The "Request a pilot" form posts to the Cloudflare Worker in `worker/` (setup, deploy and the `NEXT_PUBLIC_PILOT_ENDPOINT` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` variables: `worker/README.md`).
+
+## The pilot form
+
+`/pilot` (`app/pilot/page.tsx`, copy in `content/pilot.ts`, shapes in `content/types-pilot.ts`) ends with `components/pilot/PilotForm.tsx`, a client component that posts JSON to the Worker:
+
+- Fields and limits are the Worker's: it imports `LIMITS` and `isValidEmail` from `worker/src/validate.ts` and the Turnstile action (`EXPECTED_ACTION`, `"pilot"`) from `worker/src/turnstile.ts`, so the two cannot drift. The `website` input is the honeypot (off screen, `tabindex=-1`, hidden from screen readers).
+- Checks run in the browser first (required fields, email shape, phone); errors show under each field and the first one gets focus. Then the Turnstile token is required: without one the endpoint is never called. On success the form is replaced by the thank-you message; on failure the Worker's `error` (and per-field `fields`) is shown and the entered values stay. A token is used once, so the widget is reset after every attempt.
+- The Turnstile script (`?render=explicit`) is loaded with `next/script` (`afterInteractive`) on this page only, and only when both variables below are set.
+
+Set at build time (see `.env.example`):
+
+```bash
+NEXT_PUBLIC_PILOT_ENDPOINT=https://gr8r-pilot.<subdomain>.workers.dev/pilot
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=<site key>
+```
+
+Without either one (local dev, or before the Worker is deployed) the form still renders, the button is disabled, no script loads, and a line says requests can be sent by email: it shows `contactEmail` from `content/site.ts` once that no longer starts with `TODO`, and "Contact details are on their way" until then.
+
+Test it locally against the Worker:
+
+```bash
+cd site/worker && npm ci && cp .dev.vars.example .dev.vars   # test Turnstile secret, EMAIL_DRY_RUN=true
+# add the origin you will serve the site from to ALLOWED_ORIGINS in .dev.vars, e.g. http://localhost:3110
+npx wrangler dev --port 8787
+
+cd site
+NEXT_PUBLIC_PILOT_ENDPOINT=http://localhost:8787/pilot NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA npm run build
+(cd out && python3 -m http.server 3110 &)    # open http://localhost:3110/pilot/
+```
+
+`1x00000000000000000000AA` is Cloudflare's test site key: the widget always passes (it shows a "for testing only" strip) and pairs with the test secret in `.dev.vars.example`. With `EMAIL_DRY_RUN=true` the Worker validates and verifies, logs `email_dry_run`, and answers `{ "ok": true }` without sending mail. `npm run dev` works the same way with the two variables in `.env.local` (port 3000 and 3100 are already allowed origins).

@@ -58,6 +58,16 @@ export const claims: Claim[] = [
         text: "The pilot is free: one exam, one class, four weeks, success criteria agreed in writing, then per-sheet pricing or stop.",
         source: "docs/pitch/checkpoint-1.md answers 5 and 6",
     },
+    {
+        id: "pilot-terms",
+        text: "Pilot terms on /pilot: up to about 200 sheets, setup with a teacher checking the marking points, logins, two review sessions, a written report, a contact person; at the end continue paid per sheet, put Gr8r into the next budget discussion with the month and approver named, or stop with nothing owed.",
+        source: "docs/pitch/materials/pilot-offer.md; docs/pitch/copy/pilot.md",
+    },
+    {
+        id: "pilot-form",
+        text: "The pilot form is emailed through Resend and checked by Cloudflare Turnstile; nothing from it goes into Gr8r.",
+        source: "site/worker/README.md; site/worker/src/index.ts (nothing stored, the email is the record)",
+    },
 ];
 
 export default claims;
