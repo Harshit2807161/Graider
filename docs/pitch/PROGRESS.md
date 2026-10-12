@@ -3,7 +3,7 @@
 Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (from `eval/cbse-science-first-run`, which holds the eval data). Orchestrator: Fable; subagents on Opus (anything a visitor reads or sees) or Sonnet (mechanical work).
 
 ## Status
-- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 done; checkpoint 2 answered (hybrid, Inter, Q35(a) on home, keep variants). Phase 3 (build) in progress.
+- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 done; checkpoint 2 answered (hybrid, Inter, Q35(a) on home, keep variants). Phase 3 built, reviewed and committed; **waiting on checkpoint 3** (`checkpoint-3.md`).
 
 ## Phase 1: before checkpoint 1
 - [x] Branch created
@@ -56,10 +56,10 @@ See `checkpoint-1.md` once written.
 - [ ] Claims register (`site/content/claims.ts` + `docs/pitch/claims-register.md`)
 - [x] Screenshots of every page at 390/820/1440; Fable reviewed home, sample, schools, pilot, how-it-works, privacy, about
 - [x] Lighthouse mobile per page: accessibility 100, best practices 100, SEO 100 (results page noindex by design), performance 78–90 (text-only pages 90; the floor is the stack on simulated slow 4G; hero image, lazy crops and font-display fixed)
-- [ ] Humanizer pass (Opus, running); fresh-reader checks per audience (Opus, running); claims register (Sonnet, running)
+- [x] Humanizer pass; fresh-reader checks per audience (`checkpoint-3.md`); claims register (`claims-register.md`, 31 claims reworded)
 - [x] Full campaign plan (`campaign-plan.md`, targets for 6 Dec 2026)
 - [x] CHANGELOG entry
-- [ ] PR; checkpoint 3
+- [x] Draft PR opened; **waiting on checkpoint 3** (`checkpoint-3.md`)
 
 ## Resumed 2026-10-12 ~20:45: founders done (`founders.md`), the three page builders relaunched (Opus, worktrees). Scrolled shots confirmed the criterion rows render.
 
