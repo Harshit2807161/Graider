@@ -3,7 +3,7 @@
 Brief: [fable-brief.md](fable-brief.md). Branch: `pitch/website-and-campaign` (from `eval/cbse-science-first-run`, which holds the eval data). Orchestrator: Fable; subagents on Opus (anything a visitor reads or sees) or Sonnet (mechanical work).
 
 ## Status
-- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 (design direction) in progress.
+- 2026-10-12: started. Phase 1 complete; checkpoint 1 answered (see `checkpoint-1.md`, Answers). Phase 2 built and reviewed; **waiting on checkpoint 2** (`checkpoint-2.md`).
 
 ## Phase 1: before checkpoint 1
 - [x] Branch created
@@ -34,13 +34,19 @@ See `checkpoint-1.md` once written.
 - [x] Scaffold `site/` (Next 16 static export, configurable basePath, tokens, shared review components, static PageViewer, content modules)
 - [x] Render answer-book pages for the sample (private preview only): `site/public/sample/pages/p{04,07,08,23,24,30}.webp`
 - [x] Design brief → `design-brief.md`
-- [ ] 3 built home first screens + sample section (Opus builders in worktrees, `/variants/v1..v3`), screenshots at 390 / 820 / 1440 via `site/scripts/screenshot.mjs`
-- [ ] Recommendation → checkpoint 2
+- [x] 3 built home first screens + sample section (Opus builders in worktrees, merged into `/variants/v1..v3`), screenshots at 390 / 820 / 1440 via `site/scripts/screenshot.mjs` → `variants/`
+- [x] Fresh Opus review + recommendation → `checkpoint-2.md`. **Waiting on checkpoint 2.**
 
 ## Phase 3 work started early (independent of the design choice)
-- [ ] Pitch materials → `materials/` (pilot offer, messages, deck outline, objections) (Opus)
-- [ ] Site copy drafts → `copy/` per page (Opus, humanizer pass)
-- [ ] Target-list method and starter lists for Delhi NCR → `research/target-lists.md` (Sonnet)
+- [x] Pitch materials → `materials/` (pilot offer, messages, deck outline, objections) (Opus)
+- [x] Site copy drafts → `copy/` (long; trimmed when wired into content modules) per page (Opus, humanizer pass)
+- [x] Target-list method and starter lists for Delhi NCR → `research/target-lists.md` (Sonnet)
+
+## Facts learned from the builds (carry into the claims register)
+- The run escalated 15 answers, not 4 (the brief's "four" was the count of unflagged wrong scores).
+- Q35(a): reader dropped the "vasectomy" line as crossed out (0/1 vs the examiner's tick); c1 credited without the hormone being named; escalation reason was a page-break artefact. Q24(b) and Q21 are clean (Q21's transcript misreads one cancelled fraction, no mark depended on it).
+- The second examiner scores first but sees the grader's marks in the same request: say "checks", never "independently".
+- Hero answer: Q24(b), page 7.
 
 ## Later phases
 - Phase 2 (after checkpoint 1): design direction, 2–3 rendered home-page first screens + sample-sheet section → checkpoint 2.

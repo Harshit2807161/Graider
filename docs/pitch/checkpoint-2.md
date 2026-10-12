@@ -14,8 +14,9 @@ All three use the same copy (headline, mechanism sentence, CTAs, run line) and t
 ## My recommendation
 
 **v1's first screen, v3's criterion rows as the home page's sample explanation, v2's full desk as the `/sample` page.** Concretely:
-- Hero: v1 as built, minus the slip (escalation is shown further down, honestly); the highlight on criterion 3 reduced to its first two lines with "…" so the page isn't a yellow block; the headline at 3rem so it holds to three lines at 1440.
-- Under the hero: v3's rows for Q35(a), including the row where the reader missed the "vasectomy" line (0/1 against the examiner's tick) with its one-sentence note. That row is the honest section made concrete: this is what a teacher would fix in review.
+- Hero: v1's layout, minus the slip (escalation is shown further down, honestly), with **Q24(b) on page 7 as the hero answer instead of Q35(a)**: two criteria, two quotes that match the handwriting, 2/2, the second examiner agreed first time, and 24(a) "not attempted" shows the choice group. The headline at 3rem so it holds to three lines at 1440.
+- Under the hero: v3's criterion rows (mark in the margin, crop of the handwriting with the highlight, the criterion in plain words, one-line reason) for Q24(b), then Q21 (the numerical one). Internal terms ("c1", "Choice group g35", "agreement 79%") never appear outside the product panel.
+- Then Q35(a) as **"What it got wrong, and what happened next"**: the reader took the "vasectomy" line as crossed out (0/1 against the examiner's tick), credited the first criterion without the hormone being named, and the answer reached the teacher. That is the honest section made concrete, placed after the clean examples, not before.
 - "What it sends to you": the slip form from v1, with the illustration label, and Q24(a) "not attempted".
 - `/sample`: v2's desk (page viewer, answer card, all three rounds), which is the product and belongs on the page a professor opens.
 - Typeface: **Inter** throughout (one family, continuity with the product). Atkinson Hyperlegible Next (v3) is the alternative if you want the site to have its own voice; it read well in the screenshots, and its story (a face designed for legibility, on a product that reads handwriting) is honest. Your call; I lean Inter.
@@ -27,5 +28,15 @@ All three use the same copy (headline, mechanism sentence, CTAs, run line) and t
 - The product's own answer card shows per-answer figures ("agreement 100%", "confidence 95%"). They are the product's UI on real data, not a claim about accuracy. I propose to keep them on `/sample` and crop them out of the home page.
 - Shared fixes applied: Turbopack alias paths, React types path, the page viewer's "of 2" count, per-page alt text, duplicate ids, the header's links and button.
 
-## Fresh reviewer
-(added below when the review lands)
+## Fresh reviewer (Opus, given only the screenshots, the positioning page and the YC tests)
+
+Ranked v1 first for a principal on a phone (the only one that shows a marked sheet without scrolling), v2 first for a professor on a desktop (the question, score, reason and transcript are on the first screen), and v3's criterion rows as the clearest explanation of "shows its working". Recommended v1's first screen with v3's sample section, the sticky-note slip removed, the three rounds reduced to a sentence on the home page with the full desk on `/sample`, and Q21 leading the samples with Q35(a) framed openly as what went wrong. That matches my recommendation; I go further by leading with Q24(b), which is cleaner than Q21 visually.
+
+Defects it found that are fixed before anything is shown: `TODO@example.com` and "Gr8r · Graider" in the footer; "Page 23 of 2" (fixed in the viewer); the run line disagreeing between variants (fifteen is right); internal terms on the page; the grader crediting Q35(a)'s first criterion without the hormone being mentioned (which is why Q35(a) moves to the honest section); the slashed zero in Atkinson reading as "Ø/1" (one more reason for Inter); v3's tables clipped at 390.
+
+## What I need from you
+1. **The direction**: the hybrid above (v1 hero, v3 rows, v2 desk on `/sample`), or one variant as built.
+2. **Typeface**: Inter (my lean) or Atkinson Hyperlegible Next.
+3. **Q35(a) on the home page** as "what it got wrong, and what happened next", or only on `/sample`. I recommend the home page: the honest section is the positioning, and a real example is worth more than a paragraph.
+
+Everything else in the list above I'll do without asking. After your answer: the chosen direction becomes the site's shared components and tokens, the content modules get the copy drafts, and the other pages are built on it.
