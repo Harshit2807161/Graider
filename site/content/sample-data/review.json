@@ -1,0 +1,1382 @@
+{
+  "submission": {
+    "total_score": null,
+    "max_score": 80,
+    "status": "NEEDS_REVIEW"
+  },
+  "student_name": null,
+  "pages": [
+    {
+      "number": 1,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 0,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 2,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 1,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 3,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 2,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 4,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 3,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 5,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 4,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 6,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 5,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 7,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 6,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 8,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 7,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 9,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 8,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 10,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 9,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 11,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 10,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 12,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 11,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 13,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 12,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 14,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 13,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 15,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 14,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 16,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 15,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 17,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 16,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 18,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 17,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 19,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 18,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 20,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 19,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 21,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 20,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 22,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 21,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 23,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 22,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 24,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 23,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 25,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 24,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 26,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 25,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 27,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 26,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 28,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 27,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 29,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 28,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 30,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 29,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    },
+    {
+      "number": 31,
+      "document_id": "713455fd-37aa-4641-baba-d4cf51e813d1",
+      "page_index": 30,
+      "kind": "scanned",
+      "width": 2339,
+      "height": 1656,
+      "has_image": true
+    }
+  ],
+  "unassigned_segments": [],
+  "questions": [
+    {
+      "question_id": "21bcc42d-98ce-4dfc-8b66-8ec1a922facb",
+      "label": "21",
+      "printed_label": "21",
+      "text": "An object is placed at a distance of 10 cm in front of a concave mirror of \nfocal length 15 cm. Use mirror formula to determine the position of the \nimage formed by this mirror.",
+      "max_score": 2.0,
+      "choice_group": null,
+      "rubric_spec": {
+        "id": "5cd57a1d-ce18-4f99-a096-c1b6acb4617c",
+        "version": 1,
+        "status": "ready",
+        "validation_errors": [],
+        "spec": {
+          "kind": "criteria",
+          "derived": false,
+          "subject": "science",
+          "criteria": [
+            {
+              "id": "c1",
+              "notes": null,
+              "points": 0.5,
+              "description": "Writes the object distance u = -10 cm and focal length f = -15 cm with correct signs",
+              "expected_answer": "u = -10 cm; f = -15 cm"
+            },
+            {
+              "id": "c2",
+              "notes": null,
+              "points": 0.5,
+              "description": "Applies the mirror formula correctly and sets up the equation 1/f = 1/v + 1/u with substituted values",
+              "expected_answer": "1/-15 = 1/v + 1/-10"
+            },
+            {
+              "id": "c3",
+              "notes": null,
+              "points": 1.0,
+              "description": "Calculates the image position as v = +30 cm and states position of image is 30 cm from the mirror",
+              "expected_answer": "v = +30 cm; position of image is 30 cm from the mirror"
+            }
+          ],
+          "grading_notes": null,
+          "criteria_count": 3,
+          "parser_warnings": [],
+          "spec_schema_version": 1
+        }
+      },
+      "transcription": {
+        "id": "2d2b03bc-4d92-482c-b154-2db7396cff20",
+        "question_id": "21bcc42d-98ce-4dfc-8b66-8ec1a922facb",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "text": "1/v - 1/10 = -1/15\n1/v = -1/15 + 1/10\n1/v = (-10 + 15) / (10 x 15)\n1/v = 5 / 2\nv = +30 cm\nPosition of image formed by mirror = +30 cm on the other side of mirror.",
+        "segments": [
+          {
+            "page": 4,
+            "text": "1/v - 1/10 = -1/15\n1/v = -1/15 + 1/10\n1/v = (-10 + 15) / (10 x 15)\n1/v = 5 / 2\nv = +30 cm\nPosition of image formed by mirror = +30 cm on the other side of mirror.",
+            "label": "21",
+            "confidence": 1.0,
+            "crossed_out": false,
+            "starts_answer": true,
+            "label_as_written": "21"
+          }
+        ],
+        "confidence": 1.0,
+        "flags": [],
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.209951Z"
+      },
+      "grade": {
+        "id": "dd59c1b0-59f7-4df1-807a-7bb5c89a29b5",
+        "question_id": "21bcc42d-98ce-4dfc-8b66-8ec1a922facb",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "status": "graded",
+        "score": 2.0,
+        "max_score": 2.0,
+        "counted": true,
+        "criteria": [
+          {
+            "id": "c1",
+            "score": 0.5,
+            "evidence": "1/v - 1/10 = -1/15",
+            "justification": "Uses object distance as 10 cm and focal length as -15 cm with correct signs (u = -10, f = -15) implied by formula rearrangement."
+          },
+          {
+            "id": "c2",
+            "score": 0.5,
+            "evidence": "1/v - 1/10 = -1/15",
+            "justification": "Applies mirror formula correctly and substitutes values as 1/f = 1/v + 1/u, rearranged as 1/v - 1/10 = -1/15."
+          },
+          {
+            "id": "c3",
+            "score": 1.0,
+            "evidence": "v = +30 cm\nPosition of image formed by mirror = +30 cm on the other side of mirror.",
+            "justification": "Calculates image distance as +30 cm and clearly states the position of the image 30 cm from the mirror."
+          }
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 0.5,
+                "evidence": "1/v - 1/10 = -1/15",
+                "justification": "Uses object distance as 10 cm and focal length as -15 cm with correct signs (u = -10, f = -15) implied by formula rearrangement."
+              },
+              {
+                "id": "c2",
+                "score": 0.5,
+                "evidence": "1/v - 1/10 = -1/15",
+                "justification": "Applies mirror formula correctly and substitutes values as 1/f = 1/v + 1/u, rearranged as 1/v - 1/10 = -1/15."
+              },
+              {
+                "id": "c3",
+                "score": 1.0,
+                "evidence": "v = +30 cm\nPosition of image formed by mirror = +30 cm on the other side of mirror.",
+                "justification": "Calculates image distance as +30 cm and clearly states the position of the image 30 cm from the mirror."
+              }
+            ],
+            "summary": "I fully agree with the grader's assessment on all criteria. The student demonstrated correct understanding of sign conventions, proper application of the formula, and precise calculation of image position.",
+            "feedback": [],
+            "agreement": 1.0,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 0.5,
+                "reason": "The student didn't explicitly write u = -10 cm or f = -15 cm, but their use of signs in the equation '1/v - 1/10 = -1/15' indicates correct understanding and application of the sign convention."
+              },
+              {
+                "id": "c2",
+                "score": 0.5,
+                "reason": "The student applied the mirror formula correctly and set up the equation with correct substitution, making the algebraic steps clear."
+              },
+              {
+                "id": "c3",
+                "score": 1.0,
+                "reason": "The student calculates v = +30 cm, and clearly identifies the position of the image as +30 cm from the mirror, which is correct."
+              }
+            ],
+            "grader_total": 2.0,
+            "criteria_apart": [],
+            "evaluator_total": 2.0,
+            "effective_agreement": 1.0
+          }
+        ],
+        "flags": [],
+        "escalation_reason": null,
+        "feedback": "Good use of correct sign conventions and correct application of the mirror formula. You clearly calculated the image position and stated its location relative to the mirror. Remember to explicitly write the initial values u = -10 cm and f = -15 cm next time for full clarity.",
+        "rubric_spec_id": "5cd57a1d-ce18-4f99-a096-c1b6acb4617c",
+        "transcription_id": "2d2b03bc-4d92-482c-b154-2db7396cff20",
+        "grader_model": "gpt-4.1-mini-2025-04-14",
+        "evaluator_model": "gpt-4.1-2025-04-14",
+        "fallback_used": false,
+        "override_reason": null,
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.210759Z"
+      },
+      "previous_grades": []
+    },
+    {
+      "question_id": "a122d904-7001-4aec-b0c8-791cc047e707",
+      "label": "24(a)",
+      "printed_label": "24(a)",
+      "text": "(a) Besides minimising the loss of blood, why is it essential to plug any \nleak in a blood vessel ? Name the component of blood which helps \nin this process and state how this component perform this \nfunction.",
+      "max_score": 2.0,
+      "choice_group": "g24",
+      "rubric_spec": {
+        "id": "97b1e9e2-ef80-4f8e-9fdc-d9c816a59205",
+        "version": 1,
+        "status": "ready",
+        "validation_errors": [],
+        "spec": {
+          "kind": "criteria",
+          "derived": false,
+          "subject": "science",
+          "criteria": [
+            {
+              "id": "c1",
+              "notes": null,
+              "points": 1.0,
+              "description": "Explains that plugging the leak in blood vessels prevents lowering of blood pressure or maintains the efficiency of the pumping system",
+              "expected_answer": null
+            },
+            {
+              "id": "c2",
+              "notes": null,
+              "points": 0.5,
+              "description": "Names platelets as the component of blood which helps plug the leak",
+              "expected_answer": "platelets"
+            },
+            {
+              "id": "c3",
+              "notes": null,
+              "points": 0.5,
+              "description": "States that platelets help to clot the blood at the site of injury",
+              "expected_answer": null
+            }
+          ],
+          "grading_notes": null,
+          "criteria_count": 3,
+          "parser_warnings": [],
+          "spec_schema_version": 1
+        }
+      },
+      "transcription": null,
+      "grade": {
+        "id": "1655a26c-aa59-42c3-8e3a-774847e252d0",
+        "question_id": "a122d904-7001-4aec-b0c8-791cc047e707",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "status": "not_attempted",
+        "score": null,
+        "max_score": 2.0,
+        "counted": false,
+        "criteria": [],
+        "rounds": [],
+        "flags": [],
+        "escalation_reason": null,
+        "feedback": null,
+        "rubric_spec_id": "97b1e9e2-ef80-4f8e-9fdc-d9c816a59205",
+        "transcription_id": null,
+        "grader_model": null,
+        "evaluator_model": null,
+        "fallback_used": false,
+        "override_reason": null,
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.217391Z"
+      },
+      "previous_grades": []
+    },
+    {
+      "question_id": "14fc2e7a-c1fe-4b48-a475-30eb474ec7ac",
+      "label": "24(b)",
+      "printed_label": "24(b)",
+      "text": "(b) (i) The transport system in plants is relatively slower than in \nanimals. Give reasons.\n(ii) State the role of phloem in the transport of materials in \nplants.",
+      "max_score": 2.0,
+      "choice_group": "g24",
+      "rubric_spec": {
+        "id": "7b69a112-8611-48ca-9626-fb2f95084fea",
+        "version": 1,
+        "status": "ready",
+        "validation_errors": [],
+        "spec": {
+          "kind": "criteria",
+          "derived": false,
+          "subject": "science",
+          "criteria": [
+            {
+              "id": "c1",
+              "notes": null,
+              "points": 1.0,
+              "description": "Gives a reason that plants have low energy needs because many tissues have a large proportion of dead cells or because plants do not move",
+              "expected_answer": null
+            },
+            {
+              "id": "c2",
+              "notes": null,
+              "points": 1.0,
+              "description": "States that phloem transports soluble products of photosynthesis (translocation) and amino acids to storage organs and growing parts",
+              "expected_answer": null
+            }
+          ],
+          "grading_notes": null,
+          "criteria_count": 2,
+          "parser_warnings": [],
+          "spec_schema_version": 1
+        }
+      },
+      "transcription": {
+        "id": "9a25afd3-9796-4def-ad9e-83466ac57670",
+        "question_id": "14fc2e7a-c1fe-4b48-a475-30eb474ec7ac",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "text": "The transport system in plants is relatively slower than in animals because plants are mainly composed of dead cells. Plants are stationary and don't require energy to perform activities when compared to humans animals. Moreover, simple processes like diffusion and osmosis help in transport of materials from soil. They have vascular tissues like xylem and phloem, humans animals have specialised cells\nPhloem is a vascular tissue mainly composed of living cells. It helps in translocation of food. This means to transport of soluble products of photosynthesis, amino acids and hormones in plants. The flow is bidirectional. Materials like sucrose is transported by using energy from ATP for eg. During spring, food stored in stem",
+        "segments": [
+          {
+            "page": 7,
+            "text": "The transport system in plants is relatively slower than in animals because plants are mainly composed of dead cells. Plants are stationary and don't require energy to perform activities when compared to humans animals. Moreover, simple processes like diffusion and osmosis help in transport of materials from soil. They have vascular tissues like xylem and phloem, humans animals have specialised cells",
+            "label": "24(b)",
+            "confidence": 0.98,
+            "crossed_out": false,
+            "starts_answer": true,
+            "label_as_written": "(b)(i)"
+          },
+          {
+            "page": 7,
+            "text": "Phloem is a vascular tissue mainly composed of living cells. It helps in translocation of food. This means to transport of soluble products of photosynthesis, amino acids and hormones in plants. The flow is bidirectional. Materials like sucrose is transported by using energy from ATP for eg. During spring, food stored in stem",
+            "label": "24(b)",
+            "confidence": 0.98,
+            "crossed_out": false,
+            "starts_answer": false,
+            "label_as_written": "(b)(ii)"
+          }
+        ],
+        "confidence": 0.98,
+        "flags": [],
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.218097Z"
+      },
+      "grade": {
+        "id": "183791df-1fce-45d5-b0cd-03bb32b047da",
+        "question_id": "14fc2e7a-c1fe-4b48-a475-30eb474ec7ac",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "status": "graded",
+        "score": 2.0,
+        "max_score": 2.0,
+        "counted": true,
+        "criteria": [
+          {
+            "id": "c1",
+            "score": 1.0,
+            "evidence": "The transport system in plants is relatively slower than in animals because plants are mainly composed of dead cells. Plants are stationary and don't require energy to perform activities when compared to humans animals.",
+            "justification": "The student gives two correct reasons: presence of many dead cells and that plants do not move, so low energy requirement."
+          },
+          {
+            "id": "c2",
+            "score": 1.0,
+            "evidence": "Phloem is a vascular tissue mainly composed of living cells. It helps in translocation of food. This means to transport of soluble products of photosynthesis, amino acids and hormones in plants.",
+            "justification": "The student clearly states that phloem transports soluble products of photosynthesis and amino acids, matching the rubric."
+          }
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "evidence": "The transport system in plants is relatively slower than in animals because plants are mainly composed of dead cells. Plants are stationary and don't require energy to perform activities when compared to humans animals.",
+                "justification": "The student gives two correct reasons: presence of many dead cells and that plants do not move, so low energy requirement."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "evidence": "Phloem is a vascular tissue mainly composed of living cells. It helps in translocation of food. This means to transport of soluble products of photosynthesis, amino acids and hormones in plants.",
+                "justification": "The student clearly states that phloem transports soluble products of photosynthesis and amino acids, matching the rubric."
+              }
+            ],
+            "summary": "I agree fully with the grading: the student met both criteria as per the rubric. No deductions or corrections are needed.",
+            "feedback": [],
+            "agreement": 1.0,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "reason": "The student gives two correct reasons: (1) plants mainly composed of dead cells; (2) plants are stationary and don't require as much energy as animals. Both align with the rubric's expectations."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "reason": "The student says phloem 'helps in translocation of food...to transport of soluble products of photosynthesis, amino acids and hormones.' This covers the rubric requirement for mention of soluble photosynthates and amino acids. The answer goes beyond, but this should not lead to deduction."
+              }
+            ],
+            "grader_total": 2.0,
+            "criteria_apart": [],
+            "evaluator_total": 2.0,
+            "effective_agreement": 1.0
+          }
+        ],
+        "flags": [],
+        "escalation_reason": null,
+        "feedback": "Good explanation of why plant transport is slower, mentioning dead cells and low energy needs. Also well done in describing phloem's role in transporting food substances. Try to keep answers concise and focused on the question next time.",
+        "rubric_spec_id": "7b69a112-8611-48ca-9626-fb2f95084fea",
+        "transcription_id": "9a25afd3-9796-4def-ad9e-83466ac57670",
+        "grader_model": "gpt-4.1-mini-2025-04-14",
+        "evaluator_model": "gpt-4.1-2025-04-14",
+        "fallback_used": false,
+        "override_reason": null,
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.218870Z"
+      },
+      "previous_grades": []
+    },
+    {
+      "question_id": "886bf8ce-9ca3-47a2-af3c-327f3aa27e55",
+      "label": "25",
+      "printed_label": "25",
+      "text": "A student performs the following experiment in his school laboratory.\nList two observations to justify that in this experiment a chemical change \nhas taken place.",
+      "max_score": 2.0,
+      "choice_group": null,
+      "rubric_spec": {
+        "id": "057a3bef-2f4c-4daa-8575-e78d218af0bf",
+        "version": 1,
+        "status": "ready",
+        "validation_errors": [],
+        "spec": {
+          "kind": "criteria",
+          "derived": false,
+          "subject": "science",
+          "criteria": [
+            {
+              "id": "c1",
+              "notes": null,
+              "points": 1.0,
+              "description": "States the evolution of gas as an observation indicating a chemical change",
+              "expected_answer": null
+            },
+            {
+              "id": "c2",
+              "notes": null,
+              "points": 1.0,
+              "description": "States a change or rise in temperature as an observation indicating a chemical change",
+              "expected_answer": null
+            }
+          ],
+          "grading_notes": null,
+          "criteria_count": 2,
+          "parser_warnings": [],
+          "spec_schema_version": 1
+        }
+      },
+      "transcription": {
+        "id": "5059b132-8dd6-40c2-980b-d3cb88f1c491",
+        "question_id": "886bf8ce-9ca3-47a2-af3c-327f3aa27e55",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "text": "For a chemical change to occur there has to be-\ni) evolution of gas\nii) change in temperature\niii) change in odour\niv) formation of precipitate\nHere,\nZn + H2SO4 -> ZnSO4 + H2↑\nHere 2 observations are seen-\ni) Evolution of gas (H2)\nii) Change in temperature/since this is an exothermic reaction.",
+        "segments": [
+          {
+            "page": 8,
+            "text": "For a chemical change to occur there has to be-\ni) evolution of gas\nii) change in temperature\niii) change in odour\niv) formation of precipitate",
+            "label": "25",
+            "confidence": 1.0,
+            "crossed_out": false,
+            "starts_answer": true,
+            "label_as_written": "Q.25"
+          },
+          {
+            "page": 8,
+            "text": "Here,\nZn + H2SO4 -> ZnSO4 + H2↑",
+            "label": "25",
+            "confidence": 1.0,
+            "crossed_out": false,
+            "starts_answer": false,
+            "label_as_written": "Q.25"
+          },
+          {
+            "page": 8,
+            "text": "Here 2 observations are seen-\ni) Evolution of gas (H2)\nii) Change in temperature/since this is an exothermic reaction.",
+            "label": "25",
+            "confidence": 1.0,
+            "crossed_out": false,
+            "starts_answer": false,
+            "label_as_written": "Q.25"
+          }
+        ],
+        "confidence": 1.0,
+        "flags": [],
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.219825Z"
+      },
+      "grade": {
+        "id": "f3e9ad42-688e-4a47-b8f2-1ef843a50df8",
+        "question_id": "886bf8ce-9ca3-47a2-af3c-327f3aa27e55",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "status": "graded",
+        "score": 2.0,
+        "max_score": 2.0,
+        "counted": true,
+        "criteria": [
+          {
+            "id": "c1",
+            "score": 1.0,
+            "evidence": "i) Evolution of gas (H2)",
+            "justification": "The student clearly states the evolution of gas as an observation indicating a chemical change."
+          },
+          {
+            "id": "c2",
+            "score": 1.0,
+            "evidence": "ii) Change in temperature/since this is an exothermic reaction.",
+            "justification": "The student also states a change in temperature, specifying it is an exothermic reaction, indicating a chemical change."
+          }
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "evidence": "i) Evolution of gas (H2)",
+                "justification": "The student clearly states the evolution of gas as an observation indicating a chemical change."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "evidence": "ii) Change in temperature/since this is an exothermic reaction.",
+                "justification": "The student also states a change in temperature, specifying it is an exothermic reaction, indicating a chemical change."
+              }
+            ],
+            "summary": "I fully agree with the grader's assessment. The student provided the two required observations (evolution of gas, change in temperature) and referred to them in the context of the experiment. No disagreement on rubric application or interpretation.",
+            "feedback": [],
+            "agreement": 1.0,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "reason": "The student explicitly lists 'Evolution of gas (H2)' as an observation and relates it to the reaction, directly satisfying the criterion."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "reason": "The student clearly states a 'Change in temperature/since this is an exothermic reaction,' which is the required observation per the rubric."
+              }
+            ],
+            "grader_total": 2.0,
+            "criteria_apart": [],
+            "evaluator_total": 2.0,
+            "effective_agreement": 1.0
+          }
+        ],
+        "flags": [],
+        "escalation_reason": null,
+        "feedback": "Well done! You correctly identified two observations that show a chemical change: the evolution of gas and the change in temperature. Next time, try to focus your answer more directly on the observations from the experiment.",
+        "rubric_spec_id": "057a3bef-2f4c-4daa-8575-e78d218af0bf",
+        "transcription_id": "5059b132-8dd6-40c2-980b-d3cb88f1c491",
+        "grader_model": "gpt-4.1-mini-2025-04-14",
+        "evaluator_model": "gpt-4.1-2025-04-14",
+        "fallback_used": false,
+        "override_reason": null,
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.220598Z"
+      },
+      "previous_grades": []
+    },
+    {
+      "question_id": "8603940a-9181-430b-99fa-3e3b0cf64b63",
+      "label": "35(a)",
+      "printed_label": "35(a)",
+      "text": "(a) (i) Write the functions of the following parts of human female \nreproductive system :\n(I) Ovary \n(II) Fallopian tube \n(III) Uterus \n(ii) State briefly two contraceptive methods used by human \nmales.",
+      "max_score": 5.0,
+      "choice_group": "g35",
+      "rubric_spec": {
+        "id": "eb7b03b7-67ef-4e44-81a3-f492788dcb6a",
+        "version": 5,
+        "status": "ready",
+        "validation_errors": [],
+        "spec": {
+          "kind": "criteria",
+          "derived": false,
+          "subject": "science",
+          "criteria": [
+            {
+              "id": "c1",
+              "notes": null,
+              "points": 1.0,
+              "description": "States that the ovary produces the female gamete (egg) and female hormones (oestrogen)",
+              "expected_answer": null
+            },
+            {
+              "id": "c2",
+              "notes": null,
+              "points": 1.0,
+              "description": "States that the fallopian tube is the site of fertilization",
+              "expected_answer": null
+            },
+            {
+              "id": "c3",
+              "notes": null,
+              "points": 1.0,
+              "description": "States that the uterus is the site of implantation and embryonic development",
+              "expected_answer": null
+            },
+            {
+              "id": "c4",
+              "notes": null,
+              "points": 1.0,
+              "description": "Names mechanical barrier (condoms) as a male contraceptive method",
+              "expected_answer": null
+            },
+            {
+              "id": "c5",
+              "notes": null,
+              "points": 1.0,
+              "description": "Names surgical method (vasectomy) as a male contraceptive method",
+              "expected_answer": null
+            }
+          ],
+          "grading_notes": null,
+          "criteria_count": 5,
+          "parser_warnings": [],
+          "spec_schema_version": 1
+        }
+      },
+      "transcription": {
+        "id": "b6610bb5-9d23-4de2-add2-184202dcc37b",
+        "question_id": "8603940a-9181-430b-99fa-3e3b0cf64b63",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "text": "(I) Ovary →\nProduces female gametes ,eggs which take part in the the process of fertilisation.\n\n(II) Fallopian tube →\nIt is the site of fertilisation of female gamete (egg) and male gamete (sperm).\n\n(III) Uterus →\nProvides nutrients for nourishment of foetus. It has thick and spongy lining which provides necessary conditions if egg is fertilised. During pregnancy Placenta develops which helps to provide nutrients from mother's body and removal of waste from body of foetus.\nTwo contraceptive methods used by males ->\n(a) Mechanical barriers - condoms\n-> These help to prevent sperm transfer to female body and prevent transmission of STD's (Sexually transmitted diseases)",
+        "segments": [
+          {
+            "page": 23,
+            "text": "(I) Ovary →\nProduces female gametes ,eggs which take part in the the process of fertilisation.\n\n(II) Fallopian tube →\nIt is the site of fertilisation of female gamete (egg) and male gamete (sperm).\n\n(III) Uterus →\nProvides nutrients for nourishment of foetus. It has thick and spongy lining which provides necessary conditions if egg is fertilised. During pregnancy Placenta develops which helps to provide nutrients from mother's body and removal of waste from body of foetus.",
+            "label": "35(a)",
+            "confidence": 0.98,
+            "crossed_out": false,
+            "starts_answer": true,
+            "label_as_written": "Q.35) (i)"
+          },
+          {
+            "page": 24,
+            "text": "Two contraceptive methods used by males ->\n(a) Mechanical barriers - condoms\n-> These help to prevent sperm transfer to female body and prevent transmission of STD's (Sexually transmitted diseases)",
+            "label": "35(a)",
+            "confidence": 0.95,
+            "crossed_out": false,
+            "starts_answer": true,
+            "label_as_written": "(ii)"
+          },
+          {
+            "page": 24,
+            "text": "(b) Surgical method -> vasectomy\n-> In this the vas deferens of male is blocked, which prevents sperm transfer",
+            "label": "35(a)",
+            "confidence": 0.95,
+            "crossed_out": true,
+            "starts_answer": false,
+            "label_as_written": "(ii)"
+          }
+        ],
+        "confidence": 0.95,
+        "flags": [
+          "multiple_attempts"
+        ],
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.242493Z"
+      },
+      "grade": {
+        "id": "58ea95b4-bb2b-49da-be99-153e02a670a7",
+        "question_id": "8603940a-9181-430b-99fa-3e3b0cf64b63",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "status": "escalated",
+        "score": 4.0,
+        "max_score": 5.0,
+        "counted": true,
+        "criteria": [
+          {
+            "id": "c1",
+            "score": 1.0,
+            "evidence": "Produces female gametes ,eggs which take part in the the process of fertilisation.",
+            "justification": "States that the ovary produces female gametes (eggs), fulfilling the main function required in the rubric."
+          },
+          {
+            "id": "c2",
+            "score": 1.0,
+            "evidence": "It is the site of fertilisation of female gamete (egg) and male gamete (sperm).",
+            "justification": "Clearly states the fallopian tube is the site of fertilization."
+          },
+          {
+            "id": "c3",
+            "score": 1.0,
+            "evidence": "Provides nutrients for nourishment of foetus. It has thick and spongy lining which provides necessary conditions if egg is fertilised. During pregnancy Placenta develops which helps to provide nutrients from mother's body and removal of waste from body of foetus.",
+            "justification": "Describes nourishment of fetus and conditions after fertilisation, indicating implantation and embryonic development clearly enough for full credit."
+          },
+          {
+            "id": "c4",
+            "score": 1.0,
+            "evidence": "Mechanical barriers - condoms",
+            "justification": "Names mechanical barrier (condoms) as a male contraceptive method."
+          },
+          {
+            "id": "c5",
+            "score": 0.0,
+            "evidence": "",
+            "justification": "Surgical method (vasectomy) is not mentioned; only mechanical contraceptive method described."
+          }
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "evidence": "Produces female gametes ,eggs which take part in the the process of fertilisation.",
+                "justification": "States that the ovary produces female gametes (eggs), fulfilling the main function required in the rubric."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "evidence": "It is the site of fertilisation of female gamete (egg) and male gamete (sperm).",
+                "justification": "Clearly states the fallopian tube is the site of fertilization."
+              },
+              {
+                "id": "c3",
+                "score": 0.0,
+                "evidence": "",
+                "justification": "Answer describes nutrient provision and placenta function but does not explicitly state that uterus is the site of implantation and embryonic development."
+              },
+              {
+                "id": "c4",
+                "score": 1.0,
+                "evidence": "Mechanical barriers - condoms",
+                "justification": "Names mechanical barrier (condoms) as a male contraceptive method."
+              },
+              {
+                "id": "c5",
+                "score": 0.0,
+                "evidence": "",
+                "justification": "Surgical method (vasectomy) is not mentioned; only mechanical contraceptive method described."
+              }
+            ],
+            "replies": [
+              {
+                "decision": "accept",
+                "rationale": "The student's description of the uterus provides relevant functions related to embryonic development and implantation conditions, so partial credit is justified.",
+                "feedback_index": 0
+              }
+            ],
+            "summary": "Minor disagreement: partial credit should be awarded for c3 as the answer demonstrates some understanding of the role of the uterus in embryonic development, though not completely explicit. Other criteria are graded appropriately.",
+            "feedback": [
+              {
+                "point": "Awarded 0 to c3, but the answer provides partial credit-worthy information: describes the provision of nutrients for the foetus and conditions required for the fertilised egg, brings up placenta development, and references what happens if the egg is fertilised. The core concepts of supporting embryo development are present, even if 'site of implantation' is not explicitly stated. Partial credit (0.5) is reasonable.",
+                "criterion_id": "c3"
+              }
+            ],
+            "agreement": 0.9,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "reason": "Student states: 'Produces female gametes ,eggs which take part in the process of fertilisation.' This directly covers the main required function."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "reason": "Student states: 'It is the site of fertilisation of female gamete (egg) and male gamete (sperm).' Direct and correct."
+              },
+              {
+                "id": "c3",
+                "score": 0.5,
+                "reason": "The student gives a good description of the uterus's role in nourishment and conditions for embryo ('provides nutrients for nourishment of foetus ... if egg is fertilised ... Placenta develops'), but omits the explicit mention of implantation and does not clearly state that the uterus is the site of embryonic development. Partial understanding shown."
+              },
+              {
+                "id": "c4",
+                "score": 1.0,
+                "reason": "Student names: 'Mechanical barriers - condoms.' Sufficient."
+              },
+              {
+                "id": "c5",
+                "score": 0.0,
+                "reason": "Student does not mention any surgical method (vasectomy)."
+              }
+            ],
+            "grader_total": 3.0,
+            "criteria_apart": [
+              "c3"
+            ],
+            "evaluator_total": 3.5,
+            "effective_agreement": 0.79
+          },
+          {
+            "round": 1,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "evidence": "Produces female gametes ,eggs which take part in the the process of fertilisation.",
+                "justification": "States that the ovary produces female gametes (eggs), fulfilling the main function required in the rubric."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "evidence": "It is the site of fertilisation of female gamete (egg) and male gamete (sperm).",
+                "justification": "Clearly states the fallopian tube is the site of fertilization."
+              },
+              {
+                "id": "c3",
+                "score": 0.5,
+                "evidence": "Provides nutrients for nourishment of foetus. It has thick and spongy lining which provides necessary conditions if egg is fertilised. During pregnancy Placenta develops which helps to provide nutrients from mother's body and removal of waste from body of foetus.",
+                "justification": "Mentions nutrient provision for fetus and conditions for fertilisation, implying implantation and embryonic development though not explicitly stated."
+              },
+              {
+                "id": "c4",
+                "score": 1.0,
+                "evidence": "Mechanical barriers - condoms",
+                "justification": "Names mechanical barrier (condoms) as a male contraceptive method."
+              },
+              {
+                "id": "c5",
+                "score": 0.0,
+                "evidence": "",
+                "justification": "Surgical method (vasectomy) is not mentioned; only mechanical contraceptive method described."
+              }
+            ],
+            "replies": [
+              {
+                "decision": "accept",
+                "rationale": "The student's description includes key concepts of implantation and embryonic development. The rubric states to credit understanding, so awarding full marks is appropriate.",
+                "feedback_index": 0
+              }
+            ],
+            "summary": "I agree with most scores, but for c3 I believe the student's discussion of nourishment, necessary conditions, and placenta demonstrates full understanding of uterine functions required by the rubric, so should be given full marks on that point.",
+            "feedback": [
+              {
+                "point": "The answer describes both nourishment of foetus (embryonic development) and provides necessary conditions if egg is fertilised (site of implantation). While the precise term 'implantation' isn't used, the understanding is present and aligns with rubric expectations for full credit. I would award 1.0 rather than 0.5 points here.",
+                "criterion_id": "c3"
+              }
+            ],
+            "agreement": 0.9,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "reason": "Student explicitly says ovary produces female gametes (eggs) that take part in fertilisation. No mention of hormones, but rubric only requires the main point."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "reason": "Student clearly states the fallopian tube is the site of fertilisation of female and male gametes."
+              },
+              {
+                "id": "c3",
+                "score": 1.0,
+                "reason": "Student describes uterus as providing nourishment and conditions if the egg is fertilised, mentions placenta, nutrients, waste removal. This covers embryonic development and, via 'provides necessary conditions if egg is fertilised,' implies implantation. Acceptable for full credit as per rubric."
+              },
+              {
+                "id": "c4",
+                "score": 1.0,
+                "reason": "Student correctly lists condoms (mechanical barrier)."
+              },
+              {
+                "id": "c5",
+                "score": 0.0,
+                "reason": "No mention of surgical (vasectomy), only mechanical barrier given."
+              }
+            ],
+            "grader_total": 3.5,
+            "criteria_apart": [
+              "c3"
+            ],
+            "evaluator_total": 4.0,
+            "effective_agreement": 0.79
+          },
+          {
+            "round": 2,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "evidence": "Produces female gametes ,eggs which take part in the the process of fertilisation.",
+                "justification": "States that the ovary produces female gametes (eggs), fulfilling the main function required in the rubric."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "evidence": "It is the site of fertilisation of female gamete (egg) and male gamete (sperm).",
+                "justification": "Clearly states the fallopian tube is the site of fertilization."
+              },
+              {
+                "id": "c3",
+                "score": 1.0,
+                "evidence": "Provides nutrients for nourishment of foetus. It has thick and spongy lining which provides necessary conditions if egg is fertilised. During pregnancy Placenta develops which helps to provide nutrients from mother's body and removal of waste from body of foetus.",
+                "justification": "Describes nourishment of fetus and conditions after fertilisation, indicating implantation and embryonic development clearly enough for full credit."
+              },
+              {
+                "id": "c4",
+                "score": 1.0,
+                "evidence": "Mechanical barriers - condoms",
+                "justification": "Names mechanical barrier (condoms) as a male contraceptive method."
+              },
+              {
+                "id": "c5",
+                "score": 0.0,
+                "evidence": "",
+                "justification": "Surgical method (vasectomy) is not mentioned; only mechanical contraceptive method described."
+              }
+            ],
+            "summary": "I agree entirely with the grader's assessment. The student adequately addressed each part except for the second male contraceptive method (vasectomy), which was missing. The marks and justifications are well-aligned with the rubric and answer.",
+            "feedback": [],
+            "agreement": 1.0,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "reason": "The answer states that the ovary produces female gametes (eggs), which is the key point required by the rubric. Female hormone production (oestrogen) isn't mentioned, but rubric says 'and' not 'or,' however the main part is met, and this is standard for full credit unless strict insistence on both parts."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "reason": "The student wrote: 'It is the site of fertilisation of female gamete (egg) and male gamete (sperm).' This is clear and sufficient for the function required."
+              },
+              {
+                "id": "c3",
+                "score": 1.0,
+                "reason": "The answer explains: 'Provides nutrients for nourishment of foetus. It has thick and spongy lining which provides necessary conditions if egg is fertilised. During pregnancy Placenta develops...' This covers the main idea of the uterus being the site of implantation and embryonic development (nourishment by spongy lining, fetus develops, etc.), sufficient for credit."
+              },
+              {
+                "id": "c4",
+                "score": 1.0,
+                "reason": "Names mechanical barrier (condoms) as a male contraceptive method clearly in the answer."
+              },
+              {
+                "id": "c5",
+                "score": 0.0,
+                "reason": "No mention of surgical method (vasectomy). Only one method for males is named."
+              }
+            ],
+            "grader_total": 4.0,
+            "criteria_apart": [],
+            "evaluator_total": 4.0,
+            "effective_agreement": 1.0
+          }
+        ],
+        "flags": [
+          "multiple_attempts"
+        ],
+        "escalation_reason": "multiple_attempts",
+        "feedback": "Good job explaining the roles of the ovary and fallopian tube, and naming condoms as a male contraceptive method. For the uterus, you described important functions relating to embryo development and nutrient provision, which shows good understanding; next time, include the term 'site of implantation' to be clearer. Also, remember to mention the surgical contraceptive method vasectomy to earn full marks on male contraceptives.",
+        "rubric_spec_id": "eb7b03b7-67ef-4e44-81a3-f492788dcb6a",
+        "transcription_id": "b6610bb5-9d23-4de2-add2-184202dcc37b",
+        "grader_model": "gpt-4.1-mini-2025-04-14",
+        "evaluator_model": "gpt-4.1-2025-04-14",
+        "fallback_used": false,
+        "override_reason": null,
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.243356Z"
+      },
+      "previous_grades": []
+    },
+    {
+      "question_id": "6f96dfc2-3117-4b50-b414-6375f9a52094",
+      "label": "39(a)-(b)",
+      "printed_label": "39(a)-(b)",
+      "text": "The maintenance functions of all living organisms must go on even when \nthey are not doing anything particular. Even when we are just sitting in \na class or even asleep, this maintenance job has to go on. These \nmaintenance processes require energy to prevent damage and \nbreak-down of cells and tissues, which is obtained by the individual \norganism from the food prepared by the autotrophs, called producers.\n(a) Name and define the process by which green plants prepare food. 1\n(b) Write chemical equation involved in the above process.",
+      "max_score": 2.0,
+      "choice_group": null,
+      "rubric_spec": {
+        "id": "1f6ec0db-eaa8-4cb2-b0d7-a2b71b6d202c",
+        "version": 1,
+        "status": "ready",
+        "validation_errors": [],
+        "spec": {
+          "kind": "criteria",
+          "derived": false,
+          "subject": "science",
+          "criteria": [
+            {
+              "id": "c1",
+              "notes": "Full 1 mark for a correct definition; partial credit possible if definition is incomplete or partially correct, but rubric gives full mark only.",
+              "points": 1.0,
+              "description": "Names photosynthesis and defines it as the process by which green plants capture sunlight and convert it to chemical energy with the help of chlorophyll or as the process by which carbon dioxide and water are converted into carbohydrates in the presence of sunlight, chlorophyll, and water",
+              "expected_answer": "Photosynthesis"
+            },
+            {
+              "id": "c2",
+              "notes": "Marks for the points in order: ½, ½, 1. Check if equation is correct and balanced.",
+              "points": 1.0,
+              "description": "Writes the correct chemical equation for photosynthesis",
+              "expected_answer": "6CO2 + 6H2O → C6H12O6 + 6O2"
+            }
+          ],
+          "grading_notes": null,
+          "criteria_count": 2,
+          "parser_warnings": [
+            "The rubric's marks (½, ½, 1) add up to 2, but points per criteria were grouped as 1 and 1 to fit the question parts. Please verify point distribution reflects teacher's intent."
+          ],
+          "spec_schema_version": 1
+        }
+      },
+      "transcription": {
+        "id": "f000774e-53a9-42e6-9ff5-5aeed3edc43e",
+        "question_id": "6f96dfc2-3117-4b50-b414-6375f9a52094",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "text": "a) Photosynthesis is the process by which green plants prepare their own food.\nPhotosynthesis is the the process by which some green plants and bacteria prepare their own food by using inorganic substances like carbondioxide and water in presence of sunlight and chlorophyll to form glucose.\n6CO2 + 12H2O \\xrightarrow[sunlight]{chlorophyll} C6H12O6 + 6O2 + 6H2O\nglucose",
+        "segments": [
+          {
+            "page": 30,
+            "text": "a) Photosynthesis is the process by which green plants prepare their own food.\nPhotosynthesis is the the process by which some green plants and bacteria prepare their own food by using inorganic substances like carbondioxide and water in presence of sunlight and chlorophyll to form glucose.",
+            "label": "39(a)-(b)",
+            "confidence": 0.99,
+            "crossed_out": false,
+            "starts_answer": true,
+            "label_as_written": "p.39"
+          },
+          {
+            "page": 30,
+            "text": "6CO2 + 12H2O \\xrightarrow[sunlight]{chlorophyll} C6H12O6 + 6O2 + 6H2O\nglucose",
+            "label": "39(a)-(b)",
+            "confidence": 0.99,
+            "crossed_out": false,
+            "starts_answer": false,
+            "label_as_written": "(b)"
+          }
+        ],
+        "confidence": 0.99,
+        "flags": [],
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.259716Z"
+      },
+      "grade": {
+        "id": "773a7202-8cb9-4ece-933e-59aec53757b4",
+        "question_id": "6f96dfc2-3117-4b50-b414-6375f9a52094",
+        "run_id": "08dedb6d-1cfd-4b9b-95d8-7292038cc672",
+        "version": 1,
+        "source": "ai",
+        "status": "graded",
+        "score": 2.0,
+        "max_score": 2.0,
+        "counted": true,
+        "criteria": [
+          {
+            "id": "c1",
+            "score": 1.0,
+            "evidence": "Photosynthesis is the the process by which some green plants and bacteria prepare their own food by using inorganic substances like carbondioxide and water in presence of sunlight and chlorophyll to form glucose.",
+            "justification": "This is a correct and adequately detailed definition naming photosynthesis as the process by which green plants prepare food using carbon dioxide, water, sunlight, and chlorophyll to form glucose."
+          },
+          {
+            "id": "c2",
+            "score": 1.0,
+            "evidence": "6CO2 + 12H2O \\xrightarrow[sunlight]{chlorophyll} C6H12O6 + 6O2 + 6H2O",
+            "justification": "The student writes the chemical equation for photosynthesis that is balanced and includes all reactants and products correctly."
+          }
+        ],
+        "rounds": [
+          {
+            "round": 0,
+            "grader": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "evidence": "Photosynthesis is the the process by which some green plants and bacteria prepare their own food by using inorganic substances like carbondioxide and water in presence of sunlight and chlorophyll to form glucose.",
+                "justification": "This is a correct and adequately detailed definition naming photosynthesis as the process by which green plants prepare food using carbon dioxide, water, sunlight, and chlorophyll to form glucose."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "evidence": "6CO2 + 12H2O \\xrightarrow[sunlight]{chlorophyll} C6H12O6 + 6O2 + 6H2O",
+                "justification": "The student writes the chemical equation for photosynthesis that is balanced and includes all reactants and products correctly."
+              }
+            ],
+            "summary": "I agree fully with the grader's scoring and reasoning. The student answered both parts correctly and in sufficient detail.",
+            "feedback": [],
+            "agreement": 1.0,
+            "evaluator": [
+              {
+                "id": "c1",
+                "score": 1.0,
+                "reason": "The student correctly names photosynthesis and provides a definition that captures the conversion of inorganic substances (CO2 and water) into food (glucose) using sunlight and chlorophyll. The definition is sufficiently complete."
+              },
+              {
+                "id": "c2",
+                "score": 1.0,
+                "reason": "The chemical equation provided (6CO2 + 12H2O → C6H12O6 + 6O2 + 6H2O) is a correct, full representation of the process used in some textbooks and correctly balanced. Either the 6CO2+6H2O or 6CO2+12H2O versions are acceptable as long as balanced; water appears on both sides in this version, which is scientifically accurate."
+              }
+            ],
+            "grader_total": 2.0,
+            "criteria_apart": [],
+            "evaluator_total": 2.0,
+            "effective_agreement": 1.0
+          }
+        ],
+        "flags": [],
+        "escalation_reason": null,
+        "feedback": "Well done! You correctly named and defined photosynthesis and provided the correct balanced chemical equation.",
+        "rubric_spec_id": "1f6ec0db-eaa8-4cb2-b0d7-a2b71b6d202c",
+        "transcription_id": "f000774e-53a9-42e6-9ff5-5aeed3edc43e",
+        "grader_model": "gpt-4.1-mini-2025-04-14",
+        "evaluator_model": "gpt-4.1-2025-04-14",
+        "fallback_used": false,
+        "override_reason": null,
+        "is_current": true,
+        "created_by_membership_id": null,
+        "created_at": "2026-10-11T07:50:23.260598Z"
+      },
+      "previous_grades": []
+    }
+  ]
+}

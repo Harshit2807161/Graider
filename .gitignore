@@ -88,3 +88,8 @@ coverage.xml
 *.tmp
 *.temp
 *.bak
+
+# Marketing site (site/)
+site/node_modules/
+site/.next/
+site/out/

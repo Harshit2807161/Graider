@@ -1,0 +1,240 @@
+/* Copied from frontend/app/globals.css: keep the product tokens identical. When the product tokens
+   change, re-copy everything above the `site` section (see README). */
+:root {
+  /* Primary: Indigo */
+  --indigo-50: #eef2ff;
+  --indigo-100: #e0e7ff;
+  --indigo-200: #c7d2fe;
+  --indigo-300: #a5b4fc;
+  --indigo-400: #818cf8;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --indigo-700: #4338ca;
+  --indigo-800: #3730a3;
+  --indigo-900: #312e81;
+
+  /* Red */
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-200: #fecaca;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+
+  /* Neutral: Slate */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+
+  /* Semantic Colors */
+  --color-primary: var(--indigo-600);
+  --color-primary-hover: var(--indigo-700);
+  --color-background: var(--slate-50);
+  --color-surface: #ffffff;
+  --color-text-main: var(--slate-900);
+  --color-text-muted: var(--slate-500);
+  --color-border: var(--slate-200);
+  --color-error: #f43f5e;
+  --color-success: #10b981;
+
+  /* UI Component Variables */
+  --card: #ffffff;
+  --border: var(--slate-200);
+  --primary: var(--indigo-600);
+  --primary-light: var(--indigo-50);
+  --foreground: var(--slate-900);
+  --muted-foreground: var(--slate-500);
+  --secondary: var(--slate-50);
+  --background: #ffffff;
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* Amber (needs review), teal (second examiner) */
+  --amber-50: #fffbeb;
+  --amber-100: #fef3c7;
+  --amber-200: #fde68a;
+  --amber-500: #f59e0b;
+  --amber-700: #b45309;
+  --amber-800: #92400e;
+  --teal-50: #f0fdfa;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+
+  /* Submission and answer status: background/text pairs, AA contrast at 12px+ */
+  --status-pending-bg: var(--slate-100);
+  --status-pending-fg: var(--slate-600);
+  --status-processing-bg: #e0f2fe;
+  --status-processing-fg: #075985;
+  --status-graded-bg: #dcfce7;
+  --status-graded-fg: #166534;
+  --status-review-bg: var(--amber-100);
+  --status-review-fg: var(--amber-800);
+  --status-approved-bg: #ccfbf1;
+  --status-approved-fg: #115e59;
+  --status-published-bg: #ede9fe;
+  --status-published-fg: #5b21b6;
+  --status-failed-bg: var(--red-100);
+  --status-failed-fg: #991b1b;
+
+  /* Review screen */
+  --evidence-bg: #fef08a;          /* highlighted quotes in a transcript */
+  --grader-color: var(--indigo-600);
+  --evaluator-color: var(--teal-700);
+
+  /* Type scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Spacing (4px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);
+
+  /* Aliases the class and roster components were written against */
+  --text-primary: var(--slate-900);
+  --text-secondary: var(--slate-600);
+  --text-tertiary: var(--slate-500);
+  --bg-secondary: var(--slate-50);
+  --border-light: var(--slate-100);
+  --primary-100: var(--indigo-100);
+  --primary-rgb: 79, 70, 229;
+  --transition: all 0.2s ease;
+
+  /* Colours used on top of others */
+  --color-on-primary: #ffffff;
+  --color-error-hover: #e11d48;
+  --color-error-ring: #ffe4e6;
+  --overlay-scrim: rgba(15, 23, 42, 0.45);
+  --hover-overlay: rgba(15, 23, 42, 0.06);
+  --on-primary-subtle: rgba(255, 255, 255, 0.2);
+
+  /* Layers: top bar 40, drawer scrim 50, drawer 60, toasts 900, dialogs 1000, skip link 2000 */
+  --z-topbar: 40;
+  --z-drawer: 60;
+  --z-toast: 900;
+  --z-modal: 1000;
+
+  /* Elevation and motion */
+  --shadow-card-hover: 0 10px 25px -5px rgba(15, 23, 42, 0.06);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Measurements */
+  --radius: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-tile: 0.75rem;  /* icon tiles, inputs in dialogs */
+  --text-title: 1.875rem;  /* page titles */
+  --header-height: 4rem;
+  --sidebar-width: 16rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--indigo-600);
+  outline-offset: 2px;
+}
+
+/* Visible to screen readers only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Below 1024px a sticky top bar sits over the page: keep scrolled-to and focused things below it */
+@media (max-width: 1023px) {
+  html {
+    scroll-padding-top: 4.5rem;
+  }
+}
+
+/* Phones zoom into fields smaller than 16px; keep form text at 16px there */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ---- site: marketing-only tokens ----
+   Left empty on purpose; the design pass adds them here (hero scale, section spacing, etc.).
+   Never redefine a product token above; add new names instead. */
+:root {
+  /* TODO: marketing tokens */
+}
+
+/* Skip link: off screen until focused */
+.skip-link {
+  position: absolute;
+  left: var(--space-2, 0.5rem);
+  top: -4rem;
+  z-index: 100;
+  padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+  border-radius: var(--radius);
+  background-color: var(--primary);
+  color: var(--color-surface);
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: var(--space-2, 0.5rem);
+}
