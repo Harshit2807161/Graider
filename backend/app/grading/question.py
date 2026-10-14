@@ -22,7 +22,7 @@ from app.grading.checks import (
     total,
 )
 from app.grading.sampling import spot_check
-from app.grading.schemas import grade_schema, review_schema, revision_schema
+from app.grading.schemas import PAGE_INVENTORY_MISMATCH, grade_schema, review_schema, revision_schema
 from app.grading.stitch import StitchedAnswer
 from app.llm.config import get_llm_settings
 from app.llm.router import get_router
@@ -234,6 +234,8 @@ async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSett
         return outcome.escalate(EscalationReason.MULTIPLE_ATTEMPTS)
     if rubric_expects_drawing(q.spec):
         return outcome.escalate(EscalationReason.DRAWING_EXPECTED)
+    if PAGE_INVENTORY_MISMATCH in q.answer.flags:
+        return outcome.escalate(EscalationReason.PAGE_INVENTORY_MISMATCH)
     confidence = q.answer.confidence
     if confidence is not None and confidence < settings.GRADING_OCR_CONFIDENCE_THRESHOLD:
         return outcome.escalate(EscalationReason.LOW_OCR_CONFIDENCE)

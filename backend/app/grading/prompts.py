@@ -46,6 +46,9 @@ boxed or underlined matter most, so never stop early.
 text and keep the rest; do not mark the segment crossed_out.
 - crossed_out: true only for a whole block the student struck out entirely (still transcribe it).
 - confidence: how sure you are of the reading, 0 to 1. Lower it for unclear handwriting.
+- inventory: before transcribing, list every question the student answers on this page \
+(labels_seen, from the list) and count the drawings, diagrams, graphs and figures the student drew \
+(drawings). Every question you list needs a segment and every drawing a bracketed description.
 - A page that starts with a bare sub-part such as "(b)" or "(ii)" continues the most recent question \
 (for example 2(a) then "(b)" is 2(b)): label it with that question's part, not unassigned.
 - Printed booklet or page numbers (in a corner, header or footer) are not question numbers.

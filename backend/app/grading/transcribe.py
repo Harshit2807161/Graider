@@ -7,9 +7,36 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.grading import prompts
-from app.grading.schemas import page_answers_schema
+from app.grading.schemas import UNASSIGNED, page_answers_schema
 from app.llm.router import get_router
 from app.llm.types import CallContext, ImagePart, LLMRequest, Role, TextPart
+
+
+_DRAWING = re.compile(r"\[[^\]]*(diagram|drawing|figure|graph|sketch|plot|chart|table|map|circuit)", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class PageCheck:
+    """What the page's inventory listed that the segments don't account for."""
+
+    missing_labels: tuple[str, ...]
+    undescribed_drawings: bool
+
+    @property
+    def mismatch(self) -> bool:
+        return bool(self.missing_labels) or self.undescribed_drawings
+
+
+def check_inventory(result: dict[str, Any]) -> PageCheck:
+    """Compare the reader's own inventory of the page with the segments it produced: a question it saw
+    with no segment, or drawings it counted with no bracketed description, means part of the page was
+    skipped."""
+    inventory = result.get("inventory") or {"labels_seen": [], "drawings": 0}
+    segments = result.get("segments", [])
+    labelled = {s["label"] for s in segments if s["label"] != UNASSIGNED}
+    missing = tuple(label for label in dict.fromkeys(inventory["labels_seen"]) if label not in labelled)
+    described = sum(len(_DRAWING.findall(s["text"])) for s in segments)
+    return PageCheck(missing, inventory["drawings"] > described)
 
 
 @dataclass(frozen=True)

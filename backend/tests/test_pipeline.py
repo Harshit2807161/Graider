@@ -62,7 +62,8 @@ def segment(label, text, starts=True, crossed=False, confidence=0.9):
 
 
 def page(*segments, kind="answers"):
-    return {"page_kind": kind, "has_handwriting": True, "segments": list(segments)}
+    return {"page_kind": kind, "has_handwriting": True, "segments": list(segments),
+            "inventory": {"labels_seen": [], "drawings": 0}}
 
 
 async def test_grades_each_question_and_saves_versioned_records(fake_llm, db, school, tmp_path):

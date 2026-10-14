@@ -116,7 +116,8 @@ class FakeInvoker:
         first_page = "This is page 1 of" in FakeInvoker.prompt_of(req)
         return {"page_kind": "answers", "has_handwriting": True, "segments": [
             {"label": label, "label_as_written": label, "text": f"student answer for {label}", "starts_answer": True,
-             "crossed_out": False, "confidence": 0.9} for label in labels] if first_page else []}
+             "crossed_out": False, "confidence": 0.9} for label in labels] if first_page else [],
+            "inventory": {"labels_seen": labels if first_page else [], "drawings": 0}}
 
     @staticmethod
     def _default_grade_answer(prompt: str) -> dict:
