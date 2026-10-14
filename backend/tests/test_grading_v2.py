@@ -319,6 +319,12 @@ async def test_a_page_inventory_mismatch_keeps_the_score_but_escalates(fake_llm)
     assert outcome.flags == ["page_inventory_mismatch"]
 
 
+async def test_an_unrelated_page_flag_does_not_escalate_as_an_inventory_mismatch(fake_llm):
+    outcome = await grade_question(question(page_flags=["some_other_flag"]), uuid4())
+    assert outcome.status == "graded" and outcome.escalation_reason is None and outcome.score == 4
+    assert outcome.flags == ["some_other_flag"]
+
+
 async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, monkeypatch):
     from app.llm.config import get_llm_settings
     from app.llm.types import LLMTransportError
