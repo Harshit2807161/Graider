@@ -26,6 +26,7 @@
 
 .md { max-width: 34rem; }
 .lg { max-width: 48rem; }
+.xl { max-width: 76rem; }
 
 @keyframes fade {
     from { opacity: 0; }

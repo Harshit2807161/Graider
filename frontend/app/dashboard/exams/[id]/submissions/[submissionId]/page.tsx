@@ -578,6 +578,7 @@ export default function SubmissionReviewPage() {
             {transcriptQ && (
                 <TranscriptDialog key={transcriptQ.question_id} q={transcriptQ} approved={status === "APPROVED"}
                                   unplaced={review.unassigned_segments}
+                                  submissionId={submissionId} pages={review.pages} currentPage={page}
                                   onClose={() => setTranscriptQ(null)}
                                   onSubmit={(text, reason) => saveTranscript(transcriptQ, text, reason)} />
             )}
