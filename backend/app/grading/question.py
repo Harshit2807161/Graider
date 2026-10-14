@@ -201,7 +201,7 @@ async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSett
 
     outcome.criteria, outcome.feedback, outcome.score = grading.criteria, grading.feedback, total(grading.criteria)
     outcome.flags = list(q.answer.flags)
-    if q.answer.flags:
+    if q.answer.starts > 1:
         return outcome.escalate(EscalationReason.MULTIPLE_ATTEMPTS)
     confidence = q.answer.confidence
     if confidence is not None and confidence < settings.GRADING_OCR_CONFIDENCE_THRESHOLD:
