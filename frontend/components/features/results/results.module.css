@@ -377,3 +377,62 @@
         padding: var(--space-4);
     }
 }
+
+/* Printing: a plain black-on-white copy of the result, each answer-sheet page on its own sheet */
+.printOnly,
+.printPages {
+    display: none;
+}
+
+@media print {
+    .noPrint,
+    .page nav,
+    .page button,
+    .sheet {
+        display: none !important;
+    }
+
+    .printOnly {
+        display: block;
+        font-size: 12pt;
+        font-weight: 600;
+        color: #000;
+    }
+
+    .page,
+    .page * {
+        color: #000 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+    }
+
+    .page {
+        gap: 12pt;
+    }
+
+    .layout {
+        display: block;
+    }
+
+    .answer {
+        break-inside: avoid;
+        border: 1px solid #000 !important;
+    }
+
+    .bar {
+        display: none;
+    }
+
+    .printPages {
+        display: block;
+    }
+
+    .printPage {
+        display: block;
+        width: 100%;
+        max-height: 95vh;
+        object-fit: contain;
+        break-before: page;
+        page-break-before: always;
+    }
+}

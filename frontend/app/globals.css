@@ -237,3 +237,21 @@ button {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: none; }
 }
+
+/* Print: hide the portal chrome (sidebar, mobile top bar); pages style their own print layout */
+@media print {
+    #app-sidebar,
+    header[class*="topbar"],
+    [class*="skipLink"] {
+        display: none !important;
+    }
+
+    #main-content {
+        margin-left: 0 !important;
+    }
+
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+}

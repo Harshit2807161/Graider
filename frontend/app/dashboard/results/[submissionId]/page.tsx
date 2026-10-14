@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { MessageSquareText } from "lucide-react";
+import { MessageSquareText, Printer } from "lucide-react";
 import ButtonLink from "@/components/common/ButtonLink";
 import ErrorBanner from "@/components/common/ErrorBanner";
 import PageHeader from "@/components/common/PageHeader";
 import { useTabTitle } from "@/components/common/useTabTitle";
+import Button from "@/components/ui/Button";
 import PageViewer from "@/components/features/review/PageViewer";
 import styles from "@/components/features/results/results.module.css";
-import { getErrorMessage } from "@/lib/api";
+import { api, getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { reviewService } from "@/services/review.service";
 import { resultsService } from "@/services/results.service";
 import { PageInfo } from "@/types/review.types";
 import { StudentResult } from "@/types/results.types";
@@ -45,6 +47,32 @@ export default function ResultPage() {
         };
     }, [submissionId, attempt]);
     const load = () => setAttempt((n) => n + 1);
+
+    // Print only: the student's name, and every page image (the screen viewer shows one at a time)
+    const [studentName, setStudentName] = useState<string | null>(null);
+    const [printImages, setPrintImages] = useState<string[]>([]);
+    const pageCount = result?.pages ?? 0;
+    useEffect(() => {
+        api.get("/users/me")
+            .then((r) => setStudentName(r.data?.full_name || r.data?.email || null))
+            .catch(() => setStudentName(null));
+    }, []);
+    useEffect(() => {
+        if (!pageCount) return;
+        let cancelled = false;
+        const made: string[] = [];
+        Promise.all(Array.from({ length: pageCount }, (_, i) =>
+            reviewService.getPageImage(submissionId, i + 1).catch(() => ""),
+        )).then((urls) => {
+            made.push(...urls);
+            if (cancelled) urls.forEach((u) => u && URL.revokeObjectURL(u));
+            else setPrintImages(urls);
+        });
+        return () => {
+            cancelled = true;
+            made.forEach((u) => u && URL.revokeObjectURL(u));
+        };
+    }, [submissionId, pageCount]);
 
     useTabTitle(result?.exam_name ? `${result.exam_name} · Gr8r` : null, "My results · Gr8r");
 
@@ -90,7 +118,14 @@ export default function ResultPage() {
     return (
         <div className={styles.page}>
             <PageHeader title={result.exam_name ?? "My result"} breadcrumbs={[...crumbs, { label: result.exam_name ?? "Result" }]}
-                        subtitle={published ? `Published ${published}` : undefined} />
+                        subtitle={published ? `Published ${published}` : undefined}
+                        actions={<Button variant="outline" icon={<Printer size={16} aria-hidden="true" />}
+                                         onClick={() => window.print()} className={styles.noPrint}>Print</Button>} />
+
+            <p className={styles.printOnly}>
+                {result.exam_name ?? "Result"}{studentName ? ` · ${studentName}` : ""}
+                {" · Total "}{fmt(result.total_score)} / {fmt(result.max_score)}
+            </p>
 
             <section className={styles.summary} aria-label="Your total">
                 <div>
@@ -153,6 +188,15 @@ export default function ResultPage() {
                     </section>
                 )}
             </div>
+
+            {printImages.some(Boolean) && (
+                <div className={styles.printPages} aria-hidden="true">
+                    {printImages.map((u, i) => u && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={u} alt="" className={styles.printPage} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
