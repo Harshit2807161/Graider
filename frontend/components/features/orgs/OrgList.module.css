@@ -34,7 +34,7 @@
 .skeletonLineShort {
     display: block;
     background-color: var(--slate-100);
-    animation: pulse 1.4s ease-in-out infinite;
+    animation:global(gr-pulse-soft) 1.4s ease-in-out infinite;
 }
 
 .skeletonTile {
@@ -62,10 +62,6 @@
     height: 0.875rem;
     width: 35%;
     border-radius: var(--radius-sm);
-}
-
-@keyframes pulse {
-    50% { opacity: 0.55; }
 }
 
 /* ===== Empty: dashed card + round icon + one action (same measurements as Exams and the review queue) ===== */

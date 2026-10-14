@@ -148,7 +148,7 @@
 .skeletonLine {
     display: block;
     background-color: var(--slate-100);
-    animation: pulse 1.4s ease-in-out infinite;
+    animation:global(gr-pulse-soft) 1.4s ease-in-out infinite;
 }
 
 .skeletonAvatar {
@@ -161,10 +161,6 @@
     width: 45%;
     height: 0.875rem;
     border-radius: var(--radius-sm);
-}
-
-@keyframes pulse {
-    50% { opacity: 0.55; }
 }
 
 /* ===== Empty / error ===== */

@@ -495,12 +495,7 @@
     border-radius: var(--radius);
     background: linear-gradient(90deg, var(--slate-100) 25%, var(--slate-50) 50%, var(--slate-100) 75%);
     background-size: 200% 100%;
-    animation: shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-    from { background-position: 200% 0; }
-    to { background-position: -200% 0; }
+    animation:global(gr-shimmer) 1.4s ease-in-out infinite;
 }
 
 .skeletonCard {
@@ -510,9 +505,7 @@
     padding: var(--space-5) var(--space-6);
 }
 
-.spin { animation: spin 1.2s linear infinite; }
-
-@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation:global(gr-spin) 1.2s linear infinite; }
 
 /* ===== toast: the result of an action, wherever the teacher is on the page ===== */
 .toastRegion {

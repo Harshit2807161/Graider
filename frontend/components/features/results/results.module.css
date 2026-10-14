@@ -127,15 +127,11 @@
 .skeletonTitle {
     border-radius: var(--radius-lg);
     background-color: var(--slate-100);
-    animation: pulse 1.6s ease-in-out infinite;
+    animation:global(gr-pulse-soft) 1.6s ease-in-out infinite;
 }
 
 .skeleton { height: 11rem; }
 .skeletonTitle { height: 3rem; width: 55%; }
-
-@keyframes pulse {
-    50% { opacity: 0.55; }
-}
 
 .empty {
     display: flex;

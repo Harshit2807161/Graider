@@ -142,7 +142,7 @@
     display: block;
     border-radius: var(--radius-sm);
     background-color: var(--slate-100);
-    animation: pulse 1.4s ease-in-out infinite;
+    animation:global(gr-pulse-soft) 1.4s ease-in-out infinite;
 }
 
 .skeletonValue {
@@ -153,10 +153,6 @@
 .skeletonHint {
     width: 70%;
     height: 1.25rem;
-}
-
-@keyframes pulse {
-    50% { opacity: 0.55; }
 }
 
 .sideColumn {
