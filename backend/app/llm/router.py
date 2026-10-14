@@ -288,6 +288,7 @@ def set_invoker_factory(factory) -> None:
 def run_router(settings: Optional[LLMSettings] = None) -> Iterator[ModelRouter]:
     """One router (and one set of chat-model clients) per grading run."""
     router = ModelRouter(_invoker_factory(), settings)
+    warn_independence_once(router.settings)
     token = _current_router.set(router)
     try:
         yield router
@@ -313,5 +314,6 @@ def get_router() -> ModelRouter:
     current = _current_router.get()
     if current is not None:
         return current
-    warn_independence_once(get_llm_settings())
-    return ModelRouter(_invoker_factory())
+    router = ModelRouter(_invoker_factory())
+    warn_independence_once(router.settings)
+    return router

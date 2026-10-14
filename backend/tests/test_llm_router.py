@@ -250,3 +250,18 @@ def test_independence_warning_when_grader_and_evaluator_share_model(monkeypatch)
     router_mod.warn_independence_once(same)
     router_mod.warn_independence_once(same)
     assert len(calls) == 1
+
+
+def test_independence_warning_fires_through_run_router(monkeypatch, fake_llm):
+    from app.llm import router as router_mod
+
+    same = LLMSettings(grader=RoleConfig(**CLAUDE), evaluator=RoleConfig(**CLAUDE))
+    calls: list[dict] = []
+    monkeypatch.setattr(router_mod.logger, "warning", lambda event, **kw: calls.append(kw))
+    monkeypatch.setattr(router_mod, "_independence_checked", False)
+    with router_mod.run_router(same) as router:
+        assert router_mod.get_router() is router
+    assert len(calls) == 1
+    with router_mod.run_router(same):
+        router_mod.get_router()
+    assert len(calls) == 1
