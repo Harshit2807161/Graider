@@ -124,6 +124,7 @@ async def _grade(db: Session, submission: Submission, run: GradingRun, questions
     ready = {q.id: r if r is not None and r.status == RubricStatus.READY else None for q in questions
              for r in [records.get(q.id)]}
     infos = [QuestionInfo(question_id=q.id, label=label, text=q.question_text, max_score=q.max_score,
+                          printed_label=q.printed_label, choice_group=q.choice_group,
                           spec=RubricSpec.model_validate(ready[q.id].spec) if ready[q.id] else None)  # type: ignore[union-attr]
              for label, q in labelled]
 

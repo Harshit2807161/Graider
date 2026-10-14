@@ -273,3 +273,16 @@ async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, mon
 async def test_an_exhausted_budget_stops_the_run(fake_llm):
     with budget(1), pytest.raises(LLMBudgetExceeded):
         await grade_question(question(), uuid4())
+
+
+def test_transcribe_prompt_question_context() -> None:
+    from app.grading import prompts
+
+    long = "passage " * 200
+    out = prompts.transcribe_prompt([("2(a)", long, "Q.2 (a)", "g1"), ("2(b)", "Part b text")], 1, 2)
+    assert "- 2(a) (printed as Q.2 (a)) [choice group g1]: " in out and "- 2(b): Part b text" in out
+    assert "…" in out and len(out) < 1000
+    many = [(f"Q{i}", "x" * 900) for i in range(100)]
+    listing = prompts.question_listing(many)
+    assert len(listing) <= prompts.QUESTION_BLOCK_CAP + 100 and listing.count("\n") == 99
+    assert "bare sub-part" in prompts.TRANSCRIBE_SYSTEM
