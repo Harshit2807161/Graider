@@ -6,16 +6,18 @@ from fastapi.responses import JSONResponse
 import io
 import pandas as pd
 from pydantic import ValidationError
-from sqlmodel import Session
+from sqlmodel import Session, func, select
 
 from app import crud
 from app.api import deps
-from app.models.exam import Exam
+from app.models.exam import Exam, Submission
 from app.models.user import User
 from app.schemas.exam import (
     ExamCreate,
     ExamUpdate,
     ExamRead,
+    ExamSubmissionCounts,
+    ExamsSummary,
     ExamWithQuestions,
     GradingSettings,
     GradingSettingsUpdate,
@@ -24,8 +26,10 @@ from app.schemas.exam import (
     QuestionSync,
     StudentExamWithQuestions,
     StudentQuestionRead,
+    StatusCounts,
 )
-from app.core.constants import QuestionType
+from app.api.deps import STAFF_ROLES
+from app.core.constants import QuestionType, SubmissionStatus
 from app.models.base import utcnow
 from app.models.exam import Question
 from app.rubrics import service as rubric_service
@@ -149,6 +153,32 @@ def read_exams(
     response_model=ExamWithQuestions,
     responses={200: {"description": "Students get StudentExamWithQuestions (no rubric fields)"}},
 )
+@router.get("/summary", response_model=ExamsSummary)
+def read_exams_summary(
+    org_id: UUID,
+    db: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user),
+) -> ExamsSummary:
+    """Answer sheets of every exam in the org, counted by status (one GROUP BY)."""
+    deps.require_org_role(db, user=current_user, org_id=org_id, roles=STAFF_ROLES)
+    rows = db.exec(
+        select(Submission.exam_id, Submission.status, func.count())
+        .join(Exam, Exam.id == Submission.exam_id)
+        .where(Exam.org_id == org_id, Exam.deleted_at.is_(None), Submission.deleted_at.is_(None))
+        .group_by(Submission.exam_id, Submission.status)
+    ).all()
+    per_exam: dict[UUID, ExamSubmissionCounts] = {}
+    totals = StatusCounts()
+    for exam_id, status, count in rows:
+        counts = per_exam.setdefault(exam_id, ExamSubmissionCounts(exam_id=exam_id))
+        field = SubmissionStatus(status).value.lower()
+        for target in (counts, totals):
+            setattr(target, field, getattr(target, field) + count)
+            target.total += count
+    return ExamsSummary(exams=list(per_exam.values()), totals=totals)
+
+
+@router.get("/{exam_id}", response_model=ExamWithQuestions)
 def read_exam(
     *,
     db: Session = Depends(deps.get_session),

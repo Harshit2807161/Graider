@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { Exam, ExamCreate, Question, QuestionSync, Submission } from "../types/exam.types";
+import { Exam, ExamCreate, Question, ExamsSummary, QuestionSync, Submission } from "../types/exam.types";
 
 export const examService = {
     getExams: async (orgId: string, batchId?: string): Promise<Exam[]> => {
@@ -48,6 +48,11 @@ export const examService = {
         if (studentId) formData.append("student_id", studentId);
 
         const response = await api.post(`/exams/${examId}/submissions`, formData);
+        return response.data;
+    },
+
+    getSummary: async (orgId: string): Promise<ExamsSummary> => {
+        const response = await api.get("/exams/summary", { params: { org_id: orgId } });
         return response.data;
     },
 

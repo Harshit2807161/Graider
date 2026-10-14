@@ -202,3 +202,25 @@ class StudentResultSummary(BaseModel):
 class MyResults(BaseModel):
     results: List[StudentResultSummary] = []
     awaiting: int = 0  # the student's answer sheets that aren't published yet
+
+
+class StatusCounts(BaseModel):
+    """Answer sheets by status."""
+    pending: int = 0
+    processing: int = 0
+    graded: int = 0
+    needs_review: int = 0
+    approved: int = 0
+    published: int = 0
+    failed: int = 0
+    total: int = 0
+
+
+class ExamSubmissionCounts(StatusCounts):
+    exam_id: UUID
+
+
+class ExamsSummary(BaseModel):
+    """Answer-sheet counts for every exam of an org (exams without sheets are left out)."""
+    exams: List[ExamSubmissionCounts] = []
+    totals: StatusCounts = StatusCounts()

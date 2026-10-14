@@ -86,3 +86,24 @@ export interface QuestionCreate {
 export interface QuestionSync extends QuestionCreate {
     id?: string;
 }
+
+/** Answer sheets by status (GET /exams/summary) */
+export interface StatusCounts {
+    pending: number;
+    processing: number;
+    graded: number;
+    needs_review: number;
+    approved: number;
+    published: number;
+    failed: number;
+    total: number;
+}
+
+export interface ExamSubmissionCounts extends StatusCounts {
+    exam_id: string;
+}
+
+export interface ExamsSummary {
+    exams: ExamSubmissionCounts[];
+    totals: StatusCounts;
+}
