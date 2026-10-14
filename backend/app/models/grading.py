@@ -33,6 +33,7 @@ class EscalationReason:
     RUBRIC_INVALID = "rubric_invalid"
     LOW_OCR_CONFIDENCE = "low_ocr_confidence"
     MULTIPLE_ATTEMPTS = "multiple_attempts"
+    PAGE_INVENTORY_MISMATCH = "page_inventory_mismatch"
     CHECK_FAILED = "check_failed"
     EVALUATOR_DISAGREEMENT = "evaluator_disagreement"
     ALL_MODELS_FAILED = "all_models_failed"

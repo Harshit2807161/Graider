@@ -7,6 +7,7 @@ from app.grading.checks import check_grade, check_rejections, check_replies, eff
 from app.grading.choices import max_total, not_attempted, not_counted
 from app.grading.sampling import spot_check
 from app.grading.stitch import stitch
+from app.grading.transcribe import PageCheck, check_inventory
 from app.rubrics.schema import Criterion, RubricSpec
 from app.services.labels import ChoiceGroup
 
@@ -104,6 +105,33 @@ def test_two_separate_starts_are_flagged():
     assert stitched.answers["1"].flags == ["multiple_attempts"]
 
 
+def page_result(segments, labels_seen, drawings=0):
+    return {"segments": segments, "inventory": {"labels_seen": labels_seen, "drawings": drawings}}
+
+
+def test_page_inventory_matching_its_segments_passes():
+    result = page_result([seg("1", "2x = 10 [diagram: number line with a dot at 5]"), seg("2", "chlorophyll")],
+                         ["1", "2"], drawings=1)
+    assert check_inventory(result) == PageCheck((), False) and not check_inventory(result).mismatch
+
+
+def test_page_inventory_catches_skipped_answers_and_drawings():
+    check = check_inventory(page_result([seg("1", "2x = 10")], ["1", "2", "2"], drawings=1))
+    assert check.missing_labels == ("2",) and check.undescribed_drawings and check.mismatch
+    # an unassigned segment does not account for a question the reader said it saw
+    assert check_inventory(page_result([seg("unassigned", "x")], ["1"])).missing_labels == ("1",)
+
+
+def test_inventory_mismatch_flags_the_answers_it_touches():
+    pages = [(1, [seg("1", "2x = 10"), seg("unassigned", "x = 5", starts=False)]), (2, [seg("2", "part one")]),
+             (3, [seg("3", "fine")])]
+    checks = {1: PageCheck((), True), 2: PageCheck(("2", "4"), False), 3: PageCheck((), False)}
+    stitched = stitch(pages, checks)
+    assert stitched.answers["1"].flags == ["page_inventory_mismatch"]  # undescribed drawing on its page
+    assert stitched.answers["2"].flags == ["page_inventory_mismatch"]  # listed on page 2, no segment there
+    assert stitched.answers["3"].flags == [] and "4" not in stitched.answers
+
+
 # ===== choice groups and sampling =====
 
 GROUPS = [ChoiceGroup(id="g1", labels=["3", "4"], pick=1)]
@@ -141,8 +169,8 @@ from tests.conftest import FakeInvoker  # noqa: E402
 FULL = [("c1", 1.0, "2x = 10"), ("c2", 1.0, "x = 5"), ("c3", 2.0, "x = 5")]
 
 
-def question(spec=SPEC, text=ANSWER, confidence=0.9, starts=1):
-    answer = StitchedAnswer("1", parts=[text], starts=starts,
+def question(spec=SPEC, text=ANSWER, confidence=0.9, starts=1, page_flags=()):
+    answer = StitchedAnswer("1", parts=[text], starts=starts, page_flags=list(page_flags),
                             segments=[{"confidence": confidence, "crossed_out": False, "page": 1}])
     return QuestionInput(uuid4(), "1", "Solve 2x + 5 = 15.", 4.0, spec, answer if text else None)
 
@@ -249,6 +277,12 @@ async def test_low_confidence_repeated_attempts_and_spot_checks_keep_the_propose
     spot = await grade_question(question(), uuid4())
     assert [(o.escalation_reason, o.score) for o in (low, twice, spot)] == [
         ("low_ocr_confidence", 4), ("multiple_attempts", 4), ("spot_check", 4)]
+
+
+async def test_a_page_inventory_mismatch_keeps_the_score_but_escalates(fake_llm):
+    outcome = await grade_question(question(page_flags=["page_inventory_mismatch"]), uuid4())
+    assert (outcome.escalation_reason, outcome.score) == ("page_inventory_mismatch", 4)
+    assert outcome.flags == ["page_inventory_mismatch"]
 
 
 async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, monkeypatch):

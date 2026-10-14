@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.grading.choices import not_attempted
 from app.grading.question import ExamSettings, QuestionInput, QuestionOutcome, grade_question
 from app.grading.stitch import Stitched, stitch
-from app.grading.transcribe import SheetPage, transcribe_page
+from app.grading.transcribe import SheetPage, check_inventory, transcribe_page
 from app.services.labels import ChoiceGroup
 
 
@@ -51,7 +51,8 @@ async def read_page(piece: dict) -> dict:
 
 def stitch_pages(state: GradingState) -> dict:
     pages = sorted(state.get("page_results", []), key=lambda item: item[0])
-    stitched = stitch([(number, result["segments"]) for number, result in pages])
+    stitched = stitch([(number, result["segments"]) for number, result in pages],
+                      {number: check_inventory(result) for number, result in pages})
     return {"stitched": stitched, "skip": not_attempted(state["choice_groups"], set(stitched.answers))}
 
 

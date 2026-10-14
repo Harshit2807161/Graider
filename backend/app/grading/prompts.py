@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.rubrics.schema import RubricSpec
 
-PROMPT_VERSION = "grading-v2"
+PROMPT_VERSION = "grading-v2.1"
 
 # Subject personas: what a good examiner in each subject pays attention to (the rubric decides marks)
 PERSONAS = {
@@ -44,6 +44,9 @@ diagram briefly in brackets, e.g. [diagram: number line with a closed circle at 
 boxed or underlined matter most, so never stop early.
 - crossed_out: true for work the student struck out (still transcribe it).
 - confidence: how sure you are of the reading, 0 to 1. Lower it for unclear handwriting.
+- inventory: before transcribing, list every question the student answers on this page \
+(labels_seen, from the list) and count the drawings, diagrams, graphs and figures the student drew \
+(drawings). Every question you list needs a segment and every drawing a bracketed description.
 - A blank page has no segments."""
 
 

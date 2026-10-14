@@ -8,7 +8,8 @@ couldn't place go to an unassigned bucket for the teacher; they are never attach
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from app.grading.schemas import UNASSIGNED
+from app.grading.schemas import PAGE_INVENTORY_MISMATCH, UNASSIGNED
+from app.grading.transcribe import PageCheck
 
 
 @dataclass
@@ -17,6 +18,7 @@ class StitchedAnswer:
     parts: list[str] = field(default_factory=list)
     segments: list[dict[str, Any]] = field(default_factory=list)
     starts: int = 0
+    page_flags: list[str] = field(default_factory=list)
 
     @property
     def text(self) -> str:
@@ -29,7 +31,7 @@ class StitchedAnswer:
 
     @property
     def flags(self) -> list[str]:
-        return ["multiple_attempts"] if self.starts > 1 else []
+        return (["multiple_attempts"] if self.starts > 1 else []) + self.page_flags
 
 
 @dataclass
@@ -38,8 +40,9 @@ class Stitched:
     unassigned: list[dict[str, Any]]
 
 
-def stitch(pages: list[tuple[int, list[dict[str, Any]]]]) -> Stitched:
-    """pages: (page number, segments as the model returned them), in submission order."""
+def stitch(pages: list[tuple[int, list[dict[str, Any]]]], checks: Optional[dict[int, PageCheck]] = None) -> Stitched:
+    """pages: (page number, segments as the model returned them), in submission order. checks: per page,
+    what its inventory listed that the segments miss; the answers it touches are flagged for the teacher."""
     answers: dict[str, StitchedAnswer] = {}
     unassigned: list[dict[str, Any]] = []
     last: Optional[str] = None
@@ -61,4 +64,13 @@ def stitch(pages: list[tuple[int, list[dict[str, Any]]]]) -> Stitched:
                 answer.starts += 1
             answer.parts.append(segment["text"])
             last = label
+    for page_number, check in (checks or {}).items():
+        if not check.mismatch:
+            continue
+        touched = {label for label in check.missing_labels if label in answers}
+        if check.undescribed_drawings:
+            touched |= {a.label for a in answers.values() if any(s["page"] == page_number for s in a.segments)}
+        for label in touched:
+            if PAGE_INVENTORY_MISMATCH not in answers[label].page_flags:
+                answers[label].page_flags.append(PAGE_INVENTORY_MISMATCH)
     return Stitched(answers, unassigned)

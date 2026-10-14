@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
+PAGE_INVENTORY_MISMATCH = "page_inventory_mismatch"
 GRADER_FLAGS = ("illegible", "off_topic", "answers_another_question", "incomplete_transcription")
 UNASSIGNED = "unassigned"
 
@@ -24,11 +25,17 @@ def page_answers_schema(labels: list[str]) -> type[BaseModel]:
         crossed_out=(bool, Field(description="True if the student struck it out")),
         confidence=(float, Field(description="How sure you are of the transcription, 0 to 1")),
     )
+    inventory = _model(
+        "PageInventory",
+        labels_seen=(list[Literal[tuple(labels)]], Field(description="Every question the student answers on this page, from the list")),  # type: ignore[valid-type]
+        drawings=(int, Field(ge=0, description="How many drawings, diagrams, graphs or figures the student drew on this page")),
+    )
     return _model(
         "PageAnswers",
         page_kind=(Literal["answers", "mixed", "question_paper", "cover", "blank", "other"], ...),
         has_handwriting=(bool, ...),
         segments=(list[segment], ...),  # type: ignore[valid-type]
+        inventory=(inventory, Field(description="A check list of what is on the page, filled in before the segments")),
     )
 
 
