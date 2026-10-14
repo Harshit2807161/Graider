@@ -288,6 +288,7 @@ def set_invoker_factory(factory) -> None:
 def run_router(settings: Optional[LLMSettings] = None) -> Iterator[ModelRouter]:
     """One router (and one set of chat-model clients) per grading run."""
     router = ModelRouter(_invoker_factory(), settings)
+    warn_independence_once(router.settings)
     token = _current_router.set(router)
     try:
         yield router
@@ -295,6 +296,24 @@ def run_router(settings: Optional[LLMSettings] = None) -> Iterator[ModelRouter]:
         _current_router.reset(token)
 
 
+_independence_checked = False
+
+
+def warn_independence_once(settings: LLMSettings) -> None:
+    """Log the grader/evaluator independence warnings, once per process."""
+    global _independence_checked
+    if _independence_checked:
+        return
+    _independence_checked = True
+    for message in settings.independence_warnings():
+        logger.warning("llm_independence_warning", detail=message)
+
+
 def get_router() -> ModelRouter:
     """The current run's router, or a fresh one outside a run (scripts, unit tests)."""
-    return _current_router.get() or ModelRouter(_invoker_factory())
+    current = _current_router.get()
+    if current is not None:
+        return current
+    router = ModelRouter(_invoker_factory())
+    warn_independence_once(router.settings)
+    return router

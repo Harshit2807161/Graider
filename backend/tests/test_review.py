@@ -406,3 +406,25 @@ async def test_owner_exports_everything_recorded_about_one_student(fake_llm, db,
     other = make_org(db, "other")
     outsider = add_member(db, make_user(db, "outsider@other.test"), other, Role.STUDENT)
     assert client.get(f"{API}/orgs/{school['org'].id}/students/{outsider.id}/export", headers=owner).status_code == 404
+
+
+async def test_grades_made_with_an_older_rubric_are_marked_outdated(fake_llm, db, school, tmp_path, client):
+    submission = await graded(db, school, tmp_path)
+    headers = login(client, "teacher@school.test")
+    exam_id = school["exam"].id
+
+    def flags():
+        review = client.get(f"{API}/submissions/{submission.id}/review", headers=headers).json()
+        queue = client.get(f"{API}/exams/{exam_id}/review-queue", headers=headers).json()
+        return ([q["rubric_outdated"] for q in review["questions"]],
+                sorted((i["question_label"], i["rubric_outdated"]) for i in queue))
+
+    assert flags() == ([False, False], [("Q1", False), ("Q2", False)])
+
+    spec_url = f"{API}/exams/{exam_id}/questions/{question_id(school, 1)}/rubric-spec"
+    criteria = [{"id": "c1", "description": "Correct method", "points": 2},
+                {"id": "c2", "description": "Correct answer", "points": 2}]
+    response = client.put(spec_url, json={"kind": "criteria", "subject": "math", "criteria": criteria}, headers=headers)
+    assert response.status_code == 200, response.text
+
+    assert flags() == ([True, False], [("Q1", True), ("Q2", False)])

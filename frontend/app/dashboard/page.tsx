@@ -608,7 +608,7 @@ export default function DashboardPage() {
                                 <ul className={styles.rows}>
                                     {batches.slice(0, RECENT_LIMIT).map((batch) => (
                                         <li key={batch.id} className={styles.simpleRow}>
-                                            <span className={styles.rowTitle}>{batch.name}</span>
+                                            <Link href={`/dashboard/classes/${batch.id}`} className={styles.rowTitle}>{batch.name}</Link>
                                             <span className={styles.rowFigure}>{plural(batch.student_count, "student")}</span>
                                         </li>
                                     ))}

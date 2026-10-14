@@ -8,15 +8,28 @@ from app.rubrics.schema import RubricSpec
 EPSILON = 1e-6
 
 
+QUOTE_MARKS = "\"'\u2018\u2019\u201a\u201b\u201c\u201d\u201e\u201f\u00ab\u00bb`"
+
+
 def _normalise(text: str) -> str:
-    """Compare quotes forgivingly: accents, case and whitespace don't matter."""
+    """Compare quotes forgivingly: accents, case, whitespace and control characters don't matter."""
     decomposed = unicodedata.normalize("NFKD", text)
-    stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+    stripped = "".join(c for c in decomposed
+                       if not unicodedata.combining(c) and (c.isspace() or unicodedata.category(c) != "Cc"))
     return "".join(stripped.casefold().split())
 
 
+def _quote_lines(evidence: str) -> list[str]:
+    """The pieces of a quote to look for: each line on its own, without the quote marks a model adds."""
+    lines = (_normalise(line).strip(QUOTE_MARKS) for line in evidence.splitlines())
+    return [line for line in lines if line]
+
+
 def evidence_found(evidence: str, answer: str) -> bool:
-    return bool(evidence.strip()) and _normalise(evidence) in _normalise(answer)
+    """Every non-empty line of the quote appears in the answer (a quote may span several lines)."""
+    lines = _quote_lines(evidence)
+    target = _normalise(answer)
+    return bool(lines) and all(line in target for line in lines)
 
 
 def check_scores(criteria: list[dict[str, Any]], spec: RubricSpec) -> list[str]:
@@ -47,14 +60,23 @@ def check_scores(criteria: list[dict[str, Any]], spec: RubricSpec) -> list[str]:
 def check_grade(criteria: list[dict[str, Any]], spec: RubricSpec, answer: str) -> list[str]:
     """Reasons a model's grading can't be accepted as it is (empty when it can): the score checks,
     plus quoted evidence for every score above 0 and a justification for every criterion."""
+    return check_structure(criteria, spec) + check_evidence(criteria, answer)
+
+
+def check_structure(criteria: list[dict[str, Any]], spec: RubricSpec) -> list[str]:
+    """Everything in `check_grade` except the evidence quotes."""
     errors = check_scores(criteria, spec)
     for c in criteria:
-        if c["score"] > EPSILON and not evidence_found(c.get("evidence", ""), answer):
-            errors.append(f"{c['id']}: quote the student's exact words as evidence for a score above 0 "
-                          f"(not found in the answer: {c.get('evidence', '')!r}).")
         if not c.get("justification", "").strip():
             errors.append(f"{c['id']}: give a justification.")
     return errors
+
+
+def check_evidence(criteria: list[dict[str, Any]], answer: str) -> list[str]:
+    """Quoted evidence, found in the answer, for every score above 0."""
+    return [f"{c['id']}: quote the student's exact words as evidence for a score above 0 "
+            f"(not found in the answer: {c.get('evidence', '')!r})."
+            for c in criteria if c["score"] > EPSILON and not evidence_found(c.get("evidence", ""), answer)]
 
 
 def check_replies(replies: list[dict], feedback_count: int) -> list[str]:

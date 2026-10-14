@@ -98,6 +98,8 @@ class Submission(Base, table=True):
     
     status: SubmissionStatus = Field(default=SubmissionStatus.PENDING)
     current_step: Optional[str] = Field(default=None)
+    # Why the last run failed (app.core.constants.FailureCode); cleared when a run starts
+    failure_code: Optional[str] = Field(default=None, max_length=32)
     # Answer segments the model couldn't place under a question, for the teacher (grading v2)
     unassigned_segments: Optional[List[Dict[str, Any]]] = Field(default=None, sa_column=Column(JSON))
     

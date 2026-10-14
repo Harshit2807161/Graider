@@ -34,6 +34,7 @@ class EscalationReason:
     LOW_OCR_CONFIDENCE = "low_ocr_confidence"
     MULTIPLE_ATTEMPTS = "multiple_attempts"
     CHECK_FAILED = "check_failed"
+    EVIDENCE_NOT_FOUND = "evidence_not_found"
     EVALUATOR_DISAGREEMENT = "evaluator_disagreement"
     ALL_MODELS_FAILED = "all_models_failed"
     SPOT_CHECK = "spot_check"

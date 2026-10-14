@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any, Literal
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
-from app.core.constants import ExamStatus, SubmissionStatus, QuestionType
+from app.core.constants import ExamStatus, FailureCode, SubmissionStatus, QuestionType
 
 # --- Question Schemas ---
 
@@ -111,6 +111,7 @@ class SubmissionBase(BaseModel):
 
 class SubmissionRead(SubmissionBase):
     current_step: Optional[str] = None
+    failure_code: Optional[FailureCode] = None  # set when status is FAILED
     student_name: Optional[str] = None  # filled in where the endpoint looks it up (exam lists)
     id: UUID
     created_at: datetime
