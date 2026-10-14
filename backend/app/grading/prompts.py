@@ -46,12 +46,48 @@ boxed or underlined matter most, so never stop early.
 text and keep the rest; do not mark the segment crossed_out.
 - crossed_out: true only for a whole block the student struck out entirely (still transcribe it).
 - confidence: how sure you are of the reading, 0 to 1. Lower it for unclear handwriting.
+- A page that starts with a bare sub-part such as "(b)" or "(ii)" continues the most recent question \
+(for example 2(a) then "(b)" is 2(b)): label it with that question's part, not unassigned.
+- Printed booklet or page numbers (in a corner, header or footer) are not question numbers.
 - A blank page has no segments."""
 
 
-def transcribe_prompt(questions: list[tuple[str, str]], number: int, count: int) -> str:
-    listing = "\n".join(f"- {label}: {text[:200]}" for label, text in questions)
-    return f"The exam's questions:\n{listing}\n\nThis is page {number} of {count} of the student's submission."
+QUESTION_TEXT_CAP = 600
+QUESTION_BLOCK_CAP = 12_000
+
+
+def _clip(text: str, cap: int = QUESTION_TEXT_CAP) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= cap else text[: cap - 1].rstrip() + "…"
+
+
+def question_listing(questions: list[tuple], cap: int = QUESTION_BLOCK_CAP) -> str:
+    """One entry per question: label, printed label if different, choice group, own text (clipped).
+    Entries are (label, text) or (label, text, printed_label, choice_group). Over the total cap, the
+    longest texts are shortened first so every question stays listed."""
+    entries = []
+    for q in questions:
+        label, text, printed, group = (tuple(q) + (None, None))[:4]
+        head = f"- {label}"
+        if printed and printed != label:
+            head += f" (printed as {printed})"
+        if group:
+            head += f" [choice group {group}]"
+        entries.append((head, " ".join(text.split())))
+    limit = QUESTION_TEXT_CAP
+    while True:
+        lines = [f"{h}: {_clip(t, limit)}" for h, t in entries]
+        total = sum(len(x) + 1 for x in lines)
+        if total <= cap or limit <= 40:
+            return "\n".join(lines)
+        limit = max(40, int(limit * 0.7))
+
+
+def transcribe_prompt(questions: list[tuple], number: int, count: int) -> str:
+    return (
+        f"The exam's questions:\n{question_listing(questions)}\n\n"
+        f"This is page {number} of {count} of the student's submission."
+    )
 
 
 # ===== grader =====

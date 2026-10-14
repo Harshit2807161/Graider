@@ -21,7 +21,7 @@ class SheetPage:
     text_layer: Optional[str]  # typed text from a digital PDF page or a text file
 
 
-def page_parts(page: SheetPage, questions: list[tuple[str, str]], count: int) -> list:
+def page_parts(page: SheetPage, questions: list[tuple], count: int) -> list:
     parts: list = [TextPart(text=prompts.transcribe_prompt(questions, page.number, count))]
     if page.image_path is None:
         parts.append(TextPart(text=f"The page (a typed document):\n{page.text_layer or ''}"))
@@ -52,7 +52,7 @@ def clean_transcript_text(text: str) -> str:
     return _CTRL_OTHER.sub("", text)
 
 
-async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tuple[str, str]], count: int) -> dict[str, Any]:
+async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tuple], count: int) -> dict[str, Any]:
     """Raises LLMError if no model could read the page (the run fails: nothing can be graded fairly)."""
     result = await get_router().call(LLMRequest(
         role=Role.VISION,
