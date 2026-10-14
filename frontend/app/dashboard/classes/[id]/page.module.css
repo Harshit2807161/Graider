@@ -1,0 +1,140 @@
+/* Class page: the shared header, then exams and roster stacked on one column (as on the exam page). */
+.page {
+    display: flex;
+    flex-direction: column;
+}
+
+.page[aria-busy="true"] {
+    gap: var(--space-6);
+}
+
+.sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    font-variant-numeric: tabular-nums;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.sectionTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-tile);
+    background-color: var(--indigo-50);
+    color: var(--indigo-600);
+}
+
+.rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.rows > li + li {
+    border-top: 1px solid var(--color-border);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-2);
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+}
+
+a.row:hover {
+    background-color: var(--slate-50);
+}
+
+a.row:hover .rowTitle {
+    color: var(--primary);
+}
+
+.rowTitle {
+    flex: 1 1 12rem;
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+    transition: color 0.15s ease;
+}
+
+.rowMeta {
+    font-size: var(--text-sm);
+    color: var(--slate-600);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.pill {
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    background-color: var(--status-pending-bg);
+    color: var(--status-pending-fg);
+}
+
+.pill_published {
+    background-color: var(--status-published-bg);
+    color: var(--status-published-fg);
+}
+
+.pill_archived {
+    background-color: var(--slate-100);
+    color: var(--slate-600);
+}
+
+.empty {
+    font-size: var(--text-base);
+    color: var(--slate-600);
+}
+
+.backLink {
+    align-self: flex-start;
+    margin-top: var(--space-4);
+}
+
+.skeleton {
+    display: block;
+    border-radius: var(--radius);
+    background-color: var(--slate-100);
+}
+
+.skTitle {
+    width: 16rem;
+    height: 2.25rem;
+}
+
+.skSection {
+    width: 100%;
+    height: 10rem;
+}

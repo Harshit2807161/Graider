@@ -20,6 +20,14 @@ class SubmissionStatus(str, Enum):
     APPROVED = "APPROVED" # Teacher reviewed
     PUBLISHED = "PUBLISHED" # Visible to student
 
+class FailureCode(str, Enum):
+    """Why a grading run left a submission FAILED (stored on `submissions.failure_code`)."""
+    PAGES_UNREADABLE = "pages_unreadable"  # the file or its pages couldn't be read
+    BUDGET_EXHAUSTED = "budget_exhausted"  # the per-submission call/cost budget ran out
+    NO_QUESTIONS = "no_questions"  # the exam had no questions
+    MODEL_UNAVAILABLE = "model_unavailable"  # every model target failed outside page reading
+    INTERNAL_ERROR = "internal_error"  # anything else
+
 class QuestionType(str, Enum):
     DESCRIPTIVE = "descriptive"
     MCQ = "mcq"

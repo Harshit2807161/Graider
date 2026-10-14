@@ -10,7 +10,7 @@ from app import crud
 from app.audit.recorder import DbCallRecorder
 from app.core.constants import QuestionType
 from app.core.db import engine
-from app.exam_drafts.checks import check_content, check_pages
+from app.exam_drafts.checks import check_content, check_pages, check_rubric_documents
 from app.exam_drafts.extract import extract_page
 from app.exam_drafts.link import link_rubric
 from app.exam_drafts.merge import PageInput, attach_rubric, merge
@@ -108,6 +108,7 @@ async def _extract(db: Session, draft: ExamDraft, exam: Exam) -> tuple[DraftCont
     links = await link_rubric(content.questions, pieces, CallContext(purpose="link_rubric")) if pieces else {}
     from_rubric = attach_rubric(content, pieces, links)
     issues = check_content(content) + check_pages(content)
+    issues += check_rubric_documents(content.pages, [piece.pages for piece in pieces])
     issues += [Issue(severity="warning", code="marks_from_rubric", label=label,
                      message=f"Question {label} has no printed marks; its rubric's marks were used.")
                for label in from_rubric]
@@ -133,9 +134,15 @@ async def extract_draft(draft_id: UUID) -> None:
                 recording_to(DbCallRecorder(None, None, exam_draft_id=draft.id)),
             ):
                 content, issues = await _extract(db, draft, exam)  # type: ignore[arg-type]
-        except (DocumentError, LLMError) as e:
+        except Exception as e:  # noqa: BLE001 - any failure must leave the draft failed, never pending
             db.rollback()
-            message = str(e) if isinstance(e, DocumentError) else f"The documents couldn't be read by the model ({e})"
+            if isinstance(e, DocumentError):
+                message = str(e)
+            elif isinstance(e, LLMError):
+                message = f"The documents couldn't be read by the model ({e})"
+            else:
+                message = f"Extraction failed unexpectedly ({type(e).__name__}: {e})"
+                logger.exception("exam_extraction_crashed", draft_id=str(draft_id))
             draft = db.get(ExamDraft, draft_id)
             draft.status, draft.error = DraftStatus.FAILED, message[:2000]  # type: ignore[union-attr]
             db.add(draft)
