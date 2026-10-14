@@ -31,7 +31,7 @@ import { examService } from "@/services/exam.service";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Batch } from "@/types/batch.types";
-import { Exam, Submission, SubmissionStatus } from "@/types/exam.types";
+import { Exam, FailureCode, Submission, SubmissionStatus } from "@/types/exam.types";
 import PageHeader from "@/components/common/PageHeader";
 import ButtonLink from "@/components/common/ButtonLink";
 import ErrorBanner from "@/components/common/ErrorBanner";
@@ -145,7 +145,7 @@ const sheetOf = (s: Submission) => (s.student_name?.trim() ? `${s.student_name.t
 
 /** Why an answer sheet couldn't be graded, in the answer sheet page's words: the cause's first clause
  *  ("The pages couldn't be read"), short enough for a one-line detail */
-const failureReason = (step?: string | null) => explainFailure(step).cause.split(/[,.;](?:\s|$)/)[0];
+const failureReason = (step?: string | null, code?: FailureCode | null) => explainFailure(step, code).cause.split(/[,.;](?:\s|$)/)[0];
 
 /** "How grading works" stays open or folded per browser; in memory if storage is blocked */
 const HOW_KEY = "gr8r.overview.howItWorks";
@@ -216,7 +216,7 @@ function buildTasks(exams: ExamSummary[], batches: Batch[], className: (id?: str
 
         const failed = having("FAILED");
         if (failed.length === 1) {
-            add("failed", `Regrade ${sheetOf(failed[0])}`, [failureReason(failed[0].current_step), exam.name], sheetUrl(failed[0]));
+            add("failed", `Regrade ${sheetOf(failed[0])}`, [failureReason(failed[0].current_step, failed[0].failure_code), exam.name], sheetUrl(failed[0]));
         } else if (failed.length > 1) {
             add("failed", `Regrade ${failed.length} answer sheets that couldn't be graded`, [exam.name, names(failed)], examUrl);
         }

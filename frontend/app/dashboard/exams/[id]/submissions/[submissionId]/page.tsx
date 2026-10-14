@@ -288,7 +288,7 @@ export default function SubmissionReviewPage() {
     const canScore = status === "GRADED" || status === "NEEDS_REVIEW";
     const canEditTranscript = canScore || status === "APPROVED";
     const summary = summaryFor(submission.status, escalated.length, submission.current_step);
-    const failure = status === "FAILED" ? explainFailure(submission.current_step) : null;
+    const failure = status === "FAILED" ? explainFailure(submission.current_step, submission.failure_code) : null;
     const studentName = review.student_name ?? "Answer sheet";
     const anyGraded = questions.some((q) => q.grade);
     const showTotal = submission.total_score != null || submission.max_score != null;

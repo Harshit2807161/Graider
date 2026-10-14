@@ -279,7 +279,7 @@ function SheetRow({ examId, submission: s, regrading, onRegrade }: {
     const name = s.student_name?.trim() || null;
     const who = name ?? "answer sheet";
     const href = `/dashboard/exams/${examId}/submissions/${s.id}`;
-    const failure = failed ? explainFailure(s.current_step) : null;
+    const failure = failed ? explainFailure(s.current_step, s.failure_code) : null;
     const uploaded = new Date(s.created_at).toLocaleString(undefined, dateFormat);
     const hasScore = s.total_score != null && s.max_score != null;
 

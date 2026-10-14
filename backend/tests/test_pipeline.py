@@ -15,7 +15,7 @@ from app.models.exam import Exam, Question, Submission, SubmissionAnswer
 from app.models.grading import AnswerGrade, Transcription
 from app.services.grading_service import run_grading
 from tests import ingestion_fixtures as fx
-from tests.conftest import FakeInvoker, FIXTURES
+from tests.conftest import FakeInvoker, FIXTURES, make_exam
 
 
 def make_submission(db: Session, exam, tmp_path, data: bytes = None, name="answer_sheet.png") -> Submission:
@@ -141,6 +141,16 @@ async def test_unreadable_pages_fail_instead_of_scoring_zero(fake_llm, db, schoo
     graded, answers = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED and "couldn't be read" in graded.current_step and answers == []
     assert graded.failure_code == FailureCode.PAGES_UNREADABLE
+
+
+async def test_an_exam_without_questions_fails_with_its_code(fake_llm, db, school, tmp_path):
+    exam = make_exam(db, school["org"], school["teacher_m"], [])
+    submission = make_submission(db, exam, tmp_path)
+
+    await grade(submission)
+
+    graded, _ = load(submission.id)
+    assert graded.status == SubmissionStatus.FAILED and graded.failure_code == FailureCode.NO_QUESTIONS
 
 
 async def test_a_question_whose_models_fail_escalates_alone(fake_llm, db, school, tmp_path):

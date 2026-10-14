@@ -1,6 +1,9 @@
+import type { FailureCode } from "@/types/exam.types";
+
 /** Why grading failed, in a teacher's words. The backend stores the technical error (e.g. "Error: The
  *  answer pages couldn't be read: All models failed for role 'vision': …"); teachers see the cause and
- *  what to try, and the technical text stays available for an administrator. */
+ *  what to try, and the technical text stays available for an administrator. The stored failure code
+ *  decides the explanation; older sheets without one fall back to matching the error text. */
 export interface Failure {
     /** One sentence: what went wrong */
     cause: string;
@@ -12,11 +15,20 @@ export interface Failure {
 
 const TRY_AGAIN = "Regrade the answer sheet to try again.";
 
-export function explainFailure(error: string | null | undefined): Failure {
-    const technical = error?.replace(/^Error:\s*/, "").trim() || null;
-    const text = (technical ?? "").toLowerCase();
+function codeFromText(text: string): FailureCode | null {
+    if (text.includes("couldn't be read") || text.includes("could not be read") || text.includes("can't be read")) {
+        return "pages_unreadable";
+    }
+    if (text.includes("budget exceeded")) return "budget_exhausted";
+    if (text.includes("no questions")) return "no_questions";
+    return null;
+}
 
-    if (text.includes("couldn't be read") || text.includes("could not be read")) {
+export function explainFailure(error: string | null | undefined, failureCode?: FailureCode | null): Failure {
+    const technical = error?.replace(/^Error:\s*/, "").trim() || null;
+    const code = failureCode ?? codeFromText((technical ?? "").toLowerCase());
+
+    if (code === "pages_unreadable") {
         return {
             cause: "The pages couldn't be read, so no answers were graded. This is usually a temporary problem with the AI service; "
                 + "it can also mean the file is blank, too faint, or not an answer sheet.",
@@ -27,17 +39,24 @@ export function explainFailure(error: string | null | undefined): Failure {
             technical,
         };
     }
-    if (text.includes("budget exceeded")) {
+    if (code === "budget_exhausted") {
         return {
             cause: "Grading stopped at the limit set for one answer sheet, before every answer was graded.",
             steps: [TRY_AGAIN, "If it stops again, ask your administrator to raise the per-sheet limit."],
             technical,
         };
     }
-    if (text.includes("no questions")) {
+    if (code === "no_questions") {
         return {
             cause: "The exam had no questions when this answer sheet was graded.",
             steps: ["Add the questions on the exam page.", TRY_AGAIN],
+            technical,
+        };
+    }
+    if (code === "model_unavailable") {
+        return {
+            cause: "The AI service couldn't be reached while grading, so this answer sheet wasn't finished.",
+            steps: [TRY_AGAIN, "If it keeps failing, send the technical details below to your administrator."],
             technical,
         };
     }
