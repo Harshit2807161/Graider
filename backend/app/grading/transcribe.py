@@ -1,6 +1,7 @@
 """Read one page of a student's submission into answer segments (the `vision` role)."""
 
 import base64
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
@@ -35,6 +36,22 @@ def page_parts(page: SheetPage, questions: list[tuple[str, str]], count: int) ->
     return parts
 
 
+_CTRL_ARROW = re.compile(r"\x02[12]")
+_CTRL_OTHER = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def clean_transcript_text(text: str) -> str:
+    """Repair control characters the small reader emits for symbols.
+
+    Known pairs (seen in the CBSE run): \\x02 followed by 1 or 2 is an arrow, a lone
+    \\x02 is an apostrophe. Any other C0 control character (tab, newline and
+    carriage return are kept) is dropped. Conservative: nothing else is touched.
+    """
+    text = _CTRL_ARROW.sub("\u2192", text)
+    text = text.replace("\x02", "'")
+    return _CTRL_OTHER.sub("", text)
+
+
 async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tuple[str, str]], count: int) -> dict[str, Any]:
     """Raises LLMError if no model could read the page (the run fails: nothing can be graded fairly)."""
     result = await get_router().call(LLMRequest(
@@ -44,4 +61,7 @@ async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tu
         output_schema=page_answers_schema(labels),
         context=CallContext(purpose="transcribe_page", round=page.number),
     ))
-    return result.parsed.model_dump()
+    data = result.parsed.model_dump()
+    for segment in data.get("segments", []):
+        segment["text"] = clean_transcript_text(segment["text"])
+    return data
