@@ -14,7 +14,7 @@ interface ModalProps {
     onClose: () => void;
     children: ReactNode;
     footer?: ReactNode;
-    size?: "md" | "lg";
+    size?: "md" | "lg" | "xl";
     /** Shown under the title */
     description?: ReactNode;
     /** A small icon in the header tile, as in the app's other dialogs */

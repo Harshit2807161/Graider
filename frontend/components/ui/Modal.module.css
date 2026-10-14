@@ -26,6 +26,7 @@
 
 .md { max-width: 34rem; }
 .lg { max-width: 48rem; }
+.xl { max-width: 76rem; }
 
 @keyframes rise {
     from { transform: translateY(12px); opacity: 0; }

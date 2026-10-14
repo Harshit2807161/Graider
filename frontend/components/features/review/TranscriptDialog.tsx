@@ -5,18 +5,31 @@ import { AlertCircle, Check, Pencil, Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { getErrorMessage } from "@/lib/api";
-import { QuestionReview, SubmissionReview } from "@/types/review.types";
+import { PageInfo, QuestionReview, SubmissionReview } from "@/types/review.types";
+import PageViewer from "./PageViewer";
 import styles from "./dialogs.module.css";
 
 /** Correct what was read for one answer. That question is graded again from the teacher's text.
- *  Writing not matched to a question can be added with one click. */
-export default function TranscriptDialog({ q, approved, unplaced = [], onClose, onSubmit }: {
+ *  Writing not matched to a question can be added with one click. Given the sheet's pages, the
+ *  editor sits next to the page image (side by side on wide screens, stacked on narrow ones),
+ *  opened at the first page the answer was read from, else at the page the teacher was viewing. */
+export default function TranscriptDialog({ q, approved, unplaced = [], submissionId, pages = [], currentPage, onClose, onSubmit }: {
     q: QuestionReview;
     approved: boolean;
     unplaced?: SubmissionReview["unassigned_segments"];
+    submissionId?: string;
+    pages?: PageInfo[];
+    /** The page open in the review screen's viewer, used when the answer's pages aren't known */
+    currentPage?: number;
     onClose: () => void;
     onSubmit: (text: string, reason: string) => Promise<void>;
 }) {
+    const answerPages = [...new Set((q.transcription?.segments ?? [])
+        .map((s) => s.page).filter((p): p is number => p != null && pages.some((pg) => pg.number === p)))]
+        .sort((a, b) => a - b);
+    const [page, setPage] = useState<number>(answerPages[0] ?? currentPage ?? pages[0]?.number ?? 1);
+    const showPages = !!submissionId && pages.length > 0;
+    const captions = Object.fromEntries(answerPages.map((p) => [p, q.label]));
     const [text, setText] = useState(q.transcription?.text ?? "");
     const [reason, setReason] = useState("");
     const [added, setAdded] = useState<Set<number>>(new Set());
@@ -70,7 +83,7 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
     );
 
     return (
-        <Modal open title={`Correct transcript · ${q.label}`} onClose={onClose} size="lg"
+        <Modal open title={`Correct transcript · ${q.label}`} onClose={onClose} size={showPages ? "xl" : "lg"}
                icon={<Pencil size={18} aria-hidden="true" />}
                description={<>
                    {q.label} will be graded again from your text; other answers keep their grades.
@@ -82,6 +95,26 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
                        <Button type="submit" form="transcript-form" disabled={!ready} isLoading={saving}>Save and regrade</Button>
                    </>
                }>
+            <div className={showPages ? styles.sideBySide : undefined}>
+            {showPages && (
+                <section className={styles.sidePages} aria-label={`Answer sheet pages for ${q.label}`}>
+                    {answerPages.length > 0 ? (
+                        <div className={styles.sidePageJump} role="group" aria-label={`Pages ${q.label} was read from`}>
+                            <span className={styles.help}>{q.label} was read from</span>
+                            {answerPages.map((p) => (
+                                <button key={p} type="button" className={styles.textButton}
+                                        aria-pressed={p === page} onClick={() => setPage(p)}>
+                                    Page {p}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className={styles.help}>The pages of this answer aren&apos;t known: showing the page you were viewing.</p>
+                    )}
+                    <PageViewer submissionId={submissionId!} pages={pages} page={page} onPageChange={setPage}
+                                captions={captions} />
+                </section>
+            )}
             <form id="transcript-form" onSubmit={submit} className={styles.form}>
                 {unplacedFirst && unplacedSection}
                 <div className={styles.field}>
@@ -107,6 +140,7 @@ export default function TranscriptDialog({ q, approved, unplaced = [], onClose, 
                     </p>
                 )}
             </form>
+            </div>
         </Modal>
     );
 }
