@@ -101,7 +101,15 @@ The same queries are available programmatically from the [Metrics API](https://l
 Student data rules:
 - **Images never leave the process.** Media upload is off (`LANGFUSE_MEDIA_UPLOAD_ENABLED=false`), and a mask replaces inline base64 payloads, including inside LangChain message objects. `tests/test_tracing.py` guards this.
 - **Text does go to Langfuse.** That means transcribed answers, rubrics and feedback, which are personal data. So Langfuse must be self-hosted, or the EU cloud under a data processing agreement.
-- **Retention:** automatic data retention is an Enterprise feature when self-hosted. Until we add a scheduled deletion job via the API (backlog), delete old traces manually.
+- **Retention:** automatic data retention is an Enterprise feature when self-hosted, so we delete through the public API. From `backend/`, with the `LANGFUSE_*` settings in the environment:
+
+  ```bash
+  python -m app.admin.langfuse_retention --older-than-days 90 --dry-run   # list what would go
+  python -m app.admin.langfuse_retention --older-than-days 90             # delete (run daily from cron)
+  python -m app.admin.langfuse_retention --submission-id <uuid>           # erasure request: all of one submission's traces
+  ```
+
+  Traces carry the submission id as session id and in metadata, which is what `--submission-id` matches (it re-checks each trace client-side before deleting). Combine it with `--older-than-days` to narrow further.
 
 ## Reliability
 
