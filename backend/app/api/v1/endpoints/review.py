@@ -20,9 +20,9 @@ from app.models.audit import GradingRun, LLMCall
 from app.models.exam import Exam, Question, Submission
 from app.models.grade_event import GradeEvent
 from app.models.grading import AnswerGrade, AnswerStatus, Source, Transcription
-from app.models.rubric import RubricSpecRecord
+from app.models.rubric import RubricSpecRecord, RubricStatus
 from app.models.user import Membership, User
-from app.rubrics.service import current_spec
+from app.rubrics.service import current_spec, current_specs
 from app.schemas.exam import SubmissionRead
 from app.schemas.review import (
     ActionReason,
@@ -155,6 +155,16 @@ def publish_exam(
 
 # ===== what teachers review =====
 
+def _ready_spec_ids(db: Session, questions: list[Question]) -> dict[UUID, UUID]:
+    """Each question's current spec id, for questions whose current spec is ready."""
+    return {qid: spec.id for qid, spec in current_specs(db, questions).items() if spec.status == RubricStatus.READY}
+
+
+def _rubric_outdated(grade: Optional[AnswerGrade], ready: dict[UUID, UUID]) -> bool:
+    """The grade used a rubric spec that is no longer the question's current ready one."""
+    return bool(grade and grade.rubric_spec_id and ready.get(grade.question_id) != grade.rubric_spec_id)
+
+
 @router.get("/exams/{exam_id}/review-queue", response_model=list[ReviewQueueItem])
 def review_queue(
     *, db: Session = Depends(deps.get_session), exam_id: UUID, escalated_only: bool = False,
@@ -175,6 +185,7 @@ def review_queue(
     questions, labels = exam_labels_by_id(db, exam)
     order = {q.id: q.order_index for q in questions}
     names = student_names(db, [s.student_membership_id for s in submissions.values()])
+    ready = _ready_spec_ids(db, questions)
     grades = db.exec(select(AnswerGrade).where(
         col(AnswerGrade.submission_id).in_(list(submissions)), AnswerGrade.is_current == True,  # noqa: E712
         AnswerGrade.source == Source.AI, AnswerGrade.status != AnswerStatus.NOT_ATTEMPTED,
@@ -194,7 +205,7 @@ def review_queue(
             student_name=names.get(submission.student_membership_id) if submission.student_membership_id else None,
             question_id=grade.question_id, question_label=labels[grade.question_id], grade_id=grade.id,
             status=grade.status, escalation_reason=grade.escalation_reason, score=grade.score,
-            max_score=grade.max_score, agreement=agreement,
+            max_score=grade.max_score, agreement=agreement, rubric_outdated=_rubric_outdated(grade, ready),
         )))
     ranked.sort(key=lambda item: item[0])
     return [item for _, item in ranked[:limit]]
@@ -220,6 +231,7 @@ def review_submission(
     for grade in db.exec(select(AnswerGrade).where(AnswerGrade.submission_id == submission.id)
                          .order_by(col(AnswerGrade.version).desc())).all():
         history.setdefault(grade.question_id, []).append(grade)
+    ready = _ready_spec_ids(db, questions)
 
     reviews = []
     for q in questions:
@@ -230,6 +242,7 @@ def review_submission(
         reviews.append(QuestionReview(
             question_id=q.id, label=labels[q.id], printed_label=q.printed_label, text=q.question_text,
             max_score=q.max_score, choice_group=q.choice_group, rubric_spec=_spec_view(spec),
+            rubric_outdated=_rubric_outdated(grade, ready),
             transcription=TranscriptionRead.model_validate(transcript) if transcript else None,
             grade=AnswerGradeRead.model_validate(grade) if grade else None,
             previous_grades=[AnswerGradeRead.model_validate(g) for g in grades if not g.is_current],
