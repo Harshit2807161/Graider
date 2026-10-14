@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.rubrics.schema import RubricSpec
 
-PROMPT_VERSION = "grading-v2.1"
+PROMPT_VERSION = "grading-v2.2"
 
 # Subject personas: what a good examiner in each subject pays attention to (the rubric decides marks)
 PERSONAS = {
