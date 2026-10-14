@@ -4,7 +4,7 @@ Why the last grading run left a submission FAILED (app.core.constants.FailureCod
 doesn't have to match the error text.
 
 Revision ID: a3c9e1f2b7d4
-Revises: e825baa9c8d0
+Revises: a7d3c1e9b2f4
 Create Date: 2026-10-14 12:00:00.000000
 
 """
@@ -17,7 +17,7 @@ import sqlmodel  # noqa: F401  (autogenerate emits sqlmodel types)
 
 # revision identifiers, used by Alembic.
 revision: str = 'a3c9e1f2b7d4'
-down_revision: Union[str, Sequence[str], None] = 'e825baa9c8d0'
+down_revision: Union[str, Sequence[str], None] = 'a7d3c1e9b2f4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
