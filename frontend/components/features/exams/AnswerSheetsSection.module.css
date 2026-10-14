@@ -184,7 +184,7 @@
     height: 3.75rem;
     border-radius: var(--radius);
     background-color: var(--slate-100);
-    animation:global(gr-pulse) 1.4s ease-in-out infinite;
+    animation: var(--gr-pulse) 1.4s ease-in-out infinite;
 }
 
 .emptyNote {
@@ -234,7 +234,7 @@
 }
 
 .spin {
-    animation:global(gr-spin) 1s linear infinite;
+    animation: var(--gr-spin) 1s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

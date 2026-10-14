@@ -112,7 +112,7 @@
     border: 2px solid currentColor;
     border-right-color: transparent;
     border-radius: 50%;
-    animation:global(gr-spin) 0.75s linear infinite;
+    animation: var(--gr-spin) 0.75s linear infinite;
 }
 
 /* Touch screens: small buttons still get a comfortable target */

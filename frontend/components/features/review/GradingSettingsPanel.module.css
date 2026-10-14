@@ -177,7 +177,7 @@
     height: 3.5rem;
     border-radius: var(--radius);
     background-color: var(--slate-100);
-    animation:global(gr-pulse) 1.4s ease-in-out infinite;
+    animation: var(--gr-pulse) 1.4s ease-in-out infinite;
 }
 
 @container section (max-width: 40rem) {

@@ -1,4 +1,13 @@
 :root {
+  /* Shared animation names (keyframes at the end of this file). Modules use
+     animation: var(--gr-<name>) so neither bundler rewrites the name. */
+  --gr-spin: gr-spin;
+  --gr-pulse: gr-pulse;
+  --gr-pulse-soft: gr-pulse-soft;
+  --gr-shimmer: gr-shimmer;
+  --gr-fade: gr-fade;
+  --gr-reveal: gr-reveal;
+
   /* Primary: Indigo */
   --indigo-50: #eef2ff;
   --indigo-100: #e0e7ff;
@@ -215,7 +224,7 @@ button {
 
 
 /* Shared keyframes. CSS Modules scope their own keyframes, so the ones several
-   modules use live here once and are referenced as :global(gr-<name>). */
+   modules use live here once and are referenced as var(--gr-<name>) (see :root). */
 @keyframes gr-spin {
     to { transform: rotate(360deg); }
 }

@@ -160,7 +160,7 @@
     margin-top: var(--space-1);
     border-radius: var(--radius);
     background-color: var(--slate-100);
-    animation:global(gr-pulse) 1.4s ease-in-out infinite;
+    animation: var(--gr-pulse) 1.4s ease-in-out infinite;
 }
 
 .action {
@@ -205,7 +205,7 @@
 .hint_busy { color: var(--status-processing-fg); }
 
 .spin {
-    animation:global(gr-spin) 1s linear infinite;
+    animation: var(--gr-spin) 1s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

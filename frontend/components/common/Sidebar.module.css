@@ -72,7 +72,7 @@
     z-index: 50;
     background-color: var(--overlay-scrim);
     backdrop-filter: blur(2px);
-    animation:global(gr-fade) 0.2s ease-out;
+    animation: var(--gr-fade) 0.2s ease-out;
 }
 
 /* ===== Sidebar / drawer ===== */
@@ -246,7 +246,7 @@
 .skeleton {
     display: block;
     background-color: var(--slate-800);
-    animation:global(gr-pulse) 1.4s ease-in-out infinite;
+    animation: var(--gr-pulse) 1.4s ease-in-out infinite;
 }
 
 .skeletonLine,

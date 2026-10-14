@@ -34,7 +34,7 @@
 .skeletonLineShort {
     display: block;
     background-color: var(--slate-100);
-    animation:global(gr-pulse-soft) 1.4s ease-in-out infinite;
+    animation: var(--gr-pulse-soft) 1.4s ease-in-out infinite;
 }
 
 .skeletonTile {
