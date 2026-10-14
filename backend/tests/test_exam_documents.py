@@ -136,6 +136,33 @@ def test_blocking_and_warning_checks():
     ]
 
 
+def test_bilingual_paper_keeps_the_english_question_and_attaches_the_other_language():
+    pages = [
+        page("question_paper", questions=[pq("1", "समीकरण 2x + 5 = 15 हल कीजिए।", 2), pq("2", "चाल को परिभाषित कीजिए।", 1)]),
+        page("question_paper", index=1, questions=[pq("1", "Solve 2x + 5 = 15."), pq("2", "Define speed.", 1)]),
+        page("question_paper", index=2, questions=[pq("3", "Name a gas.", 1)]),
+        page("question_paper", index=3, questions=[pq("3", "एक गैस का नाम बताइए।", 1)]),
+    ]
+    content, _ = merge(pages)
+
+    assert [q.label for q in content.questions] == ["1", "2", "3"]
+    q1, _, q3 = content.questions
+    assert q1.text == "Solve 2x + 5 = 15." and q1.alternate_language_text.startswith("समीकरण") and q1.marks == 2
+    assert q1.pages == ["d1:0", "d1:1"]
+    assert q3.text == "Name a gas." and q3.alternate_language_text == "एक गैस का नाम बताइए।"
+    issues = check_content(content)
+    assert ("warning", "bilingual_duplicate", "1") in codes(issues)
+    assert not [i for i in issues if i.severity == "blocking" and i.code != "missing_marks"]
+    assert "duplicate_label" not in [i.code for i in issues]
+
+
+def test_same_script_repeats_stay_duplicates():
+    content, _ = merge([page("question_paper", questions=[pq("1", "Solve it.", 2), pq("1", "Solve again.", 2)])])
+    assert [q.text for q in content.questions] == ["Solve it.", "Solve again."]
+    assert all(q.alternate_language_text is None for q in content.questions)
+    assert ("blocking", "duplicate_label", "1") in codes(check_content(content))
+
+
 def test_page_warnings_compare_what_was_seen_with_the_declared_role():
     pages = [page("question_paper", kind="rubric"), page("rubric", kind="question_paper", index=1),
              page("blank_copy", kind="mixed", handwriting=True, index=2), page("question_paper", kind="answers", index=3)]
