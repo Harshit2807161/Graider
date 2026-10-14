@@ -358,7 +358,7 @@ async def test_students_see_only_their_own_published_scores_and_feedback(fake_ll
     assert [(a["label"], a["score"], a["max_score"], a["counted"]) for a in view["answers"]] == [
         ("Q1", 4, 4, True), ("Q2", 6, 6, True)]
     assert set(view["answers"][0]) == {"question_id", "label", "question_text", "score", "max_score", "counted",
-                                       "feedback"}
+                                       "feedback", "criteria"}
     assert client.get(url, headers=login(client, "classmate@school.test")).status_code == 404
 
     full = client.get(url, headers=teacher).json()

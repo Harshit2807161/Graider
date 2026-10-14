@@ -155,6 +155,13 @@ class GradingSettingsUpdate(BaseModel):
     choice_policy: Optional[Literal["best", "first"]] = None
 
 
+class StudentCriterionMark(BaseModel):
+    """One rubric criterion's mark as a student sees it: no evidence, justification or reasoning."""
+    name: str
+    score: float
+    max_points: Optional[float] = None
+
+
 class StudentAnswerView(BaseModel):
     question_id: UUID
     label: str
@@ -163,6 +170,7 @@ class StudentAnswerView(BaseModel):
     max_score: float
     counted: bool = True  # False for an extra alternative of a choice question
     feedback: Optional[str] = None
+    criteria: List[StudentCriterionMark] = []
 
 
 class StudentSubmissionView(BaseModel):
