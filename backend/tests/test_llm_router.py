@@ -7,7 +7,8 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 from app.llm import budget as llm_budget
-from app.llm.config import LLMSettings, RoleConfig
+from app.llm.config import LLMSettings, ModelPrice, RoleConfig
+from app.llm.costs import UnpricedModelError, unpriced_api_targets
 from app.llm.invoker import InvokeRequest, InvokeResponse
 from app.llm.recorder import recording_to
 from app.llm.router import ModelRouter
@@ -234,6 +235,24 @@ async def test_claude_cost_from_usage():
 def test_vision_role_rejects_text_only_targets():
     with pytest.raises(ValueError, match="supports_vision"):
         LLMSettings(vision=RoleConfig(**QWEN, supports_vision=False))
+
+
+GPT = {"provider": "openai", "model": "gpt-unpriced"}
+
+
+def test_unpriced_api_targets_lists_api_models_without_a_price():
+    settings = settings_with(CLAUDE, QWEN, GPT, allow_unpriced_models=True)
+    assert unpriced_api_targets(settings) == [ModelTarget(**GPT).key]
+    priced = settings_with(CLAUDE, QWEN, GPT, prices={"gpt-unpriced": ModelPrice(input=1, output=2)})
+    assert unpriced_api_targets(priced) == []
+    assert unpriced_api_targets(LLMSettings()) == []
+
+
+def test_router_refuses_unpriced_api_model_unless_allowed():
+    with pytest.raises(UnpricedModelError, match="gpt-unpriced"):
+        ModelRouter(ScriptedInvoker({}), settings_with(CLAUDE, GPT))
+    ModelRouter(ScriptedInvoker({}), settings_with(CLAUDE, GPT, allow_unpriced_models=True))
+    ModelRouter(ScriptedInvoker({}), settings_with(QWEN))  # self-hosted needs no price
 
 
 def test_independence_warning_when_grader_and_evaluator_share_model(monkeypatch):

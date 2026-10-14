@@ -4,8 +4,8 @@ from typing import Optional
 
 import structlog
 
-from app.llm.config import ModelPrice, get_llm_settings
-from app.llm.types import ModelTarget, Provider, Usage
+from app.llm.config import LLMSettings, ModelPrice, get_llm_settings
+from app.llm.types import ModelTarget, Provider, Role, Usage
 
 logger = structlog.get_logger(__name__)
 
@@ -19,9 +19,38 @@ DEFAULT_PRICES: dict[str, ModelPrice] = {
 _warned: set[str] = set()
 
 
-def price_for(model: str) -> Optional[ModelPrice]:
-    overrides = get_llm_settings().prices
+class UnpricedModelError(ValueError):
+    """An API model has no price, so its spend would escape the per-submission USD cap."""
+
+
+def price_for(model: str, settings: Optional[LLMSettings] = None) -> Optional[ModelPrice]:
+    overrides = (settings or get_llm_settings()).prices
     return overrides.get(model) or DEFAULT_PRICES.get(model)
+
+
+def unpriced_api_targets(config: LLMSettings) -> list[str]:
+    """Keys of every primary/fallback API target (anthropic, openai) with no known price."""
+    missing: list[str] = []
+    for role in Role:
+        for target in config.role(role).chain:
+            if target.provider == Provider.OPENWEIGHT or price_for(target.model, config) is not None:
+                continue
+            if target.key not in missing:
+                missing.append(target.key)
+    return missing
+
+
+def check_prices(config: LLMSettings) -> None:
+    """Raise UnpricedModelError for unpriced API models unless LLM__ALLOW_UNPRICED_MODELS=true."""
+    if config.allow_unpriced_models:
+        return
+    missing = unpriced_api_targets(config)
+    if missing:
+        raise UnpricedModelError(
+            f"no price for API model(s) {', '.join(missing)}: their cost would not count toward "
+            "LLM__MAX_COST_USD_PER_SUBMISSION. Add them to LLM__PRICES, or set "
+            "LLM__ALLOW_UNPRICED_MODELS=true to accept uncapped spend."
+        )
 
 
 def cost_usd(target: ModelTarget, usage: Usage) -> Optional[float]:
