@@ -155,7 +155,7 @@ def test_spot_checks_are_reproducible():
 
 from uuid import uuid4  # noqa: E402
 
-from app.grading.question import QuestionInput, grade_question  # noqa: E402
+from app.grading.question import QuestionInput, grade_question, rubric_expects_drawing  # noqa: E402
 from app.grading.stitch import StitchedAnswer  # noqa: E402
 from app.llm.budget import LLMBudgetExceeded, budget  # noqa: E402
 from tests.conftest import FakeInvoker  # noqa: E402
@@ -283,6 +283,40 @@ async def test_low_confidence_repeated_attempts_and_spot_checks_keep_the_propose
     spot = await grade_question(question(), uuid4())
     assert [(o.escalation_reason, o.score) for o in (low, twice, spot)] == [
         ("low_ocr_confidence", 4), ("multiple_attempts", 4), ("spot_check", 4)]
+
+
+def _with(description: str = "x", expected: str | None = None, notes: str | None = None) -> RubricSpec:
+    return SPEC.model_copy(update={"criteria": [Criterion(id="c1", description=description, points=1,
+                                                         expected_answer=expected, notes=notes),
+                                                *SPEC.criteria[1:]]})
+
+
+@pytest.mark.parametrize("description,expected,notes", [
+    ("Draws a neat labelled diagram of the heart", None, None),
+    ("Correct ray diagram", None, None),
+    ("x", "A SKETCH of the graph of y = x^2", None),
+    ("Label the figure correctly", None, None),
+    ("x", None, "Plot the points on the axes"),
+    ("Circuit with ammeter in series", None, None),
+])
+def test_rubric_expects_drawing_finds_drawing_words(description, expected, notes):
+    assert rubric_expects_drawing(_with(description, expected, notes))
+
+
+@pytest.mark.parametrize("description", [
+    "Subtracts 5", "Draws a conclusion from the data", "Describes the plot of the story", "Writes a paragraph",
+    "Withdraws the claim",
+])
+def test_rubric_expects_drawing_ignores_other_text(description):
+    assert not rubric_expects_drawing(_with(description))
+    assert not rubric_expects_drawing(None)
+
+
+async def test_a_drawing_question_keeps_the_proposed_score_but_escalates(fake_llm):
+    outcome = await grade_question(question(spec=_with("Draws the number line")), uuid4())
+    assert (outcome.status, outcome.escalation_reason, outcome.score) == ("escalated", "drawing_expected", 4)
+    plain = await grade_question(question(), uuid4())
+    assert plain.escalation_reason is None
 
 
 async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, monkeypatch):
