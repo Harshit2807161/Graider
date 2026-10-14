@@ -121,6 +121,7 @@ class ReviewQueueItem(BaseModel):
     score: Optional[float]
     max_score: float
     agreement: Optional[float]  # the last evaluator round's effective agreement
+    rubric_outdated: bool  # graded with a spec that is no longer the question's current ready one
 
 
 class PageRead(BaseModel):
@@ -141,6 +142,7 @@ class QuestionReview(BaseModel):
     max_score: float
     choice_group: Optional[str]
     rubric_spec: Optional[dict[str, Any]]  # the spec the current grade used (id, version, status, spec)
+    rubric_outdated: bool  # the current grade's spec is no longer the question's current ready spec
     transcription: Optional[TranscriptionRead]
     grade: Optional[AnswerGradeRead]
     previous_grades: list[AnswerGradeRead]  # newest first

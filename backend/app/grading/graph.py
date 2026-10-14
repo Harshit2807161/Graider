@@ -2,7 +2,7 @@
 parallel (LangGraph `Send` fan-out; `GRADING_MAX_CONCURRENCY` bounds both)."""
 
 import operator
-from typing import Annotated, Any, Optional, TypedDict
+from typing import NotRequired, Annotated, Any, Optional, TypedDict
 from uuid import UUID
 
 from langgraph.graph import END, START, StateGraph
@@ -22,6 +22,8 @@ class QuestionInfo(TypedDict):
     text: str
     max_score: float
     spec: Any  # RubricSpec | None
+    printed_label: NotRequired[Optional[str]]
+    choice_group: NotRequired[Optional[str]]
 
 
 class GradingState(TypedDict, total=False):
@@ -44,7 +46,7 @@ def _read_pages(state: GradingState) -> list[Send]:
 async def read_page(piece: dict) -> dict:
     questions = piece["questions"]
     result = await transcribe_page(
-        piece["page"], [q["label"] for q in questions], [(q["label"], q["text"]) for q in questions], piece["count"]
+        piece["page"], [q["label"] for q in questions], [(q["label"], q["text"], q.get("printed_label"), q.get("choice_group")) for q in questions], piece["count"]
     )
     return {"page_results": [(piece["page"].number, result)]}
 

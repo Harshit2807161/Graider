@@ -18,6 +18,7 @@ const HINTS: Record<string, string> = {
     low_ocr_confidence: "Compare the transcript with the page: correct it if it was misread, otherwise accept the proposed score.",
     multiple_attempts: "The student answered more than once. Check which attempt should count.",
     check_failed: "The AI's grade didn't pass the checks. Set the scores yourself.",
+    evidence_not_found: "The AI's quotes weren't found in the transcript. Check its evidence against the page, then accept or change the score.",
     all_models_failed: "The AI couldn't grade this answer. Set the scores yourself.",
     evaluator_disagreement: "The examiners still disagree after revising. Their positions are below.",
     spot_check: "A random check of a confident grade: accept it or change it.",

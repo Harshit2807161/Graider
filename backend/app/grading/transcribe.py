@@ -48,7 +48,7 @@ class SheetPage:
     text_layer: Optional[str]  # typed text from a digital PDF page or a text file
 
 
-def page_parts(page: SheetPage, questions: list[tuple[str, str]], count: int) -> list:
+def page_parts(page: SheetPage, questions: list[tuple], count: int) -> list:
     parts: list = [TextPart(text=prompts.transcribe_prompt(questions, page.number, count))]
     if page.image_path is None:
         parts.append(TextPart(text=f"The page (a typed document):\n{page.text_layer or ''}"))
@@ -63,7 +63,23 @@ def page_parts(page: SheetPage, questions: list[tuple[str, str]], count: int) ->
     return parts
 
 
-async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tuple[str, str]], count: int) -> dict[str, Any]:
+_CTRL_ARROW = re.compile(r"\x02[12]")
+_CTRL_OTHER = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def clean_transcript_text(text: str) -> str:
+    """Repair control characters the small reader emits for symbols.
+
+    Known pairs (seen in the CBSE run): \\x02 followed by 1 or 2 is an arrow, a lone
+    \\x02 is an apostrophe. Any other C0 control character (tab, newline and
+    carriage return are kept) is dropped. Conservative: nothing else is touched.
+    """
+    text = _CTRL_ARROW.sub("\u2192", text)
+    text = text.replace("\x02", "'")
+    return _CTRL_OTHER.sub("", text)
+
+
+async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tuple], count: int) -> dict[str, Any]:
     """Raises LLMError if no model could read the page (the run fails: nothing can be graded fairly)."""
     result = await get_router().call(LLMRequest(
         role=Role.VISION,
@@ -72,4 +88,7 @@ async def transcribe_page(page: SheetPage, labels: list[str], questions: list[tu
         output_schema=page_answers_schema(labels),
         context=CallContext(purpose="transcribe_page", round=page.number),
     ))
-    return result.parsed.model_dump()
+    data = result.parsed.model_dump()
+    for segment in data.get("segments", []):
+        segment["text"] = clean_transcript_text(segment["text"])
+    return data

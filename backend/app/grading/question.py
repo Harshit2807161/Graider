@@ -16,11 +16,12 @@ from app.grading.checks import (
     check_grade,
     check_rejections,
     check_replies,
+    check_structure,
     effective_agreement,
     total,
 )
 from app.grading.sampling import spot_check
-from app.grading.schemas import grade_schema, review_schema, revision_schema
+from app.grading.schemas import PAGE_INVENTORY_MISMATCH, grade_schema, review_schema, revision_schema
 from app.grading.stitch import StitchedAnswer
 from app.llm.config import get_llm_settings
 from app.llm.router import get_router
@@ -126,6 +127,9 @@ class _Grading:
                 return
             text = f"{self.block}\n\nYour grading had these problems; fix them:\n- " + "\n- ".join(errors)
         self._accept(out)
+        if not check_structure(out["criteria"], self.spec):
+            # Only the quotes failed: a misquote is not a wrong grade, so the teacher sees the proposal.
+            raise _Escalate(EscalationReason.EVIDENCE_NOT_FOUND)
         raise _Escalate(EscalationReason.CHECK_FAILED, keep_score=False)
 
     def _accept(self, out: dict) -> None:
@@ -201,9 +205,9 @@ async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSett
 
     outcome.criteria, outcome.feedback, outcome.score = grading.criteria, grading.feedback, total(grading.criteria)
     outcome.flags = list(q.answer.flags)
-    if "multiple_attempts" in q.answer.flags:
+    if q.answer.starts > 1:
         return outcome.escalate(EscalationReason.MULTIPLE_ATTEMPTS)
-    if q.answer.flags:
+    if PAGE_INVENTORY_MISMATCH in q.answer.flags:
         return outcome.escalate(EscalationReason.PAGE_INVENTORY_MISMATCH)
     confidence = q.answer.confidence
     if confidence is not None and confidence < settings.GRADING_OCR_CONFIDENCE_THRESHOLD:

@@ -22,7 +22,7 @@ def page_answers_schema(labels: list[str]) -> type[BaseModel]:
         label_as_written=(str, Field(description='The question number as the student wrote it ("Ans 3", "3(b)"), or ""')),
         text=(str, Field(description="The student's own writing, transcribed exactly")),
         starts_answer=(bool, Field(description="False if it continues an answer from earlier (no new number)")),
-        crossed_out=(bool, Field(description="True if the student struck it out")),
+        crossed_out=(bool, Field(description="True only if the student struck out this whole block; struck words inside kept work are just left out of text")),
         confidence=(float, Field(description="How sure you are of the transcription, 0 to 1")),
     )
     inventory = _model(

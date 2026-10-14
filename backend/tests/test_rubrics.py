@@ -5,7 +5,7 @@ import pytest
 from app.core.constants import SubmissionStatus
 from tests.conftest import FakeInvoker
 
-from app.rubrics.schema import Criterion, RubricSpec
+from app.rubrics.schema import Criterion, RubricSpec, RubricSpecEdit
 from app.rubrics.validate import validate_spec
 
 
@@ -256,3 +256,31 @@ async def service_run(run_id):
     from app.services.grading_service import run_grading
 
     await run_grading(run_id)
+
+
+async def test_reparse_admin_selects_only_outdated_ai_specs(fake_llm, db, school, capsys):
+    from app.admin import reparse_specs
+
+    q1, q2 = questions(db, school["exam"])[:2]
+    await parse(q1)
+    await parse(q2)
+    with Session(engine) as s:
+        record = service.current_spec(s, s.get(Question, q2.id))
+        service.store_teacher_spec(
+            s, s.get(Question, q2.id),
+            RubricSpecEdit(kind=record.spec["kind"], subject=record.spec["subject"],
+                           criteria=[Criterion(**c) for c in record.spec["criteria"]],
+                           grading_notes=None),
+            membership_id=None,
+        )
+        s.commit()
+    with Session(engine) as s:
+        assert reparse_specs.find_outdated(s) == []
+        rec = service.current_spec(s, s.get(Question, q1.id))
+        rec.parser_prompt_version = "old-version"
+        s.add(rec)
+        s.commit()
+        assert [q.id for q in reparse_specs.find_outdated(s)] == [q1.id]
+        assert [q.id for q in reparse_specs.find_outdated(s, school["org"].id)] == [q1.id]
+    assert reparse_specs.run(dry_run=True) == 1
+    assert "Dry run" in capsys.readouterr().out

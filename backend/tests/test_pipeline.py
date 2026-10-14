@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.audit.runs import create_run
-from app.core.constants import SubmissionStatus
+from app.core.constants import FailureCode, SubmissionStatus
 from app.core.db import engine
 from app.models.audit import GradingRun, LLMCall
 from app.models.base import utcnow
@@ -141,6 +141,7 @@ async def test_unreadable_pages_fail_instead_of_scoring_zero(fake_llm, db, schoo
 
     graded, answers = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED and "couldn't be read" in graded.current_step and answers == []
+    assert graded.failure_code == FailureCode.PAGES_UNREADABLE
 
 
 async def test_a_question_whose_models_fail_escalates_alone(fake_llm, db, school, tmp_path):
@@ -214,6 +215,28 @@ async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, mon
 
     graded, _ = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED and "budget" in graded.current_step
+    assert graded.failure_code == FailureCode.BUDGET_EXHAUSTED
+
+
+async def test_call_budget_is_topped_up_by_two_per_page(fake_llm, db, school, tmp_path, monkeypatch):
+    """The budget opens after the sheet is rendered, so it includes 2 calls per page (M2 backlog
+    "budget sizing by pages")."""
+    from app.llm import budget as llm_budget
+    from app.llm.config import get_llm_settings
+    from app.services import grading_service
+    caps = []
+
+    def recording_budget(max_calls, max_cost_usd=None):
+        caps.append(max_calls)
+        return llm_budget.budget(max_calls, max_cost_usd)
+
+    monkeypatch.setattr(grading_service, "budget", recording_budget)
+    submission = make_submission(db, school["exam"], tmp_path, fx.scanned_pdf(pages=3), "sheet.pdf")
+
+    await grade(submission)
+
+    questions = len(db.exec(select(Question).where(Question.exam_id == school["exam"].id)).all())
+    assert caps == [get_llm_settings().max_calls_for(questions) + 2 * 3]
 
 
 async def test_choice_groups_grade_the_attempted_alternative(fake_llm, db, school, tmp_path):

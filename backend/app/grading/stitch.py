@@ -11,6 +11,9 @@ from typing import Any, Optional
 from app.grading.schemas import PAGE_INVENTORY_MISMATCH, UNASSIGNED
 from app.grading.transcribe import PageCheck
 
+# Informational: a segment the student struck out entirely was left out of the answer.
+CROSSED_OUT_EXCLUDED = "crossed_out_work_excluded"
+
 
 @dataclass
 class StitchedAnswer:
@@ -30,8 +33,16 @@ class StitchedAnswer:
         return min(scores) if scores else None
 
     @property
+    def dropped_crossed_out(self) -> bool:
+        return any(s["crossed_out"] for s in self.segments)
+
+    @property
     def flags(self) -> list[str]:
-        return (["multiple_attempts"] if self.starts > 1 else []) + self.page_flags
+        """Shown to the teacher; multiple_attempts and page_inventory_mismatch escalate (see grade_question)."""
+        flags = ["multiple_attempts"] if self.starts > 1 else []
+        if self.dropped_crossed_out:
+            flags.append(CROSSED_OUT_EXCLUDED)
+        return flags + self.page_flags
 
 
 @dataclass

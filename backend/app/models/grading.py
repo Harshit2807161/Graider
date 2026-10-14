@@ -35,6 +35,7 @@ class EscalationReason:
     MULTIPLE_ATTEMPTS = "multiple_attempts"
     PAGE_INVENTORY_MISMATCH = "page_inventory_mismatch"
     CHECK_FAILED = "check_failed"
+    EVIDENCE_NOT_FOUND = "evidence_not_found"
     EVALUATOR_DISAGREEMENT = "evaluator_disagreement"
     ALL_MODELS_FAILED = "all_models_failed"
     SPOT_CHECK = "spot_check"

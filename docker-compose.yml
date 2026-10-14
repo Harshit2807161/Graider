@@ -100,6 +100,7 @@ services:
     command:
       - gotenberg
       - --api-timeout=90s
+      - --libreoffice-start-timeout=60s  # cold start can exceed the 20s default on a low-memory host
       - --api-body-limit=60MB
       - --libreoffice-restart-after=10
       - --webhook-deny-private-ips=true

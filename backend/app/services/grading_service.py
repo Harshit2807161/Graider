@@ -10,7 +10,7 @@ from sqlmodel import Session
 from app import crud
 from app.audit.recorder import DbCallRecorder
 from app.audit.runs import finish_run, set_trace_id, start_run
-from app.core.constants import SubmissionStatus
+from app.core.constants import FailureCode, SubmissionStatus
 from app.core.db import engine
 from app.grading import persist
 from app.grading.graph import QuestionInfo, run_submission_graph
@@ -41,11 +41,29 @@ def _set_progress(db: Session, submission: Submission, step: str, **fields) -> N
     crud.submission.update(db, db_obj=submission, obj_in={"current_step": step, **fields})
 
 
+class GradingFailure(ValueError):
+    """A run-level failure with its code (the message is what `current_step` records)."""
+
+    def __init__(self, code: FailureCode, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def failure_code_for(error: Exception) -> FailureCode:
+    if isinstance(error, GradingFailure):
+        return error.code
+    if isinstance(error, LLMBudgetExceeded):
+        return FailureCode.BUDGET_EXHAUSTED
+    if isinstance(error, LLMError):
+        return FailureCode.MODEL_UNAVAILABLE
+    return FailureCode.INTERNAL_ERROR
+
+
 def _pages(db: Session, submission: Submission) -> list[SheetPage]:
     try:
         rows = submission_pages(db, submission)
     except DocumentError as e:
-        raise ValueError(f"The answer sheet can't be read: {e}") from e
+        raise GradingFailure(FailureCode.PAGES_UNREADABLE, f"The answer sheet can't be read: {e}") from e
     return [SheetPage(number=i, image_path=Path(p.image_path) if p.image_path else None, text_layer=p.text_layer)
             for i, p in enumerate(rows, start=1)]
 
@@ -81,8 +99,9 @@ async def run_grading(run_id: UUID) -> None:
         try:
             questions = crud.question.get_by_exam(db, exam_id=submission.exam_id)
             if not questions:
-                raise ValueError("This exam has no questions configured.")
-            _set_progress(db, submission, "Preparing answer pages...", status=SubmissionStatus.PROCESSING)
+                raise GradingFailure(FailureCode.NO_QUESTIONS, "This exam has no questions configured.")
+            _set_progress(db, submission, "Preparing answer pages...", status=SubmissionStatus.PROCESSING,
+                          failure_code=None)
             pages = [] if run.question_ids else _pages(db, submission)
             calls = llm_settings.max_calls_for(len(questions)) + 2 * len(pages)
             # One router, one call/cost budget and one audit recorder per grading run
@@ -93,6 +112,7 @@ async def run_grading(run_id: UUID) -> None:
                 await _grade(db, submission, run, questions, pages, recorder)
         except Exception as e:
             error = str(e)
+            code = failure_code_for(e)
             logger.exception("pipeline_error", run_id=str(run_id), submission_id=str(submission.id), error=error)
             # A failed flush/commit leaves the session unusable until rolled back
             db.rollback()
@@ -100,7 +120,8 @@ async def run_grading(run_id: UUID) -> None:
                 submission = crud.submission.get(db, id=run.submission_id)
                 crud.submission.update(
                     db, db_obj=submission,
-                    obj_in={"status": SubmissionStatus.FAILED, "current_step": f"Error: {error[:400]}"},
+                    obj_in={"status": SubmissionStatus.FAILED, "current_step": f"Error: {error[:400]}",
+                            "failure_code": code.value},
                 )
             except Exception:
                 logger.exception("failed_to_update_submission_status", submission_id=str(run.submission_id))
@@ -124,6 +145,7 @@ async def _grade(db: Session, submission: Submission, run: GradingRun, questions
     ready = {q.id: r if r is not None and r.status == RubricStatus.READY else None for q in questions
              for r in [records.get(q.id)]}
     infos = [QuestionInfo(question_id=q.id, label=label, text=q.question_text, max_score=q.max_score,
+                          printed_label=q.printed_label, choice_group=q.choice_group,
                           spec=RubricSpec.model_validate(ready[q.id].spec) if ready[q.id] else None)  # type: ignore[union-attr]
              for label, q in labelled]
 
@@ -152,7 +174,7 @@ async def _grade(db: Session, submission: Submission, run: GradingRun, questions
         except LLMBudgetExceeded:
             raise
         except LLMError as e:
-            raise ValueError(f"The answer pages couldn't be read: {e}") from e
+            raise GradingFailure(FailureCode.PAGES_UNREADABLE, f"The answer pages couldn't be read: {e}") from e
         stitched, outcomes, skip = state["stitched"], state["outcomes"], state["skip"]
 
     _set_progress(db, submission, "Saving results...")
