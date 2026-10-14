@@ -95,6 +95,7 @@ export interface QuestionReview {
     max_score: number;
     choice_group: string | null;
     rubric_spec: { id: string; version: number; status: string; validation_errors: string[]; spec: RubricSpec } | null;
+    rubric_outdated: boolean; // the current grade used a spec that is no longer the question's current ready one
     transcription: Transcription | null;
     grade: AnswerGrade | null;
     previous_grades: AnswerGrade[];
@@ -131,6 +132,7 @@ export interface ReviewQueueItem {
     score: number | null;
     max_score: number;
     agreement: number | null;
+    rubric_outdated: boolean;
 }
 
 export interface TimelineEntry {

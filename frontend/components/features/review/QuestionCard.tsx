@@ -110,6 +110,7 @@ export default function QuestionCard({
                     <h3 id={titleId} className={styles.title}><span className="sr-only">{q.label}: </span>{q.text}</h3>
                     <div className={styles.meta}>
                         {grade ? <StatusBadge status={grade.status} /> : <StatusBadge status="PENDING" label="Not graded yet" />}
+                        {grade && q.rubric_outdated && <StatusBadge status="NEEDS_REVIEW" label="Graded with an older rubric" />}
                         {grade?.source === "teacher" && (
                             <span className={cn(styles.chip, styles.chipTeacher)}><UserCheck size={14} aria-hidden="true" /> Teacher&apos;s decision</span>
                         )}
