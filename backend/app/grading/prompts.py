@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.rubrics.schema import RubricSpec
 
-PROMPT_VERSION = "grading-v2"
+PROMPT_VERSION = "grading-v2.1"
 
 # Subject personas: what a good examiner in each subject pays attention to (the rubric decides marks)
 PERSONAS = {
@@ -42,7 +42,9 @@ number), true otherwise.
 diagram briefly in brackets, e.g. [diagram: number line with a closed circle at 5].
 - Transcribe every line of the student's work, down to the last one: final answers that are circled, \
 boxed or underlined matter most, so never stop early.
-- crossed_out: true for work the student struck out (still transcribe it).
+- Struck-through words or lines inside an answer the student otherwise kept: leave them out of the \
+text and keep the rest; do not mark the segment crossed_out.
+- crossed_out: true only for a whole block the student struck out entirely (still transcribe it).
 - confidence: how sure you are of the reading, 0 to 1. Lower it for unclear handwriting.
 - A blank page has no segments."""
 

@@ -107,7 +107,8 @@ def test_answers_are_stitched_across_pages_in_any_order():
         (3, [seg("unassigned", "a stray note"), seg("2", "and chlorophyll", starts=False, conf=0.4)]),
     ])
     one, two = stitched.answers["1"], stitched.answers["2"]
-    assert one.text == "2x = 10\nx = 5" and len(one.segments) == 3 and one.flags == []
+    assert one.text == "2x = 10\nx = 5" and len(one.segments) == 3
+    assert one.flags == ["crossed_out_work_excluded"] and two.flags == []
     assert two.text == "Plants use light\nand chlorophyll" and two.confidence == 0.4
     assert [s["text"] for s in stitched.unassigned] == ["a stray note"]
 
@@ -115,6 +116,14 @@ def test_answers_are_stitched_across_pages_in_any_order():
 def test_two_separate_starts_are_flagged():
     stitched = stitch([(1, [seg("1", "first try")]), (2, [seg("1", "second try")])])
     assert stitched.answers["1"].flags == ["multiple_attempts"]
+
+
+async def test_crossed_out_flag_is_shown_but_does_not_escalate(fake_llm):
+    q = question()
+    q.answer.segments.append({"confidence": 0.9, "crossed_out": True, "page": 1, "text": "struck"})
+    outcome = await grade_question(q, uuid4())
+    assert outcome.status == "graded" and outcome.escalation_reason is None and outcome.score == 4
+    assert outcome.flags == ["crossed_out_work_excluded"]
 
 
 # ===== choice groups and sampling =====
