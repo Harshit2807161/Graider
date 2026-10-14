@@ -58,7 +58,8 @@ from sqlmodel import Session, select  # noqa: E402
 from app import crud  # noqa: E402
 from app.core.db import engine  # noqa: E402
 from app.models.audit import LLMCall  # noqa: E402
-from app.models.exam import Question  # noqa: E402
+from app.models.base import utcnow  # noqa: E402
+from app.models.exam import Exam, Question  # noqa: E402
 from app.models.rubric import RubricSpecRecord, RubricStatus  # noqa: E402
 from app.rubrics import service  # noqa: E402
 from app.rubrics.parser import PARSER_PROMPT_VERSION  # noqa: E402
@@ -284,3 +285,10 @@ async def test_reparse_admin_selects_only_outdated_ai_specs(fake_llm, db, school
         assert [q.id for q in reparse_specs.find_outdated(s, school["org"].id)] == [q1.id]
     assert reparse_specs.run(dry_run=True) == 1
     assert "Dry run" in capsys.readouterr().out
+    with Session(engine) as s:
+        # Questions of a deleted exam are left alone
+        exam = s.get(Exam, school["exam"].id)
+        exam.deleted_at = utcnow()
+        s.add(exam)
+        s.commit()
+        assert reparse_specs.find_outdated(s) == []

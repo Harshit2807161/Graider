@@ -19,9 +19,13 @@ from app.rubrics.parser import PARSER_PROMPT_VERSION
 
 def find_outdated(db: Session, org_id: UUID | None = None) -> list[Question]:
     """Live questions whose current spec is AI-sourced with a different parser prompt version."""
-    stmt = select(Question).where(col(Question.deleted_at).is_(None))
+    stmt = (
+        select(Question)
+        .join(Exam, col(Exam.id) == col(Question.exam_id))
+        .where(col(Question.deleted_at).is_(None), col(Exam.deleted_at).is_(None))
+    )
     if org_id is not None:
-        stmt = stmt.join(Exam, col(Exam.id) == col(Question.exam_id)).where(Exam.org_id == org_id)
+        stmt = stmt.where(Exam.org_id == org_id)
     questions = list(db.exec(stmt).all())
     current = service.current_specs(db, questions)
     return [
