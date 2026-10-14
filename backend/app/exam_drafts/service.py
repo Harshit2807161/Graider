@@ -71,7 +71,8 @@ def create_draft(db: Session, exam: Exam, document_ids: list[UUID], membership_i
         raise DraftError("Choose at least one document.")
     documents = db.exec(select(Document).where(col(Document.id).in_(document_ids))).all()
     found = {d.id: d for d in documents}
-    missing = [str(i) for i in document_ids if i not in found or found[i].exam_id != exam.id]
+    missing = [str(i) for i in document_ids
+               if i not in found or found[i].exam_id != exam.id or found[i].deleted_at is not None]
     if missing:
         raise DraftError(f"Documents not found in this exam: {', '.join(missing)}")
     if any(found[i].role not in EXAM_ROLES for i in document_ids):
