@@ -148,11 +148,6 @@ def read_exams(
 
     return exams
 
-@router.get(
-    "/{exam_id}",
-    response_model=ExamWithQuestions,
-    responses={200: {"description": "Students get StudentExamWithQuestions (no rubric fields)"}},
-)
 @router.get("/summary", response_model=ExamsSummary)
 def read_exams_summary(
     org_id: UUID,
@@ -178,7 +173,11 @@ def read_exams_summary(
     return ExamsSummary(exams=list(per_exam.values()), totals=totals)
 
 
-@router.get("/{exam_id}", response_model=ExamWithQuestions)
+@router.get(
+    "/{exam_id}",
+    response_model=ExamWithQuestions,
+    responses={200: {"description": "Students get StudentExamWithQuestions (no rubric fields)"}},
+)
 def read_exam(
     *,
     db: Session = Depends(deps.get_session),
