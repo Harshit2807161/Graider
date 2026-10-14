@@ -7,7 +7,7 @@ Done:
 - Test: `backend/tests/test_student_results.py::test_a_student_sees_criterion_marks_without_the_reasoning`.
 
 Remaining:
-- Frontend: render criteria under each question on the student result page (in progress).
+- Nothing required. Frontend renders a criteria table under each question (`frontend/app/dashboard/results/[submissionId]/page.tsx`, `.criteria` in results.module.css).
 
 How to test:
 - `cd backend && pytest tests/test_student_results.py tests/test_review.py -q && ruff check app tests alembic`

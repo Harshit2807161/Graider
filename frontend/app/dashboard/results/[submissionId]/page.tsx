@@ -120,6 +120,22 @@ export default function ResultPage() {
                                     </span>
                                 </div>
                                 {!a.counted && <p className={styles.note}>Doesn&apos;t count towards your total: you answered more alternatives than needed.</p>}
+                                {a.criteria && a.criteria.length > 0 && (
+                                    <table className={styles.criteria}>
+                                        <caption className="sr-only">Marks by criterion for {a.label}</caption>
+                                        <thead>
+                                            <tr><th scope="col">Criterion</th><th scope="col">Marks</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {a.criteria.map((c, i) => (
+                                                <tr key={i}>
+                                                    <td>{c.name}</td>
+                                                    <td>{fmt(c.score)}{c.max_points != null && <> / {fmt(c.max_points)}</>}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
                                 {a.feedback && (
                                     <div className={styles.feedback}>
                                         <MessageSquareText size={16} aria-hidden="true" />

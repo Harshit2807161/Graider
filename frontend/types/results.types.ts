@@ -24,6 +24,14 @@ export interface StudentAnswer {
     /** False for an extra alternative of a choice question */
     counted: boolean;
     feedback: string | null;
+    /** Per-criterion marks from the rubric (names and scores only) */
+    criteria?: StudentCriterionMark[];
+}
+
+export interface StudentCriterionMark {
+    name: string;
+    score: number;
+    max_points: number | null;
 }
 
 /** What a student sees of their own published answer sheet */

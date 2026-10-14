@@ -312,6 +312,33 @@
     color: var(--muted-foreground);
 }
 
+.criteria {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+.criteria th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--border);
+}
+
+.criteria td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.criteria th:last-child,
+.criteria td:last-child {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
 .feedback {
     display: flex;
     gap: var(--space-2);
