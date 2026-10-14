@@ -215,6 +215,27 @@ async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, mon
     assert graded.status == SubmissionStatus.FAILED and "budget" in graded.current_step
 
 
+async def test_call_budget_is_topped_up_by_two_per_page(fake_llm, db, school, tmp_path, monkeypatch):
+    """The budget opens after the sheet is rendered, so it includes 2 calls per page (M2 backlog
+    "budget sizing by pages")."""
+    from app.llm import budget as llm_budget
+    from app.llm.config import get_llm_settings
+    from app.services import grading_service
+    caps = []
+
+    def recording_budget(max_calls, max_cost_usd=None):
+        caps.append(max_calls)
+        return llm_budget.budget(max_calls, max_cost_usd)
+
+    monkeypatch.setattr(grading_service, "budget", recording_budget)
+    submission = make_submission(db, school["exam"], tmp_path, fx.scanned_pdf(pages=3), "sheet.pdf")
+
+    await grade(submission)
+
+    questions = len(db.exec(select(Question).where(Question.exam_id == school["exam"].id)).all())
+    assert caps == [get_llm_settings().max_calls_for(questions) + 2 * 3]
+
+
 async def test_choice_groups_grade_the_attempted_alternative(fake_llm, db, school, tmp_path):
     exam = db.get(Exam, school["exam"].id)
     db.add(Question(exam_id=exam.id, order_index=3, question_text="Explain respiration", max_score=6))
