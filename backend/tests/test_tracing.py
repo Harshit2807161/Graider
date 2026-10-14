@@ -143,3 +143,61 @@ def test_tracing_problems_never_fail_grading(monkeypatch):
     with tracing.run_trace(uuid.uuid4(), uuid.uuid4(), "upload") as trace_id:
         pass
     assert trace_id is None
+
+
+# --- Langfuse retention (fake HTTP transport, no network) ---------------------------------------
+
+def _retention_client(traces, calls):
+    import httpx
+
+    from app.admin.langfuse_retention import LangfuseClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append((request.method, request.url.path, dict(request.url.params), request.headers))
+        if request.method == "GET":
+            page = int(request.url.params["page"])
+            sid = request.url.params.get("sessionId")
+            rows = [t for t in traces if sid is None or t.get("sessionId") == sid]
+            chunk = rows[(page - 1) * 2 : page * 2]
+            return httpx.Response(200, json={"data": chunk, "meta": {"page": page, "totalPages": -(-len(rows) // 2)}})
+        return httpx.Response(200, json={"message": "ok"})
+
+    return LangfuseClient("http://lf.test/", "pk", "sk", client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+
+def test_retention_lists_all_pages_and_deletes(monkeypatch):
+    from app.admin.langfuse_retention import purge
+
+    traces = [{"id": f"t{i}"} for i in range(3)]
+    calls: list = []
+    ids = purge(_retention_client(traces, calls), older_than_days=30)
+    assert ids == ["t0", "t1", "t2"]
+    gets = [c for c in calls if c[0] == "GET"]
+    assert len(gets) == 2 and "toTimestamp" in gets[0][2]
+    assert sorted(c[1] for c in calls if c[0] == "DELETE") == [f"/api/public/traces/t{i}" for i in range(3)]
+    assert calls[0][3]["authorization"].startswith("Basic ")
+
+
+def test_retention_dry_run_deletes_nothing():
+    from app.admin.langfuse_retention import purge
+
+    calls: list = []
+    ids = purge(_retention_client([{"id": "a"}, {"id": "b"}], calls), older_than_days=1, dry_run=True)
+    assert ids == ["a", "b"]
+    assert all(c[0] == "GET" for c in calls)
+
+
+def test_retention_submission_filter():
+    from app.admin.langfuse_retention import purge
+
+    sid = uuid.uuid4()
+    traces = [
+        {"id": "mine1", "sessionId": str(sid), "metadata": {"submission_id": str(sid)}},
+        {"id": "other", "sessionId": "x", "metadata": {"submission_id": "x"}},
+        {"id": "mine2", "sessionId": str(sid), "metadata": {"submission_id": str(sid)}},
+    ]
+    calls: list = []
+    ids = purge(_retention_client(traces, calls), submission_id=sid)
+    assert ids == ["mine1", "mine2"]
+    assert [c[1] for c in calls if c[0] == "DELETE"] == ["/api/public/traces/mine1", "/api/public/traces/mine2"]
+    assert calls[0][2]["sessionId"] == str(sid) and "toTimestamp" not in calls[0][2]
