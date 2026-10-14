@@ -1,7 +1,7 @@
 """Code checks on a draft. Blocking issues stop confirmation; warnings are shown to the teacher."""
 
 from app.exam_drafts.choices import suggest_internal_choice_split
-from app.exam_drafts.schema import DraftContent, Issue
+from app.exam_drafts.schema import DraftContent, DraftPage, Issue
 from app.models.document import DocumentRole
 from app.services.labels import duplicate_labels
 
@@ -40,6 +40,10 @@ def check_content(content: DraftContent) -> list[Issue]:
         if q.marks is None or q.marks <= 0:
             issues.append(Issue(severity="blocking", code="missing_marks", label=q.label,
                                 message=f"Question {q.label} needs its marks."))
+        if q.alternate_language_text:
+            issues.append(Issue(severity="warning", code="bilingual_duplicate", label=q.label,
+                                message=f"Question {q.label} appears in two languages; the English (Latin-script) "
+                                        "text was kept and the other kept as its alternate."))
         if not (q.rubric or "").strip():
             outcome = ("keeps its current rubric" if content.mode == "rubric_only"
                        else "criteria will be derived from the question")
@@ -93,3 +97,12 @@ def check_pages(content: DraftContent) -> list[Issue]:
             issues.append(Issue(severity="warning", code="handwriting_on_blank_copy",
                                 message=f"{where} has handwriting; is it a student's sheet rather than a blank copy?"))
     return issues
+
+
+def check_rubric_documents(pages: list[DraftPage], piece_pages: list[list[str]]) -> list[Issue]:
+    """Warn for each rubric document that contributed no rubric items (`piece_pages` = each piece's pages)."""
+    contributing = {where.rsplit(":", 1)[0] for wheres in piece_pages for where in wheres}
+    docs = {p.document_id for p in pages if p.declared_role == DocumentRole.RUBRIC}
+    return [Issue(severity="warning", code="rubric_document_empty",
+                  message=f"Rubric document {doc} yielded no rubric items; check it was read correctly.")
+            for doc in sorted(docs - contributing)]

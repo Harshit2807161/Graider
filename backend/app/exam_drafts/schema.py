@@ -68,6 +68,7 @@ class DraftQuestion(BaseModel):
     rubric: Optional[str] = None  # the rubric text the M4 parser will turn into criteria
     choice_group: Optional[str] = None
     pages: list[str] = []  # where it came from: "document_id:page_index"
+    alternate_language_text: Optional[str] = None  # the same question in the paper's other language
 
 
 class DraftChoiceGroup(BaseModel):

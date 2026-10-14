@@ -756,3 +756,13 @@ button.task {
 .moreButton:active {
     background-color: var(--indigo-100);
 }
+
+/* Class rows link to the class page */
+a.rowTitle {
+    text-decoration: none;
+}
+
+a.rowTitle:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}

@@ -48,7 +48,7 @@ async def test_grading_uses_the_papers_labels(fake_llm, db, school, tmp_path):
 
 # ===== merging pages and checking drafts (pure code) =====
 
-from app.exam_drafts.checks import check_content, check_pages, expected_total  # noqa: E402
+from app.exam_drafts.checks import check_content, check_pages, check_rubric_documents, expected_total  # noqa: E402
 from app.exam_drafts.merge import PageInput, attach_rubric, merge  # noqa: E402
 from app.exam_drafts.schema import (  # noqa: E402
     DraftQuestion,
@@ -178,12 +178,55 @@ def test_internal_choice_is_a_warning_with_the_suggested_split():
     assert [p["label"] for p in parts] == ["2(a)", "2(b)"] and parts[0]["marks"] == 5.0
 
 
+def test_bilingual_paper_keeps_the_english_question_and_attaches_the_other_language():
+    pages = [
+        page("question_paper", questions=[pq("1", "समीकरण 2x + 5 = 15 हल कीजिए।", 2), pq("2", "चाल को परिभाषित कीजिए।", 1)]),
+        page("question_paper", index=1, questions=[pq("1", "Solve 2x + 5 = 15."), pq("2", "Define speed.", 1)]),
+        page("question_paper", index=2, questions=[pq("3", "Name a gas.", 1)]),
+        page("question_paper", index=3, questions=[pq("3", "एक गैस का नाम बताइए।", 1)]),
+    ]
+    content, _ = merge(pages)
+
+    assert [q.label for q in content.questions] == ["1", "2", "3"]
+    q1, _, q3 = content.questions
+    assert q1.text == "Solve 2x + 5 = 15." and q1.alternate_language_text.startswith("समीकरण") and q1.marks == 2
+    assert q1.pages == ["d1:0", "d1:1"]
+    assert q3.text == "Name a gas." and q3.alternate_language_text == "एक गैस का नाम बताइए।"
+    issues = check_content(content)
+    assert ("warning", "bilingual_duplicate", "1") in codes(issues)
+    assert not [i for i in issues if i.severity == "blocking" and i.code != "missing_marks"]
+    assert "duplicate_label" not in [i.code for i in issues]
+
+
+def test_same_script_repeats_stay_duplicates():
+    content, _ = merge([page("question_paper", questions=[pq("1", "Solve it.", 2), pq("1", "Solve again.", 2)])])
+    assert [q.text for q in content.questions] == ["Solve it.", "Solve again."]
+    assert all(q.alternate_language_text is None for q in content.questions)
+    assert ("blocking", "duplicate_label", "1") in codes(check_content(content))
+
+
 def test_page_warnings_compare_what_was_seen_with_the_declared_role():
     pages = [page("question_paper", kind="rubric"), page("rubric", kind="question_paper", index=1),
              page("blank_copy", kind="mixed", handwriting=True, index=2), page("question_paper", kind="answers", index=3)]
     content, _ = merge(pages)
     assert [i.code for i in check_pages(content)] == [
         "role_mismatch", "role_mismatch", "handwriting_on_blank_copy", "answers_page"]
+
+
+def test_marking_scheme_extracted_as_questions_still_gives_rubric_items():
+    pages = [page("question_paper", questions=[pq("1", "Solve", 2)]),
+             page("rubric", doc="d2", questions=[pq("1", "x = 5", 2)])]
+    content, pieces = merge(pages)
+    assert [(p.label, p.text, p.marks) for p in pieces] == [("1", "x = 5", 2)]
+    attach_rubric(content, pieces, {0: "1"})
+    assert content.questions[0].rubric == "x = 5"
+    assert check_rubric_documents(content.pages, [p.pages for p in pieces]) == []
+
+
+def test_rubric_document_without_items_warns():
+    content, pieces = merge([page("question_paper", questions=[pq("1", "Solve", 2)]), page("rubric", doc="d2")])
+    assert [(i.severity, i.code) for i in check_rubric_documents(content.pages, [p.pages for p in pieces])] == [
+        ("warning", "rubric_document_empty")]
 
 
 # ===== documents, extraction, drafts, confirmation (fake models) =====

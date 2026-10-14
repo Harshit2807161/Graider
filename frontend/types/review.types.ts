@@ -187,6 +187,7 @@ export const ESCALATION_TEXT: Record<string, string> = {
     low_ocr_confidence: "Handwriting hard to read",
     multiple_attempts: "Several attempts at this answer",
     check_failed: "The grade failed the checks",
+    evidence_not_found: "Quoted evidence not found in the transcript",
     evaluator_disagreement: "The two examiners disagree",
     all_models_failed: "The AI couldn't grade it",
     spot_check: "Random spot check",

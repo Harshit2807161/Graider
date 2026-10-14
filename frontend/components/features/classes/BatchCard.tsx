@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Batch } from "@/types/batch.types";
 import Button from "@/components/ui/Button";
 import { Users, Trash2, Upload as UploadIcon, List } from "lucide-react";
@@ -29,7 +30,9 @@ export default function BatchCard({ batch, onDelete }: BatchCardProps) {
                         <Users size={24} />
                     </span>
                     <div className={styles.info}>
-                        <h2 id={titleId} className={styles.name}>{batch.name}</h2>
+                        <h2 id={titleId} className={styles.name}>
+                            <Link href={`/dashboard/classes/${batch.id}`} className={styles.nameLink}>{batch.name}</Link>
+                        </h2>
                         <p className={styles.studentCount}>
                             <span className={styles.figure}>{batch.student_count}</span>
                             {" "}{batch.student_count === 1 ? "student" : "students"}
