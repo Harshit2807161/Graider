@@ -345,3 +345,50 @@ def test_converter_refuses_damaged_documents(monkeypatch):
     monkeypatch.setattr(settings, "GOTENBERG_URL", CONVERTER)
     with pytest.raises(DocumentError, match="couldn't be converted"):
         convert_to_pdf(b"PK\x03\x04 not really a document", "document.docx")
+
+
+# ===== converter retry (HTTP faked) =====
+
+
+class _Resp:
+    def __init__(self, status, content=b""):
+        self.status_code, self.content = status, content
+
+
+def _fake_post(monkeypatch, outcomes):
+    import app.ingestion.office as office
+
+    calls = []
+
+    def post(*a, **k):
+        calls.append(1)
+        out = outcomes[len(calls) - 1]
+        if isinstance(out, Exception):
+            raise out
+        return out
+
+    monkeypatch.setattr(settings, "GOTENBERG_URL", "http://converter")
+    monkeypatch.setattr(office.httpx, "post", post)
+    monkeypatch.setattr(office, "RETRY_DELAY_S", 0)
+    return calls
+
+
+def test_converter_retries_once_on_503(monkeypatch):
+    calls = _fake_post(monkeypatch, [_Resp(503), _Resp(200, b"%PDF-ok")])
+    assert convert_to_pdf(b"x", "a.docx") == b"%PDF-ok"
+    assert len(calls) == 2
+
+
+def test_converter_retries_once_on_timeout(monkeypatch):
+    import httpx
+
+    calls = _fake_post(monkeypatch, [httpx.ReadTimeout("slow"), _Resp(200, b"%PDF-ok")])
+    assert convert_to_pdf(b"x", "a.docx") == b"%PDF-ok"
+    assert len(calls) == 2
+
+
+def test_converter_gives_up_after_two_503s(monkeypatch):
+    calls = _fake_post(monkeypatch, [_Resp(503), _Resp(503)])
+    with pytest.raises(DocumentError, match="took too long"):
+        convert_to_pdf(b"x", "a.docx")
+    assert len(calls) == 2

@@ -1,3 +1,4 @@
+import os
 from typing import Annotated, List, Optional, Union
 from pathlib import Path
 from functools import lru_cache
@@ -5,7 +6,7 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+    model_config = SettingsConfigDict(env_file=None if os.environ.get("GR8R_IGNORE_ENV_FILE") else ".env", case_sensitive=True, extra="ignore")
 
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Graider"

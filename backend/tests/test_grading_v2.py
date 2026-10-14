@@ -49,6 +49,19 @@ def test_evidence_ignores_case_accents_and_spacing():
     assert evidence_found("2x=10", "2x = 10") and not evidence_found("x = 4", ANSWER)
 
 
+def test_evidence_matches_each_quoted_line_separately():
+    assert evidence_found("2x + 5 = 15\nx = 5", ANSWER)  # lines of the answer with one in between skipped
+    assert evidence_found("2x = 10\n\n  \nx = 5\n", ANSWER)
+    assert not evidence_found("2x = 10\nx = 4", ANSWER)  # every line must be there
+    assert not evidence_found("\n \n", ANSWER)
+
+
+def test_evidence_ignores_control_characters_and_added_quote_marks():
+    assert evidence_found('"2x = 10"', ANSWER) and evidence_found("\u201cx = 5\u201d", ANSWER)
+    assert evidence_found("\u20182x\u0007 = 10\u2019", ANSWER) and evidence_found("'x\x00 = 5'", ANSWER)
+    assert not evidence_found('"x = 4"', ANSWER)
+
+
 def test_revision_replies():
     feedback = [{"criterion_id": "c3", "point": "x = 5 is correct"}, {"criterion_id": "c1", "point": "no"}]
     assert check_replies([{"feedback_index": 0}, {"feedback_index": 1}], 2) == []
@@ -94,7 +107,8 @@ def test_answers_are_stitched_across_pages_in_any_order():
         (3, [seg("unassigned", "a stray note"), seg("2", "and chlorophyll", starts=False, conf=0.4)]),
     ])
     one, two = stitched.answers["1"], stitched.answers["2"]
-    assert one.text == "2x = 10\nx = 5" and len(one.segments) == 3 and one.flags == []
+    assert one.text == "2x = 10\nx = 5" and len(one.segments) == 3
+    assert one.flags == ["crossed_out_work_excluded"] and two.flags == []
     assert two.text == "Plants use light\nand chlorophyll" and two.confidence == 0.4
     assert [s["text"] for s in stitched.unassigned] == ["a stray note"]
 
@@ -102,6 +116,14 @@ def test_answers_are_stitched_across_pages_in_any_order():
 def test_two_separate_starts_are_flagged():
     stitched = stitch([(1, [seg("1", "first try")]), (2, [seg("1", "second try")])])
     assert stitched.answers["1"].flags == ["multiple_attempts"]
+
+
+async def test_crossed_out_flag_is_shown_but_does_not_escalate(fake_llm):
+    q = question()
+    q.answer.segments.append({"confidence": 0.9, "crossed_out": True, "page": 1, "text": "struck"})
+    outcome = await grade_question(q, uuid4())
+    assert outcome.status == "graded" and outcome.escalation_reason is None and outcome.score == 4
+    assert outcome.flags == ["crossed_out_work_excluded"]
 
 
 # ===== choice groups and sampling =====
@@ -226,6 +248,18 @@ async def test_a_grading_that_fails_the_checks_twice_escalates(fake_llm):
     assert outcome.escalation_reason == "check_failed" and outcome.score is None and fake_llm.calls_of("review") == []
 
 
+async def test_evidence_still_missing_after_the_repair_keeps_the_proposed_score(fake_llm):
+    def misquoted(p):
+        out = grading([1, 1, 2])
+        out["criteria"][2]["evidence"] = "x = 6"
+        return out
+    fake_llm.grade_answer = misquoted
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.status == "escalated" and outcome.escalation_reason == "evidence_not_found"
+    assert outcome.score == 4 and outcome.criteria[2]["score"] == 2
+    assert len(fake_llm.calls_of("grade_answer")) == 2 and fake_llm.calls_of("review") == []
+
+
 async def test_an_illegible_flag_skips_the_evaluator(fake_llm):
     fake_llm.grade_answer = lambda p: grading([0, 0, 0], flags=["illegible"])
     outcome = await grade_question(question(), uuid4())
@@ -273,3 +307,25 @@ async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, mon
 async def test_an_exhausted_budget_stops_the_run(fake_llm):
     with budget(1), pytest.raises(LLMBudgetExceeded):
         await grade_question(question(), uuid4())
+
+
+def test_clean_transcript_text() -> None:
+    from app.grading.transcribe import clean_transcript_text
+
+    assert clean_transcript_text("A \x021 B \x022 C") == "A \u2192 B \u2192 C"
+    assert clean_transcript_text("it\x02s") == "it's"
+    assert clean_transcript_text("a\x01b\x7f\tc\nd") == "ab\tc\nd"
+    assert clean_transcript_text("plain 12") == "plain 12"
+
+
+def test_transcribe_prompt_question_context() -> None:
+    from app.grading import prompts
+
+    long = "passage " * 200
+    out = prompts.transcribe_prompt([("2(a)", long, "Q.2 (a)", "g1"), ("2(b)", "Part b text")], 1, 2)
+    assert "- 2(a) (printed as Q.2 (a)) [choice group g1]: " in out and "- 2(b): Part b text" in out
+    assert "…" in out and len(out) < 1000
+    many = [(f"Q{i}", "x" * 900) for i in range(100)]
+    listing = prompts.question_listing(many)
+    assert len(listing) <= prompts.QUESTION_BLOCK_CAP + 100 and listing.count("\n") == 99
+    assert "bare sub-part" in prompts.TRANSCRIBE_SYSTEM
