@@ -9,7 +9,7 @@
 - Tests in `backend/tests/test_exam_documents.py` (4 new).
 
 ## Remaining
-- Frontend: "Split into 2(a) / 2(b)" button on the `internal_choice` issue in the draft editor that replaces the
+- Frontend (no draft editor exists in `frontend/` yet; nothing renders draft issues): "Split into 2(a) / 2(b)" button on the `internal_choice` issue in the draft editor that replaces the
   question with the two parts and adds a choice group (pick 1) in the local draft before save.
 
 ## How to test
