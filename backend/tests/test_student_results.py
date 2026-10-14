@@ -71,3 +71,25 @@ async def test_a_student_sees_the_pages_of_their_own_published_sheet_only(fake_l
     add_member(db, make_user(db, "classmate@school.test"), school["org"], Role.STUDENT)
     assert client.get(page, headers=login(client, "classmate@school.test")).status_code == 404
     assert client.get(f"{API}/submissions/{mine.id}/review", headers=student).status_code == 403
+
+
+async def test_a_student_sees_criterion_marks_without_the_reasoning(fake_llm, db, school, tmp_path, client):
+    mine = await sheet_of(db, school, tmp_path, school["student_m"])
+    student, teacher = login(client, "student@school.test"), login(client, "teacher@school.test")
+    url = f"{API}/submissions/{mine.id}"
+
+    assert client.get(url, headers=student).status_code in (403, 404)  # not published yet
+    client.post(f"{API}/submissions/{mine.id}/approve", headers=teacher)
+    client.post(f"{API}/exams/{school['exam'].id}/publish", headers=teacher)
+
+    view = client.get(url, headers=student).json()
+    criteria = [c for a in view["answers"] for c in a["criteria"]]
+    assert criteria
+    for c in criteria:
+        assert set(c) == {"name", "score", "max_points"}
+        assert c["name"] and isinstance(c["score"], (int, float))
+    for answer in view["answers"]:
+        assert sum(c["score"] for c in answer["criteria"]) == pytest.approx(answer["score"])
+    body = str(view)
+    for hidden in ("justification", "evidence", "reasoning", "rounds", "own_assessment"):
+        assert hidden not in body

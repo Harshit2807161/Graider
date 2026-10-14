@@ -16,9 +16,11 @@ from app.models.exam import Exam, Submission
 from app.models.grade_event import EventKind, GradeEvent
 from app.ingestion.service import stored_pages
 from app.models.grading import AnswerGrade
+from app.models.rubric import RubricSpecRecord
 from app.schemas.exam import (
     MyResults,
     StudentAnswerView,
+    StudentCriterionMark,
     StudentResultSummary,
     StudentSubmissionView,
     SubmissionAnswerRead,
@@ -216,6 +218,21 @@ def read_submission(
     )
 
 
+def _criterion_marks(db: Session, grade: Any) -> list[StudentCriterionMark]:
+    """The grade's per-criterion marks, named from the rubric spec it was graded against. Only name, score
+    and points: evidence, justifications and evaluator rounds stay with staff."""
+    record = db.get(RubricSpecRecord, grade.rubric_spec_id) if grade.rubric_spec_id else None
+    spec = {c.get("id"): c for c in ((record.spec or {}).get("criteria") or [])} if record else {}
+    marks = []
+    for c in grade.criteria or []:
+        if c.get("score") is None:
+            continue
+        info = spec.get(c.get("id"), {})
+        marks.append(StudentCriterionMark(name=info.get("description") or str(c.get("id")),
+                                          score=float(c["score"]), max_points=info.get("points")))
+    return marks
+
+
 def _student_view(db: Session, submission: Submission) -> StudentSubmissionView:
     questions = crud.question.get_by_exam(db, exam_id=submission.exam_id)
     grades = current(db, AnswerGrade, submission.id)
@@ -226,6 +243,7 @@ def _student_view(db: Session, submission: Submission) -> StudentSubmissionView:
             answers.append(StudentAnswerView(
                 question_id=q.id, label=label, question_text=q.question_text, score=grade.score,  # type: ignore[attr-defined]
                 max_score=q.max_score, counted=grade.counted, feedback=grade.feedback,  # type: ignore[attr-defined]
+                criteria=_criterion_marks(db, grade),
             ))
     exam = crud.exam.get(db, id=submission.exam_id)
     pages = sum(1 for p in stored_pages(db, submission) if p.image_path)
