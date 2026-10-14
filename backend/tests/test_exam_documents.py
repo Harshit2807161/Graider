@@ -136,6 +136,48 @@ def test_blocking_and_warning_checks():
     ]
 
 
+def dq(text, marks=5.0, rubric=None, label="2", group=None):
+    return DraftQuestion(label=label, text=text, marks=marks, rubric=rubric, choice_group=group)
+
+
+def test_internal_choice_on_its_own_line_is_offered_as_a_split():
+    from app.exam_drafts.choices import suggest_internal_choice_split
+    for sep in ("OR", "Or", "या", "अथवा"):
+        split = suggest_internal_choice_split(dq(f"(a) Explain osmosis.\n{sep}\n(b) Explain diffusion."))
+        assert split is not None, sep
+        assert [(p.label, p.text, p.marks) for p in split.parts] == [
+            ("2(a)", "Explain osmosis.", 5.0), ("2(b)", "Explain diffusion.", 5.0)]
+    roman = suggest_internal_choice_split(dq("(i) One\nOR\n(ii) Two"))
+    assert [p.label for p in roman.parts] == ["2(i)", "2(ii)"]
+
+
+def test_inline_internal_choice_keeps_the_shared_stem():
+    from app.exam_drafts.choices import suggest_internal_choice_split
+    split = suggest_internal_choice_split(dq("Answer: (a) Define force OR (b) Define work", marks=2))
+    assert [(p.label, p.text) for p in split.parts] == [
+        ("2(a)", "Answer:\nDefine force"), ("2(b)", "Answer:\nDefine work")]
+
+
+def test_no_split_when_there_is_no_choice_or_the_rubric_fits():
+    from app.exam_drafts.choices import suggest_internal_choice_split
+    assert suggest_internal_choice_split(dq("Is it day or night? Explain.")) is None
+    assert suggest_internal_choice_split(dq("(a) x OR (c) y")) is None
+    assert suggest_internal_choice_split(dq("(a) x\nOR\n(b) y\nOR\n(c) z")) is None
+    assert suggest_internal_choice_split(dq("(a) x\nOR\n(b) y", group="g1")) is None
+    assert suggest_internal_choice_split(dq("(a) x\nOR\n(b) y", marks=3, rubric="Point 1 (1 mark), point 2 (2 marks)")) is None
+    assert suggest_internal_choice_split(dq("(a) x\nOR\n(b) y", marks=3, rubric="(a) 3 marks (b) 3 marks")) is not None
+
+
+def test_internal_choice_is_a_warning_with_the_suggested_split():
+    from app.exam_drafts.schema import DraftContent
+    content = DraftContent(mode="questions", questions=[
+        dq("(a) Explain osmosis.\nOR\n(b) Explain diffusion.", rubric="(a) 2 marks, 3 marks (b) 5 marks")])
+    issues = [i for i in check_content(content) if i.code == "internal_choice"]
+    assert len(issues) == 1 and issues[0].severity == "warning" and issues[0].label == "2"
+    parts = issues[0].details["suggested_split"]["parts"]
+    assert [p["label"] for p in parts] == ["2(a)", "2(b)"] and parts[0]["marks"] == 5.0
+
+
 def test_page_warnings_compare_what_was_seen_with_the_declared_role():
     pages = [page("question_paper", kind="rubric"), page("rubric", kind="question_paper", index=1),
              page("blank_copy", kind="mixed", handwriting=True, index=2), page("question_paper", kind="answers", index=3)]
