@@ -1,5 +1,6 @@
 """Code checks on a draft. Blocking issues stop confirmation; warnings are shown to the teacher."""
 
+from app.exam_drafts.choices import suggest_internal_choice_split
 from app.exam_drafts.schema import DraftContent, Issue
 from app.models.document import DocumentRole
 from app.services.labels import duplicate_labels
@@ -44,6 +45,13 @@ def check_content(content: DraftContent) -> list[Issue]:
                        else "criteria will be derived from the question")
             issues.append(Issue(severity="warning", code="no_rubric", label=q.label,
                                 message=f"No rubric found for question {q.label}; {outcome}."))
+        split = suggest_internal_choice_split(q)
+        if split is not None:
+            a, b = (part.label for part in split.parts)
+            issues.append(Issue(severity="warning", code="internal_choice", label=q.label,
+                                details={"suggested_split": split.model_dump()},
+                                message=f"Question {q.label} has an internal choice (OR). Split it into {a} / {b} "
+                                        f"in a choice group so each alternative is marked out of its own marks."))
 
     labels = {q.label for q in content.questions}
     for group in content.choice_groups:
