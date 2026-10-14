@@ -81,11 +81,7 @@
     display: block;
     border-radius: var(--radius);
     background-color: var(--slate-200);
-    animation: pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    50% { opacity: 0.5; }
+    animation:global(gr-pulse) 1.4s ease-in-out infinite;
 }
 
 .skeletonHeader {

@@ -112,13 +112,7 @@
     border: 2px solid currentColor;
     border-right-color: transparent;
     border-radius: 50%;
-    animation: spin 0.75s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    animation:global(gr-spin) 0.75s linear infinite;
 }
 
 /* Touch screens: small buttons still get a comfortable target */

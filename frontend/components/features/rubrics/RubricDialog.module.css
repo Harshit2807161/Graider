@@ -25,15 +25,11 @@
     height: 6rem;
     border-radius: 0.75rem;
     background-color: var(--slate-100);
-    animation: pulse 1.4s ease-in-out infinite;
+    animation:global(gr-pulse) 1.4s ease-in-out infinite;
 }
 
 .skeleton:first-of-type {
     height: 2.5rem;
-}
-
-@keyframes pulse {
-    50% { opacity: 0.5; }
 }
 
 .empty {
@@ -117,12 +113,7 @@
     border: 1px solid var(--amber-200);
     border-radius: var(--radius);
     background-color: var(--amber-50);
-    animation: reveal 0.2s var(--ease-out);
-}
-
-@keyframes reveal {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: none; }
+    animation:global(gr-reveal) 0.2s var(--ease-out);
 }
 
 .confirmIcon {
@@ -448,7 +439,7 @@
     justify-content: flex-end;
     gap: var(--space-3);
     width: 100%;
-    animation: reveal 0.2s var(--ease-out);
+    animation:global(gr-reveal) 0.2s var(--ease-out);
 }
 
 .closeText {

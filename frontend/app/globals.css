@@ -213,3 +213,27 @@ button {
   }
 }
 
+
+/* Shared keyframes. CSS Modules scope their own keyframes, so the ones several
+   modules use live here once and are referenced as :global(gr-<name>). */
+@keyframes gr-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes gr-pulse {
+    50% { opacity: 0.5; }
+}
+@keyframes gr-pulse-soft {
+    50% { opacity: 0.55; }
+}
+@keyframes gr-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+@keyframes gr-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes gr-reveal {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
