@@ -81,7 +81,7 @@
     display: block;
     border-radius: var(--radius);
     background-color: var(--slate-200);
-    animation:global(gr-pulse) 1.4s ease-in-out infinite;
+    animation: var(--gr-pulse) 1.4s ease-in-out infinite;
 }
 
 .skeletonHeader {

@@ -127,7 +127,7 @@
 .skeletonTitle {
     border-radius: var(--radius-lg);
     background-color: var(--slate-100);
-    animation:global(gr-pulse-soft) 1.6s ease-in-out infinite;
+    animation: var(--gr-pulse-soft) 1.6s ease-in-out infinite;
 }
 
 .skeleton { height: 11rem; }

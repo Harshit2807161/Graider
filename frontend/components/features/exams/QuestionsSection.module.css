@@ -36,7 +36,7 @@ button.toggleOpen {
     border: 1px solid var(--border);
     border-radius: 0.75rem;
     background-color: var(--secondary);
-    animation:global(gr-reveal) 0.2s var(--ease-out);
+    animation: var(--gr-reveal) 0.2s var(--ease-out);
 }
 
 .importText {
@@ -194,7 +194,7 @@ button.toggleOpen {
     background-color: var(--slate-50);
     font-size: var(--text-base);
     color: var(--slate-600);
-    animation:global(gr-reveal) 0.2s var(--ease-out);
+    animation: var(--gr-reveal) 0.2s var(--ease-out);
 }
 
 .removedRow:last-child {
