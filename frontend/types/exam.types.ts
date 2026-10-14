@@ -1,6 +1,8 @@
 export type ExamStatus = 'draft' | 'published' | 'archived';
 // Matches the backend enum values (uppercase)
 export type SubmissionStatus = 'PENDING' | 'PROCESSING' | 'GRADED' | 'NEEDS_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'FAILED';
+/** Why a grading run failed (backend app.core.constants.FailureCode) */
+export type FailureCode = 'pages_unreadable' | 'budget_exhausted' | 'no_questions' | 'model_unavailable' | 'internal_error';
 export type QuestionType = 'descriptive' | 'mcq' | 'problem';
 
 export interface Question {
@@ -56,6 +58,8 @@ export interface Submission {
     percentage?: number;
     status: SubmissionStatus;
     current_step?: string | null;
+    /** Why grading failed (set when status is FAILED) */
+    failure_code?: FailureCode | null;
     student_name?: string | null;
     created_at: string;
     updated_at: string;
