@@ -6,7 +6,7 @@ from typing import Any, List
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlmodel import Session, select
 
 from app import crud
@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.exam_drafts import service as drafts
 from app.exam_drafts.schema import DraftContent, Issue
 from app.ingestion.service import store_upload
+from app.models.base import utcnow
 from app.models.document import Document
 from app.models.exam import Exam
 from app.models.exam_draft import DraftStatus, ExamDraft
@@ -87,9 +88,41 @@ def list_exam_documents(
 ) -> Any:
     exam, _ = _staff_exam(db, exam_id, current_user)
     return db.exec(
-        select(Document).where(Document.exam_id == exam.id, Document.submission_id == None)  # noqa: E711
-        .order_by(Document.created_at, Document.position)
+        select(Document).where(
+            Document.exam_id == exam.id, Document.submission_id == None, Document.deleted_at == None  # noqa: E711
+        ).order_by(Document.created_at, Document.position)
     ).all()
+
+
+@router.delete("/{exam_id}/documents/{document_id}", status_code=204)
+def delete_exam_document(
+    *,
+    db: Session = Depends(deps.get_session),
+    exam_id: UUID,
+    document_id: UUID,
+    current_user: User = Depends(deps.get_current_user),
+) -> Response:
+    """Soft-delete an exam document (the file stays on disk). Refused while a confirmed draft uses it."""
+    exam, _ = _staff_exam(db, exam_id, current_user)
+    document = db.get(Document, document_id)
+    if document is None or document.exam_id != exam.id or document.submission_id is not None \
+            or document.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Document not found in this exam")
+    confirmed = db.exec(
+        select(ExamDraft).where(ExamDraft.exam_id == exam.id, ExamDraft.status == DraftStatus.CONFIRMED)
+        .order_by(ExamDraft.version)
+    ).all()
+    used_by = next((d for d in confirmed if str(document.id) in d.document_ids), None)
+    if used_by is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Draft version {used_by.version} ({used_by.id}) was confirmed from this document; it can't be deleted.",
+        )
+    document.deleted_at = utcnow()
+    db.add(document)
+    db.commit()
+    logger.info("exam_document_deleted", exam_id=str(exam.id), document_id=str(document.id))
+    return Response(status_code=204)
 
 
 @router.post("/{exam_id}/drafts", response_model=DraftRead, status_code=202)

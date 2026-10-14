@@ -410,3 +410,44 @@ def test_drafts_are_staff_only_and_scoped_to_the_exam(client, exam_documents, sc
     foreign = client.post(f"{API}/exams/{other_exam.id}/drafts", json={"document_ids": exam_documents["ids"]},
                           headers=login(client, "t@other.test"))
     assert foreign.status_code == 400 and "not found in this exam" in foreign.json()["detail"]
+
+
+# ===== deleting exam documents =====
+
+def test_an_unused_document_is_deleted_and_leaves_the_list(client, exam_documents, db):
+    url = f"{API}/exams/{exam_documents['exam_id']}/documents"
+    paper_id, rubric_id = exam_documents["ids"]
+    response = client.delete(f"{url}/{rubric_id}", headers=exam_documents["headers"])
+    assert response.status_code == 204, response.text
+    listed = client.get(url, headers=exam_documents["headers"]).json()
+    assert [d["id"] for d in listed] == [paper_id]
+    assert client.delete(f"{url}/{rubric_id}", headers=exam_documents["headers"]).status_code == 404
+    unusable = client.post(f"{API}/exams/{exam_documents['exam_id']}/drafts", json={"document_ids": [rubric_id]},
+                           headers=exam_documents["headers"])
+    assert unusable.status_code == 400
+
+
+def test_a_document_a_confirmed_draft_used_is_kept(client, exam_documents, db):
+    from datetime import datetime, timezone
+
+    pending = draft_of(client, exam_documents)
+    draft = db.get(ExamDraft, UUID(pending["id"]))
+    draft.status, draft.confirmed_at = "confirmed", datetime.now(timezone.utc)
+    db.add(draft)
+    db.commit()
+    url = f"{API}/exams/{exam_documents['exam_id']}/documents"
+    response = client.delete(f"{url}/{exam_documents['ids'][0]}", headers=exam_documents["headers"])
+    assert response.status_code == 409 and pending["id"] in response.json()["detail"]
+    assert len(client.get(url, headers=exam_documents["headers"]).json()) == 2
+
+
+def test_deleting_documents_is_staff_only_and_scoped_to_the_exam(client, exam_documents, school, db):
+    from tests.conftest import make_exam
+
+    other_exam = make_exam(db, school["org"], school["teacher_m"], [{"question_text": "x", "max_score": 1}])
+    doc_id = exam_documents["ids"][0]
+    wrong = client.delete(f"{API}/exams/{other_exam.id}/documents/{doc_id}", headers=exam_documents["headers"])
+    assert wrong.status_code == 404
+    student = client.delete(f"{API}/exams/{exam_documents['exam_id']}/documents/{doc_id}",
+                            headers=login(client, "student@school.test"))
+    assert student.status_code == 403

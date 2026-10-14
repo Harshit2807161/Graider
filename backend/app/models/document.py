@@ -51,6 +51,7 @@ class Document(SQLModel, table=True):
     page_count: Optional[int] = None
     created_by_membership_id: Optional[UUID] = Field(default=None, foreign_key="memberships.id")
     created_at: datetime = Field(default_factory=utcnow)
+    deleted_at: Optional[datetime] = Field(default=None, nullable=True, index=True)  # soft delete; file stays
 
 
 class DocumentPage(SQLModel, table=True):
