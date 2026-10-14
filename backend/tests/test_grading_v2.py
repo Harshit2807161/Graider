@@ -298,3 +298,12 @@ async def test_grader_fallback_never_lands_on_the_evaluators_model(fake_llm, mon
 async def test_an_exhausted_budget_stops_the_run(fake_llm):
     with budget(1), pytest.raises(LLMBudgetExceeded):
         await grade_question(question(), uuid4())
+
+
+def test_clean_transcript_text() -> None:
+    from app.grading.transcribe import clean_transcript_text
+
+    assert clean_transcript_text("A \x021 B \x022 C") == "A \u2192 B \u2192 C"
+    assert clean_transcript_text("it\x02s") == "it's"
+    assert clean_transcript_text("a\x01b\x7f\tc\nd") == "ab\tc\nd"
+    assert clean_transcript_text("plain 12") == "plain 12"
