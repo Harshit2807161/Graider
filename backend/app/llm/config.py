@@ -65,6 +65,9 @@ class LLMSettings(BaseSettings):
     # May a self-hosted primary fall back to an external API (student data leaves our infra)?
     allow_external_fallback: bool = True
 
+    # An API model without a price can't count toward the USD cap; refuse to start unless allowed
+    allow_unpriced_models: bool = False
+
     # Runaway-cost guard per submission: calls = base + per_question * questions; plus a USD cap
     max_calls_base: int = 20
     max_calls_per_question: int = 12

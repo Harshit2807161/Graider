@@ -21,7 +21,7 @@ from pydantic import BaseModel, ValidationError
 from app.llm import budget as budget_mod
 from app.llm import recorder
 from app.llm.config import LLMSettings, get_llm_settings
-from app.llm.costs import cost_usd
+from app.llm.costs import check_prices, cost_usd
 from app.llm.invoker import InvokeRequest, InvokeResponse, Invoker, LangChainInvoker
 from app.llm.schema import portable_schema, schema_hash
 from app.llm.types import (
@@ -52,6 +52,7 @@ class ModelRouter:
     def __init__(self, invoker: Invoker, settings: Optional[LLMSettings] = None):
         self.invoker = invoker
         self.settings = settings or get_llm_settings()
+        check_prices(self.settings)
 
     # ----- chain -----
 
