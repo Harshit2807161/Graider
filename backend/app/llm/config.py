@@ -9,6 +9,7 @@ e.g. (see backend/.env.example for full profiles):
     LLM__GRADER__FALLBACKS=[{"provider": "anthropic", "model": "claude-sonnet-5-5", "effort": "medium"}]
 """
 
+import os
 from functools import lru_cache
 from typing import Optional
 
@@ -51,7 +52,7 @@ class LLMSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="LLM__",
         env_nested_delimiter="__",
-        env_file=".env",
+        env_file=None if os.environ.get("GR8R_IGNORE_ENV_FILE") else ".env",
         extra="ignore",
         case_sensitive=False,
     )

@@ -10,6 +10,10 @@ from typing import Any, Callable, Optional
 
 # Configure the app before anything imports app.core.config (settings are cached at import).
 _TMP = Path(tempfile.mkdtemp(prefix="gr8r-tests-"))
+# Tests must not depend on a developer's backend/.env or shell LLM__* settings.
+os.environ["GR8R_IGNORE_ENV_FILE"] = "1"
+for _key in [k for k in os.environ if k.startswith("LLM__")]:
+    del os.environ[_key]
 os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["DATABASE_URL"] = os.environ.get("TEST_DATABASE_URL", f"sqlite:///{_TMP / 'test.db'}")
 os.environ["UPLOAD_DIR"] = str(_TMP / "uploads")
