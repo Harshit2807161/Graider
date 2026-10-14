@@ -12,3 +12,6 @@ Remaining:
 How to test:
 - `cd backend && pytest tests/test_student_results.py tests/test_review.py -q && ruff check app tests alembic`
 - `cd frontend && npx tsc --noEmit`
+
+Status: complete. `tests/test_review.py` field-set assertion updated for the new `criteria` key.
+Checks: pytest test_student_results.py + test_review.py 21 passed; ruff clean; tsc clean.
