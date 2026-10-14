@@ -20,9 +20,10 @@ None for PDFs and images: PDF pages are rendered by `pypdfium2` (installed with 
 
 **Optional: Word, ODT, RTF and PowerPoint uploads** need the sandboxed document converter (LibreOffice inside Gotenberg). Without it those uploads are refused with a clear message.
 ```bash
-docker run -d --name gr8r-gotenberg -p 127.0.0.1:3002:3000 gotenberg/gotenberg:8.37.0-libreoffice
+docker run -d --name gr8r-gotenberg -p 127.0.0.1:3002:3000 gotenberg/gotenberg:8.37.0-libreoffice gotenberg --libreoffice-start-timeout=60s
 # then in backend/.env:  GOTENBERG_URL=http://localhost:3002
 ```
+`--libreoffice-start-timeout=60s` keeps the first LibreOffice start from timing out on a machine low on memory (default 20 s); the app also retries a conversion once on a 503 or timeout.
 In Docker Compose it runs as the `gotenberg` service, hardened and on a private network only the worker can reach.
 
 ---
