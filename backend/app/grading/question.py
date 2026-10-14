@@ -4,6 +4,7 @@ Per-question problems escalate that answer only, with a reason and, where one ex
 score for the teacher. Only an exhausted budget stops the whole run (LLMBudgetExceeded propagates).
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 from uuid import UUID
@@ -161,6 +162,30 @@ class _Grading:
         raise _Escalate(EscalationReason.CHECK_FAILED)
 
 
+_DRAWING = re.compile(
+    r"\b(?:"
+    r"(?:draws?|drawn|drawing)\b(?!\s+(?:(?:an?|the|your|some)\s+)?(?:conclusions?|inferences?|attention|comparisons?|parallels?))"
+    r"|diagrams?|sketch(?:es|ed)?|label(?:led|ed)?\s+(?:the\s+)?(?:figure|diagram)|graphs?"
+    r"|plot(?:ted|ting)?\s+(?:the|a|an|on|these|this|it)\b|circuits?"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def rubric_expects_drawing(spec: Optional[RubricSpec]) -> bool:
+    """True when the rubric asks for a drawing (diagram, graph, sketch, circuit...).
+
+    Drawings leave nothing in the transcript, so until page crops reach the grader such answers
+    keep their proposed score but go to the teacher.
+    """
+    if spec is None:
+        return False
+    texts = [spec.grading_notes or ""]
+    for c in spec.criteria:
+        texts += [c.description, c.expected_answer or "", c.notes or ""]
+    return any(_DRAWING.search(t) for t in texts if t)
+
+
 async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSettings] = None) -> QuestionOutcome:
     exam = exam or ExamSettings.of()
     outcome = QuestionOutcome(q.question_id, q.label, AnswerStatus.GRADED, q.max_score)
@@ -203,6 +228,8 @@ async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSett
     outcome.flags = list(q.answer.flags)
     if q.answer.flags:
         return outcome.escalate(EscalationReason.MULTIPLE_ATTEMPTS)
+    if rubric_expects_drawing(q.spec):
+        return outcome.escalate(EscalationReason.DRAWING_EXPECTED)
     confidence = q.answer.confidence
     if confidence is not None and confidence < settings.GRADING_OCR_CONFIDENCE_THRESHOLD:
         return outcome.escalate(EscalationReason.LOW_OCR_CONFIDENCE)

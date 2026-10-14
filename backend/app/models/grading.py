@@ -37,6 +37,7 @@ class EscalationReason:
     EVALUATOR_DISAGREEMENT = "evaluator_disagreement"
     ALL_MODELS_FAILED = "all_models_failed"
     SPOT_CHECK = "spot_check"
+    DRAWING_EXPECTED = "drawing_expected"  # the rubric expects a drawing the transcript can't show
 
     @staticmethod
     def grader_flag(flag: str) -> str:
