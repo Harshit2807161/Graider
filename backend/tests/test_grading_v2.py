@@ -49,6 +49,19 @@ def test_evidence_ignores_case_accents_and_spacing():
     assert evidence_found("2x=10", "2x = 10") and not evidence_found("x = 4", ANSWER)
 
 
+def test_evidence_matches_each_quoted_line_separately():
+    assert evidence_found("2x + 5 = 15\nx = 5", ANSWER)  # lines of the answer with one in between skipped
+    assert evidence_found("2x = 10\n\n  \nx = 5\n", ANSWER)
+    assert not evidence_found("2x = 10\nx = 4", ANSWER)  # every line must be there
+    assert not evidence_found("\n \n", ANSWER)
+
+
+def test_evidence_ignores_control_characters_and_added_quote_marks():
+    assert evidence_found('"2x = 10"', ANSWER) and evidence_found("\u201cx = 5\u201d", ANSWER)
+    assert evidence_found("\u20182x\u0007 = 10\u2019", ANSWER) and evidence_found("'x\x00 = 5'", ANSWER)
+    assert not evidence_found('"x = 4"', ANSWER)
+
+
 def test_revision_replies():
     feedback = [{"criterion_id": "c3", "point": "x = 5 is correct"}, {"criterion_id": "c1", "point": "no"}]
     assert check_replies([{"feedback_index": 0}, {"feedback_index": 1}], 2) == []
@@ -224,6 +237,18 @@ async def test_a_grading_that_fails_the_checks_twice_escalates(fake_llm):
     fake_llm.grade_answer = lambda p: grading([2, 1, 2])
     outcome = await grade_question(question(), uuid4())
     assert outcome.escalation_reason == "check_failed" and outcome.score is None and fake_llm.calls_of("review") == []
+
+
+async def test_evidence_still_missing_after_the_repair_keeps_the_proposed_score(fake_llm):
+    def misquoted(p):
+        out = grading([1, 1, 2])
+        out["criteria"][2]["evidence"] = "x = 6"
+        return out
+    fake_llm.grade_answer = misquoted
+    outcome = await grade_question(question(), uuid4())
+    assert outcome.status == "escalated" and outcome.escalation_reason == "evidence_not_found"
+    assert outcome.score == 4 and outcome.criteria[2]["score"] == 2
+    assert len(fake_llm.calls_of("grade_answer")) == 2 and fake_llm.calls_of("review") == []
 
 
 async def test_an_illegible_flag_skips_the_evaluator(fake_llm):
