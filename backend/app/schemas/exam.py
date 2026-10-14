@@ -80,6 +80,21 @@ class ExamRead(ExamBase):
 class ExamWithQuestions(ExamRead):
     questions: List[QuestionRead] = []
 
+class StudentQuestionRead(BaseModel):
+    """A question as a student sees it: no rubric text, spec or rubric status."""
+    id: UUID
+    exam_id: UUID
+    question_text: str
+    order_index: int
+    max_score: float
+    question_type: QuestionType
+    label: Optional[str] = None
+    printed_label: Optional[str] = None
+    choice_group: Optional[str] = None
+
+class StudentExamWithQuestions(ExamRead):
+    questions: List[StudentQuestionRead] = []
+
 # --- Submission Schemas ---
 
 class SubmissionAnswerBase(BaseModel):
