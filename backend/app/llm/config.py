@@ -80,6 +80,17 @@ class LLMSettings(BaseSettings):
                 raise ValueError(f"vision role target {target.key} has supports_vision=false")
         return self
 
+    def independence_warnings(self) -> list[str]:
+        """Config smells that weaken the grader/evaluator independence (fresh eyes)."""
+        warnings: list[str] = []
+        g, e = self.grader.primary, self.evaluator.primary
+        if (g.provider, g.model) == (e.provider, e.model):
+            warnings.append(
+                f"grader and evaluator share the same primary model ({g.provider.value}:{g.model}); "
+                "the evaluator's independent second look is weakened"
+            )
+        return warnings
+
     def role(self, role: Role) -> RoleConfig:
         return getattr(self, role.value)
 
