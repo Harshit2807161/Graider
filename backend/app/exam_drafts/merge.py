@@ -3,7 +3,12 @@
 The teacher's declared document roles decide what each page contributes: question papers and blank
 copies give the questions; rubric documents give marking guidance (questions they repeat are not
 taken twice). A question or rubric item marked as continued from the previous page is joined to it.
+Bilingual papers (e.g. Hindi and English on alternating pages) repeat every label in another script;
+the Latin-script version is kept and the other is attached as `alternate_language_text`.
 """
+
+import unicodedata
+from collections import Counter
 
 from dataclasses import dataclass, field
 from typing import Optional
@@ -48,6 +53,38 @@ def canonical(label: str) -> str:
     return "".join(label.split())
 
 
+def dominant_script(text: str) -> Optional[str]:
+    """The Unicode script most of the text's letters belong to ("LATIN", "DEVANAGARI", ...)."""
+    scripts = Counter(unicodedata.name(ch, "UNKNOWN").split()[0] for ch in text if ch.isalpha())
+    return scripts.most_common(1)[0][0] if scripts else None
+
+
+def fold_bilingual_duplicates(questions: list[DraftQuestion]) -> list[DraftQuestion]:
+    """Join a repeated label written in a different script into one question, keeping the Latin-script
+    text (the other goes to `alternate_language_text`). Same-script repeats stay as duplicates."""
+    kept: list[DraftQuestion] = []
+    first: dict[str, DraftQuestion] = {}
+    for q in questions:
+        original = first.get(q.label) if q.label else None
+        if original is None or original.alternate_language_text is not None:
+            first.setdefault(q.label, q)
+            kept.append(q)
+            continue
+        script, other_script = dominant_script(original.text), dominant_script(q.text)
+        if script is None or other_script is None or script == other_script:
+            kept.append(q)
+            continue
+        if other_script == "LATIN":  # keep the Latin text in the first one's place
+            original.alternate_language_text = original.text
+            original.text, original.printed_label = q.text, q.printed_label
+            original.context = q.context or original.context
+        else:
+            original.alternate_language_text = q.text
+        original.marks = original.marks if original.marks is not None else q.marks
+        original.pages.extend(q.pages)
+    return kept
+
+
 def merge(pages: list[PageInput], existing: Optional[list[DraftQuestion]] = None) -> tuple[DraftContent, list[RubricPiece]]:
     """Questions, choice groups and paper details from the pages, plus the rubric pieces to link.
     Without any question document, the exam's existing questions are used (rubric_only)."""
@@ -86,6 +123,7 @@ def merge(pages: list[PageInput], existing: Optional[list[DraftQuestion]] = None
                     continue
                 pieces.append(RubricPiece(label, item.printed_label, item.text.strip(), item.marks, [page.where]))
 
+    questions = fold_bilingual_duplicates(questions)
     takes_questions = any(page.declared_role in QUESTION_ROLES for page in pages)
     if not takes_questions:
         questions = [q.model_copy(deep=True) for q in existing or []]
