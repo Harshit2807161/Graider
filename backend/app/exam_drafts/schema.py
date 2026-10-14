@@ -1,6 +1,6 @@
 """What the vision model returns for one page, and the draft the teacher checks and confirms."""
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -116,3 +116,4 @@ class Issue(BaseModel):
     code: str
     message: str
     label: Optional[str] = None
+    details: Optional[dict[str, Any]] = None  # e.g. internal_choice: the suggested split
