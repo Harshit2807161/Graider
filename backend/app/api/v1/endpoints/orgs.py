@@ -117,8 +117,8 @@ _RUN_FIELDS = (
 def export_student(
     org_id: UUID,
     membership_id: UUID,
-    db: Session = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_active_user),
+    db: Session = Depends(deps.get_session),
+    current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """Everything recorded about one student's grading in this org (GDPR Art. 15, FERPA). Owner/admin only."""
     deps.require_org_role(db, user=current_user, org_id=org_id, roles=(Role.OWNER, Role.ADMIN))
@@ -140,7 +140,7 @@ def export_student(
     out = []
     for sub, exam in submissions:
         out.append(ExportSubmission(
-            id=sub.id, exam_id=exam.id, exam_title=getattr(exam, "title", None), status=str(sub.status),
+            id=sub.id, exam_id=exam.id, exam_title=exam.name, status=getattr(sub.status, "value", str(sub.status)),
             total_score=sub.total_score, max_score=sub.max_score, percentage=sub.percentage,
             created_at=sub.created_at, updated_at=sub.updated_at,
             runs=[{"id": r.id, **{k: getattr(r, k) for k in _RUN_FIELDS}} for r in rows(GradingRun, sub.id)],
@@ -158,7 +158,7 @@ def export_student(
         ))
     return StudentExport(
         generated_at=utcnow(),
-        membership=ExportMembership(id=member.id, org_id=member.org_id, user_id=member.user_id, role=str(member.role),
+        membership=ExportMembership(id=member.id, org_id=member.org_id, user_id=member.user_id, role=getattr(member.role, "value", str(member.role)),
                                     email=getattr(user, "email", None), full_name=getattr(user, "full_name", None)),
         submissions=out,
     )

@@ -375,3 +375,34 @@ async def test_the_exams_submission_list_names_each_student(fake_llm, db, school
 
     listed = client.get(f"{API}/exams/{school['exam'].id}/submissions", headers=login(client, "teacher@school.test")).json()
     assert sorted((s["student_name"] or "") for s in listed) == ["", "student"]
+
+
+async def test_owner_exports_everything_recorded_about_one_student(fake_llm, db, school, tmp_path, client):
+    submission = await graded(db, school, tmp_path)
+    row = db.get(Submission, submission.id)
+    row.student_membership_id = school["student_m"].id
+    db.add(row)
+    db.commit()
+    override(client, login(client, "teacher@school.test"), submission, school, 1, 3, reason="Final line wrong")
+    url = f"{API}/orgs/{school['org'].id}/students/{school['student_m'].id}/export"
+
+    # Teachers can't export; owners/admins can
+    assert client.get(url, headers=login(client, "teacher@school.test")).status_code == 403
+    add_member(db, make_user(db, "owner@school.test"), school["org"], Role.OWNER)
+    owner = login(client, "owner@school.test")
+    response = client.get(url, headers=owner)
+    assert response.status_code == 200
+    export = response.json()
+    assert export["membership"]["id"] == str(school["student_m"].id)
+    assert export["membership"]["email"] == "student@school.test"
+    [sub] = export["submissions"]
+    assert sub["id"] == str(submission.id)
+    for section in ("runs", "llm_calls", "transcriptions", "grades", "answers", "grade_events"):
+        assert sub[section], section
+    assert all("request" not in c and "response_raw" not in c for c in sub["llm_calls"])
+    assert [e["kind"] for e in sub["grade_events"]][-1] == "override"
+
+    # A membership from another org is not found here
+    other = make_org(db, "other")
+    outsider = add_member(db, make_user(db, "outsider@other.test"), other, Role.STUDENT)
+    assert client.get(f"{API}/orgs/{school['org'].id}/students/{outsider.id}/export", headers=owner).status_code == 404
