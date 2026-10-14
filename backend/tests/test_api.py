@@ -272,6 +272,22 @@ class TestRubricSpecs:
         assert reparse.status_code == 202 and reparse.json()["rubric_status"] == "pending"
         assert rubric_parses[-1][0] == q1["id"] and rubric_parses[-1][2] is True
 
+    def test_students_see_questions_without_rubrics(self, client, school):
+        exam_id = school["exam"].id
+        teacher = login(client, "teacher@school.test")
+        client.post(f"{API}/exams/{exam_id}/questions", json=[
+            {"question_text": "Define osmosis", "order_index": 0, "max_score": 4,
+             "rubric_criteria": "SECRET: 2 marks for membrane"}], headers=teacher)
+        staff_q = client.get(f"{API}/exams/{exam_id}", headers=teacher).json()["questions"][0]
+        assert staff_q["rubric_criteria"] == "SECRET: 2 marks for membrane" and "rubric_status" in staff_q
+
+        response = client.get(f"{API}/exams/{exam_id}", headers=login(client, "student@school.test"))
+        assert response.status_code == 200, response.text
+        student_q = response.json()["questions"][0]
+        assert student_q["question_text"] == "Define osmosis" and student_q["max_score"] == 4
+        assert not any(key.startswith("rubric") for key in student_q)
+        assert "SECRET" not in response.text
+
     def test_rubric_specs_are_staff_only_and_scoped_to_the_exam(self, client, db, school):
         exam_id = school["exam"].id
         question_id = db.exec(select(Question).where(Question.exam_id == exam_id)).first().id

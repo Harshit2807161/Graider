@@ -1,6 +1,8 @@
 from typing import Any, List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 import io
 import pandas as pd
 from pydantic import ValidationError
@@ -20,6 +22,8 @@ from app.schemas.exam import (
     QuestionCreate,
     QuestionRead,
     QuestionSync,
+    StudentExamWithQuestions,
+    StudentQuestionRead,
 )
 from app.core.constants import QuestionType
 from app.models.base import utcnow
@@ -140,7 +144,11 @@ def read_exams(
 
     return exams
 
-@router.get("/{exam_id}", response_model=ExamWithQuestions)
+@router.get(
+    "/{exam_id}",
+    response_model=ExamWithQuestions,
+    responses={200: {"description": "Students get StudentExamWithQuestions (no rubric fields)"}},
+)
 def read_exam(
     *,
     db: Session = Depends(deps.get_session),
@@ -151,8 +159,16 @@ def read_exam(
     Get a specific exam by ID with questions.
     """
     exam = _get_exam_or_404(db, exam_id)
-    deps.require_org_role(db, user=current_user, org_id=exam.org_id)
-    return _exam_with_questions(db, exam)
+    membership = deps.require_org_role(db, user=current_user, org_id=exam.org_id)
+    full = _exam_with_questions(db, exam)
+    if current_user.is_superuser or (membership is not None and membership.role in deps.STAFF_ROLES):
+        return full
+    # Students never see rubric text, parsed specs or rubric status
+    reduced = StudentExamWithQuestions(
+        **full.model_dump(exclude={"questions"}),
+        questions=[StudentQuestionRead.model_validate(q.model_dump()) for q in full.questions],
+    )
+    return JSONResponse(jsonable_encoder(reduced))
 
 @router.patch("/{exam_id}", response_model=ExamRead)
 def update_exam(
