@@ -410,3 +410,18 @@ def test_drafts_are_staff_only_and_scoped_to_the_exam(client, exam_documents, sc
     foreign = client.post(f"{API}/exams/{other_exam.id}/drafts", json={"document_ids": exam_documents["ids"]},
                           headers=login(client, "t@other.test"))
     assert foreign.status_code == 400 and "not found in this exam" in foreign.json()["detail"]
+
+
+async def test_unexpected_error_fails_the_draft_instead_of_leaving_it_pending(
+    fake_llm, client, exam_documents, monkeypatch
+):
+    async def boom(*args, **kwargs):
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setattr(drafts, "extract_page", boom)
+    pending = draft_of(client, exam_documents)
+
+    await drafts.extract_draft(UUID(pending["id"]))
+
+    draft = get_draft(client, exam_documents, pending["id"])
+    assert draft["status"] == "failed" and "RuntimeError" in draft["error"] and "kaboom" in draft["error"]

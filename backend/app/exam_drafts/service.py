@@ -132,9 +132,15 @@ async def extract_draft(draft_id: UUID) -> None:
                 recording_to(DbCallRecorder(None, None, exam_draft_id=draft.id)),
             ):
                 content, issues = await _extract(db, draft, exam)  # type: ignore[arg-type]
-        except (DocumentError, LLMError) as e:
+        except Exception as e:  # noqa: BLE001 - any failure must leave the draft failed, never pending
             db.rollback()
-            message = str(e) if isinstance(e, DocumentError) else f"The documents couldn't be read by the model ({e})"
+            if isinstance(e, DocumentError):
+                message = str(e)
+            elif isinstance(e, LLMError):
+                message = f"The documents couldn't be read by the model ({e})"
+            else:
+                message = f"Extraction failed unexpectedly ({type(e).__name__}: {e})"
+                logger.exception("exam_extraction_crashed", draft_id=str(draft_id))
             draft = db.get(ExamDraft, draft_id)
             draft.status, draft.error = DraftStatus.FAILED, message[:2000]  # type: ignore[union-attr]
             db.add(draft)
