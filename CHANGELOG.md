@@ -6,6 +6,34 @@ Notable changes to Gr8r, newest first.
 
 ## [Unreleased]
 
+### Backlog sweep (branch `swarm/backlog-sweep`)
+
+#### Added
+- **Class pages:** each class has a detail page with its roster and the exams linked to it, and overview rows link to it.
+- **Re-parse old rubric specs:** an admin command re-parses AI-made rubric specs that an older parser prompt produced; teachers' own specs are left alone.
+- **Bilingual question papers:** questions that appear twice (Hindi and English on alternating pages) are folded into one, keeping the Latin-script text.
+- **Same-model warning:** a grading run logs a warning when the grader and evaluator share a primary model, since the evaluator is then not independent.
+
+#### Changed
+- **The page reader sees each question properly:** its label, printed label, choice group and own text, instead of the first 200 characters, so parts sharing a passage no longer look alike (branch `swarm/reader-question-context`, not yet merged).
+- **Students no longer see rubric text:** `GET /exams/{id}` hides rubric criteria and rubric status from students (branch `swarm/rubric-hidden-from-students`, not yet merged).
+- **Office conversion is more forgiving:** a Gotenberg 503 or timeout is retried once, and LibreOffice gets longer to start.
+- **The call budget grows with the page count:** each page adds its reading calls to the run budget (now pinned by a test).
+
+#### Fixed
+- **The evidence check discarded correct grades.** Quotes are now matched line by line, after dropping control characters and added quote marks; when a quote still fails, the proposed score is kept and the answer escalates.
+- **One struck word removed a whole answer segment.** Answers with struck words are kept, and an answer that lost a fully crossed-out block is flagged.
+- **Garbled symbols in transcripts:** control characters the reader writes for arrows and apostrophes are mapped back to the symbols.
+- **A marking scheme read as questions lost its rubric.** Rubric pages that list their entries as questions are used, and an empty rubric document gets a warning.
+- **A draft stayed pending forever** on an unexpected extraction error; it is now marked failed.
+- **Tests read `backend/.env`.** The test session ignores the env file and `LLM__*` variables.
+
+#### In progress (work-in-progress commits; see `docs/swarm/`)
+- Failure codes stored on failed submissions, next to `current_step`.
+- "Graded with an older rubric" flag in the review detail and queue.
+- Per-student export of runs, calls and decisions (`GET /orgs/{org_id}/students/{membership_id}/export`, branch `swarm/audit-export`).
+- Offering the split of an internal choice in the draft editor (branch `swarm/choice-split-editor`).
+
 ### Website and first pitch campaign (branch `pitch/website-and-campaign`)
 
 #### Added
