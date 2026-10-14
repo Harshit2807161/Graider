@@ -16,6 +16,7 @@ from app.grading.checks import (
     check_grade,
     check_rejections,
     check_replies,
+    check_structure,
     effective_agreement,
     total,
 )
@@ -126,6 +127,9 @@ class _Grading:
                 return
             text = f"{self.block}\n\nYour grading had these problems; fix them:\n- " + "\n- ".join(errors)
         self._accept(out)
+        if not check_structure(out["criteria"], self.spec):
+            # Only the quotes failed: a misquote is not a wrong grade, so the teacher sees the proposal.
+            raise _Escalate(EscalationReason.EVIDENCE_NOT_FOUND)
         raise _Escalate(EscalationReason.CHECK_FAILED, keep_score=False)
 
     def _accept(self, out: dict) -> None:
