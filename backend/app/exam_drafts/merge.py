@@ -14,6 +14,7 @@ from app.exam_drafts.schema import (
     DraftPage,
     DraftQuestion,
     PageExtraction,
+    PageRubricItem,
     UnmatchedRubric,
 )
 from app.models.document import DocumentRole
@@ -76,7 +77,12 @@ def merge(pages: list[PageInput], existing: Optional[list[DraftQuestion]] = None
                 ))
             raw_groups.extend(([canonical(x) for x in g.labels], g.pick, g.note) for g in extraction.choice_groups)
         if page.declared_role in RUBRIC_ROLES:
-            for item in extraction.rubric_items:
+            items = list(extraction.rubric_items)
+            if not items and page.declared_role == DocumentRole.RUBRIC:
+                # A marking scheme the model put under `questions`: each entry is a rubric item
+                items = [PageRubricItem(label=q.label, printed_label=q.printed_label, text=q.text,
+                                        marks=q.marks, continued=q.continued) for q in extraction.questions]
+            for item in items:
                 label = canonical(item.label)
                 last_piece = pieces[-1] if pieces else None
                 if item.continued and last_piece is not None and label in ("", last_piece.label):
