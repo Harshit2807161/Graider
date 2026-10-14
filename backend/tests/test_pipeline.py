@@ -7,7 +7,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from app.audit.runs import create_run
-from app.core.constants import SubmissionStatus
+from app.core.constants import FailureCode, SubmissionStatus
 from app.core.db import engine
 from app.models.audit import GradingRun, LLMCall
 from app.models.base import utcnow
@@ -140,6 +140,7 @@ async def test_unreadable_pages_fail_instead_of_scoring_zero(fake_llm, db, schoo
 
     graded, answers = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED and "couldn't be read" in graded.current_step and answers == []
+    assert graded.failure_code == FailureCode.PAGES_UNREADABLE
 
 
 async def test_a_question_whose_models_fail_escalates_alone(fake_llm, db, school, tmp_path):
@@ -213,6 +214,7 @@ async def test_llm_budget_stops_runaway_runs(fake_llm, db, school, tmp_path, mon
 
     graded, _ = load(submission.id)
     assert graded.status == SubmissionStatus.FAILED and "budget" in graded.current_step
+    assert graded.failure_code == FailureCode.BUDGET_EXHAUSTED
 
 
 async def test_choice_groups_grade_the_attempted_alternative(fake_llm, db, school, tmp_path):
