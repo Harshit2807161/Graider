@@ -295,6 +295,23 @@ def run_router(settings: Optional[LLMSettings] = None) -> Iterator[ModelRouter]:
         _current_router.reset(token)
 
 
+_independence_checked = False
+
+
+def warn_independence_once(settings: LLMSettings) -> None:
+    """Log the grader/evaluator independence warnings, once per process."""
+    global _independence_checked
+    if _independence_checked:
+        return
+    _independence_checked = True
+    for message in settings.independence_warnings():
+        logger.warning("llm_independence_warning", detail=message)
+
+
 def get_router() -> ModelRouter:
     """The current run's router, or a fresh one outside a run (scripts, unit tests)."""
-    return _current_router.get() or ModelRouter(_invoker_factory())
+    current = _current_router.get()
+    if current is not None:
+        return current
+    warn_independence_once(get_llm_settings())
+    return ModelRouter(_invoker_factory())
