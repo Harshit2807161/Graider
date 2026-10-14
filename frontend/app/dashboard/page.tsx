@@ -31,7 +31,7 @@ import { examService } from "@/services/exam.service";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Batch } from "@/types/batch.types";
-import { Exam, Submission, SubmissionStatus } from "@/types/exam.types";
+import { Exam, StatusCounts, Submission, SubmissionStatus } from "@/types/exam.types";
 import PageHeader from "@/components/common/PageHeader";
 import ButtonLink from "@/components/common/ButtonLink";
 import ErrorBanner from "@/components/common/ErrorBanner";
@@ -41,7 +41,7 @@ import Button from "@/components/ui/Button";
 import CreateExamModal from "@/components/features/exams/CreateExamModal";
 import styles from "./page.module.css";
 
-/** Exams whose answer sheets are counted (newest first); bounds the number of requests */
+/** Exams whose next steps are listed (newest first); bounds the number of requests */
 const SCAN_LIMIT = 12;
 const RECENT_LIMIT = 5;
 /** Next steps shown before "Show all" */
@@ -59,7 +59,7 @@ interface Counts {
 
 interface ExamSummary {
     exam: Exam;
-    /** null when this exam's answer sheets couldn't be loaded */
+    /** The sheets that need the teacher (named in next steps); null when they couldn't be loaded */
     submissions: Submission[] | null;
     counts: Counts | null;
 }
@@ -67,8 +67,9 @@ interface ExamSummary {
 interface OverviewData {
     orgId: string;
     batches: Batch[];
-    totalExams: number;
     exams: ExamSummary[];
+    /** Every exam's answer sheets, counted by the server */
+    totals: Counts;
 }
 
 /** What a next step asks of the teacher, in the order they're listed */
@@ -96,33 +97,43 @@ interface Task {
     href?: string;
 }
 
-const countStatuses = (submissions: Submission[]): Counts => {
-    const has = (...statuses: SubmissionStatus[]) => submissions.filter((s) => statuses.includes(s.status)).length;
-    return {
-        total: submissions.length,
-        review: has("NEEDS_REVIEW"),
-        graded: has("GRADED"),
-        approved: has("APPROVED"),
-        published: has("PUBLISHED"),
-        grading: has("PENDING", "PROCESSING"),
-        failed: has("FAILED"),
-    };
-};
+const toCounts = (c?: StatusCounts): Counts => ({
+    total: c?.total ?? 0,
+    review: c?.needs_review ?? 0,
+    graded: c?.graded ?? 0,
+    approved: c?.approved ?? 0,
+    published: c?.published ?? 0,
+    grading: (c?.pending ?? 0) + (c?.processing ?? 0),
+    failed: c?.failed ?? 0,
+});
+
+/** Statuses whose next steps name the students, so their sheets are loaded */
+const NAMED: SubmissionStatus[] = ["NEEDS_REVIEW", "FAILED", "GRADED"];
 
 async function loadOverview(orgId: string): Promise<OverviewData> {
-    const [batches, exams] = await Promise.all([batchService.getAllByOrg(orgId), examService.getExams(orgId)]);
+    const [batches, exams, summary] = await Promise.all([
+        batchService.getAllByOrg(orgId),
+        examService.getExams(orgId),
+        examService.getSummary(orgId),
+    ]);
+    const byExam = new Map(summary.exams.map((c) => [c.exam_id, toCounts(c)]));
     const newest = [...exams]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, SCAN_LIMIT);
-    const results = await Promise.allSettled(newest.map((exam) => examService.listSubmissions(exam.id)));
+        .slice(0, SCAN_LIMIT)
+        .map((exam) => ({ exam, counts: byExam.get(exam.id) ?? toCounts() }));
+    // Only exams with sheets to name in a next step need their sheets loaded
+    const named = ({ counts }: { counts: Counts }) => counts.review + counts.failed + counts.graded > 0;
+    const results = await Promise.allSettled(
+        newest.map((e) => (named(e) ? examService.listSubmissions(e.exam.id) : Promise.resolve([] as Submission[]))),
+    );
     return {
         orgId,
         batches,
-        totalExams: exams.length,
-        exams: newest.map((exam, i) => {
+        totals: toCounts(summary.totals),
+        exams: newest.map(({ exam, counts }, i) => {
             const result = results[i];
-            const submissions = result.status === "fulfilled" ? result.value : null;
-            return { exam, submissions, counts: submissions ? countStatuses(submissions) : null };
+            const submissions = result.status === "fulfilled" ? result.value.filter((s) => NAMED.includes(s.status)) : null;
+            return { exam, submissions, counts: submissions ? counts : null };
         }),
     };
 }
@@ -198,7 +209,7 @@ function buildTasks(exams: ExamSummary[], batches: Batch[], className: (id?: str
         tasks.push({ key: "first-exam", stage: "exam", title: "Create your first exam",
             detail: "Add its questions and rubric, then upload answer sheets" });
     }
-    for (const { exam, submissions } of exams) {
+    for (const { exam, submissions, counts } of exams) {
         const examUrl = `/dashboard/exams/${exam.id}`;
         const sheetUrl = (s: Submission) => `${examUrl}/submissions/${s.id}`;
         const add = (stage: Stage, title: string, detail: (string | undefined)[], href: string) =>
@@ -207,7 +218,7 @@ function buildTasks(exams: ExamSummary[], batches: Batch[], className: (id?: str
         if ((exam.question_count ?? 0) === 0) {
             add("setup", `Add questions to ${exam.name}`, ["No questions yet", className(exam.batch_id)], examUrl);
         }
-        if (!submissions) continue;
+        if (!submissions || !counts) continue;
         const having = (...statuses: SubmissionStatus[]) => submissions.filter((s) => statuses.includes(s.status));
 
         const review = having("NEEDS_REVIEW");
@@ -230,20 +241,20 @@ function buildTasks(exams: ExamSummary[], batches: Batch[], className: (id?: str
             add("approve", `Approve ${graded.length} graded answer sheets`, [exam.name, names(graded)], examUrl);
         }
 
-        const approved = having("APPROVED").length;
+        const approved = counts.approved;
         if (approved > 0) {
             add("publish", `Publish ${plural(approved, "approved result")}`,
                 [exam.name, "Students see results once you publish"], examUrl);
         }
 
-        if ((exam.question_count ?? 0) > 0 && submissions.length === 0) {
+        if ((exam.question_count ?? 0) > 0 && counts.total === 0) {
             add("upload", `Upload answer sheets for ${exam.name}`,
                 [`${plural(exam.question_count ?? 0, "question")} ready`, className(exam.batch_id)], examUrl);
         }
 
-        const grading = having("PENDING", "PROCESSING");
-        if (grading.length > 0) {
-            add("grading", `${plural(grading.length, "answer sheet is", "answer sheets are")} being graded`,
+        const grading = counts.grading;
+        if (grading > 0) {
+            add("grading", `${plural(grading, "answer sheet is", "answer sheets are")} being graded`,
                 [exam.name, "Results show up here when grading finishes"], examUrl);
         }
     }
@@ -315,16 +326,15 @@ export default function DashboardPage() {
     const batches = ready?.batches ?? [];
     const className = (id?: string) => batches.find((b) => b.id === id)?.name;
     const students = batches.reduce((sum, b) => sum + b.student_count, 0);
-    const sum = (key: keyof Counts) => exams.reduce((n, e) => n + (e.counts?.[key] ?? 0), 0);
+    const sum = (key: keyof Counts) => ready?.totals[key] ?? 0;
     const sheets = sum("total");
     const toReview = sum("review");
     const tasks = buildTasks(exams, batches, className);
     const waiting = tasks.filter((t) => t.stage !== "grading").length;
     const shownTasks = showAllTasks ? tasks : tasks.slice(0, TASK_LIMIT);
     const unreadable = exams.filter((e) => e.counts === null).length;
-    // No answer sheets could be counted at all: show a dash, never a misleading zero
-    const uncounted = exams.length > 0 && unreadable === exams.length;
-    const scannedAll = ready ? ready.totalExams <= SCAN_LIMIT : true;
+    // Counts come from the server in one request, so they're all or nothing
+    const uncounted = false;
 
     const stats = [
         {
@@ -468,10 +478,9 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         )}
-                        {!loading && (unreadable > 0 || !scannedAll) && (
+                        {!loading && unreadable > 0 && (
                             <div className={styles.footnote}>
                                 <p>
-                                    {!scannedAll && `Counted from your ${SCAN_LIMIT} most recent exams. `}
                                     {unreadable > 0 && <>Answer sheets for {plural(unreadable, "exam")} couldn&apos;t be loaded.</>}
                                 </p>
                                 {unreadable > 0 && (

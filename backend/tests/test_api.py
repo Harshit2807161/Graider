@@ -18,7 +18,8 @@ from app.models.exam import Question, Submission, SubmissionAnswer
 from app.models.org import Batch
 from app.models.user import User
 from tests import ingestion_fixtures as fx
-from tests.conftest import FIXTURES, add_member, make_org, make_user
+from app.models.base import utcnow
+from tests.conftest import FIXTURES, add_member, make_exam, make_org, make_user
 
 API = settings.API_V1_STR
 
@@ -125,6 +126,59 @@ class TestTenancy:
 
         assert enroll.status_code == 200
         assert [s["membership_id"] for s in students.json()] == [str(school["student_m"].id)]
+
+
+class TestExamsSummary:
+    def _sheets(self, db, exam_id, *statuses: SubmissionStatus) -> list[Submission]:
+        sheets = [Submission(exam_id=exam_id, original_file_url="x.png", status=s) for s in statuses]
+        db.add_all(sheets)
+        db.commit()
+        return sheets
+
+    def test_counts_by_status_per_exam_and_total(self, client, db, school):
+        exam = school["exam"]
+        other = make_exam(db, school["org"], school["teacher_m"], [{"question_text": "Q", "max_score": 1}])
+        S = SubmissionStatus
+        deleted = self._sheets(db, exam.id, S.GRADED, S.GRADED, S.NEEDS_REVIEW, S.PUBLISHED, S.FAILED)[0]
+        self._sheets(db, other.id, S.PENDING, S.PROCESSING, S.APPROVED)
+        deleted.deleted_at = utcnow()
+        db.add(deleted)
+        db.commit()
+
+        response = client.get(f"{API}/exams/summary", params={"org_id": str(school["org"].id)},
+                              headers=login(client, "teacher@school.test"))
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        by_exam = {row["exam_id"]: row for row in body["exams"]}
+        first = by_exam[str(exam.id)]
+        assert (first["graded"], first["needs_review"], first["published"], first["failed"], first["total"]) == (1, 1, 1, 1, 4)
+        second = by_exam[str(other.id)]
+        assert (second["pending"], second["processing"], second["approved"], second["total"]) == (1, 1, 1, 3)
+        assert body["totals"]["total"] == 7
+        assert body["totals"]["graded"] == 1
+
+    def test_other_org_is_refused_and_not_counted(self, client, db, school):
+        rival = make_org(db, "rival")
+        rival_teacher = make_user(db, "teacher@rival.test")
+        rival_m = add_member(db, rival_teacher, rival, Role.TEACHER)
+        rival_exam = make_exam(db, rival, rival_m, [{"question_text": "Q", "max_score": 1}])
+        self._sheets(db, rival_exam.id, SubmissionStatus.GRADED)
+        self._sheets(db, school["exam"].id, SubmissionStatus.PENDING)
+
+        own = client.get(f"{API}/exams/summary", params={"org_id": str(school["org"].id)},
+                         headers=login(client, "teacher@school.test")).json()
+        assert own["totals"]["total"] == 1
+        assert [row["exam_id"] for row in own["exams"]] == [str(school["exam"].id)]
+
+        foreign = client.get(f"{API}/exams/summary", params={"org_id": str(rival.id)},
+                             headers=login(client, "teacher@school.test"))
+        assert foreign.status_code == 403
+
+    def test_student_is_refused(self, client, db, school):
+        response = client.get(f"{API}/exams/summary", params={"org_id": str(school["org"].id)},
+                              headers=login(client, "student@school.test"))
+        assert response.status_code == 403
 
 
 class TestQuestions:
