@@ -43,6 +43,7 @@ backend/
 │   ├── ingestion/                 # formats (detect + safety), pages (render), office (Gotenberg), service
 │   ├── exam_drafts/               # exam documents -> draft: page extraction, merge, rubric linking, checks, confirm
 │   ├── observability/             # optional Langfuse tracing (one trace per run, images masked)
+│   ├── admin/                     # CLI commands: reparse_specs, langfuse_retention
 │   ├── llm/                       # model router: types, config (roles/targets), schema, invoker
 │   │                              # (LangChain chat models), router, budget, costs, recorder
 │   ├── crud/                      # data access (soft-delete aware)
@@ -70,7 +71,7 @@ docs/                              # architecture, ADRs, proposals/
 `User` (global identity) → `Membership` (user + org + role) → `Organization`.
 `Batch` (class) ← `Enrollment` → student `Membership`.
 `Exam` (org, optional batch) → `Question` (text, `max_score`, free-text `rubric_criteria`, `order_index`, type, `rubric_status`) → `RubricSpecRecord` (`rubric_specs`: append-only versions of the parsed rubric; the current spec is the newest for the question's current inputs).
-`Submission` (exam, optional student membership, file path, status, `current_step`, totals) → `SubmissionAnswer` (question, transcribed answer text, score, feedback, reasoning).
+`Submission` (exam, optional student membership, file path, status, `current_step`, `failure_code`, totals) → `SubmissionAnswer` (question, transcribed answer text, score, feedback, reasoning).
 
 All tables have `deleted_at` (soft delete); CRUD helpers filter it. Timestamps are timezone-aware UTC — use `app.models.base.utcnow()`, never `datetime.utcnow()` (SQLModel ≥ 0.0.45 rejects naive datetimes).
 
@@ -87,11 +88,11 @@ Submission statuses (`app/workflow/state.py`, Proposal 002 §9): the worker move
 Every grading attempt is a **grading run** (`grading_runs`): the API creates it (`trigger` upload / regrade / transcript_edit, optionally scoped to some `question_ids`) and enqueues `grade_submission_task(run_id)`; `run_grading(run_id)` skips finished runs (idempotent), snapshots models + thresholds + prompt versions, records every model call to `llm_calls` (append-only; a failed audit write fails the run). See [docs/audit-trail.md](../docs/audit-trail.md).
 1. Questions in order, labelled with the paper's labels (`2(b)`) if every question has a unique one, else `Q1..Qn`.
 2. **Rubric specs** (`ensure_rubric_specs`): parsed now if missing. A question without a *ready* spec escalates (`rubric_invalid`); the others are graded.
-3. **Pages** (`submission_pages`) are read in parallel (`transcribe_page`: segments labelled with the exam's labels or `unassigned`, student's own writing only) and **stitched** in code (unnumbered continuations join the previous answer, crossed-out work excluded, unplaced work kept for the teacher). Choice-group alternatives the student didn't answer aren't graded.
-4. **Each question** is graded in parallel (`grade_question`, Proposal 002 §7): no answer → escalate (`no_answer_found`, never auto-zero); grade with quoted evidence → code checks (+1 repair) → grader flags escalate → evaluator (own view first) → effective agreement = min(stated, score gap), any criterion beyond tolerance counts as disagreement → revise (accept/reject each point) ≤ `GRADING_MAX_REVISIONS` → finalize or escalate `evaluator_disagreement`. Low transcription confidence, repeated attempts and spot checks keep the proposed score but escalate. Grader and evaluator fallbacks avoid each other's model.
+3. **Pages** (`submission_pages`) are read in parallel (`transcribe_page`: segments labelled with the exam's labels or `unassigned`, student's own writing only, plus an inventory of questions and drawings on the page) and **stitched** in code (unnumbered continuations join the previous answer, fully crossed-out blocks excluded and flagged, unplaced work kept for the teacher; answers on a page whose inventory the transcript doesn't cover get `page_inventory_mismatch`). Choice-group alternatives the student didn't answer aren't graded.
+4. **Each question** is graded in parallel (`grade_question`, Proposal 002 §7): no answer → escalate (`no_answer_found`, never auto-zero); grade with quoted evidence → code checks (+1 repair) → grader flags escalate → evaluator (own view first) → effective agreement = min(stated, score gap), any criterion beyond tolerance counts as disagreement → revise (accept/reject each point) ≤ `GRADING_MAX_REVISIONS` → finalize or escalate `evaluator_disagreement`. A failed evidence quote, a rubric expecting a drawing (`drawing_expected`), an inventory mismatch, low transcription confidence, repeated attempts and spot checks keep the proposed score but escalate. Grader and evaluator fallbacks avoid each other's model.
 5. **Save** in one transaction (`persist.save_results`): new transcription/grade versions, projection, totals (choice groups counted once; extra alternatives by `exam.config["choice_policy"]` best/first), status `GRADED` or `NEEDS_REVIEW`.
 
-Failure rules: the run is `FAILED` only when pages can't be read, the budget (`LLM__MAX_CALLS_*` + 2 per page, `LLM__MAX_COST_USD_PER_SUBMISSION`) runs out, or the exam has no questions — per-question problems escalate that answer. Never record a made-up score. Grading settings: `GRADING_AGREEMENT_THRESHOLD` (0.8), `GRADING_MAX_REVISIONS` (2), `GRADING_CRITERION_TOLERANCE` (0.25 of a criterion's points), `GRADING_OCR_CONFIDENCE_THRESHOLD` (0.5), `GRADING_SPOT_CHECK_RATE` (0), `GRADING_MAX_CONCURRENCY` (4).
+Failure rules: the run is `FAILED` only when pages can't be read, the budget (`LLM__MAX_CALLS_*` + 2 per page, `LLM__MAX_COST_USD_PER_SUBMISSION`) runs out, or the exam has no questions (`submissions.failure_code`: `pages_unreadable`, `budget_exhausted`, `no_questions`, `model_unavailable`, `internal_error`) — per-question problems escalate that answer. Never record a made-up score. Grading settings: `GRADING_AGREEMENT_THRESHOLD` (0.8), `GRADING_MAX_REVISIONS` (2), `GRADING_CRITERION_TOLERANCE` (0.25 of a criterion's points), `GRADING_OCR_CONFIDENCE_THRESHOLD` (0.5), `GRADING_SPOT_CHECK_RATE` (0), `GRADING_MAX_CONCURRENCY` (4).
 
 ## Development Commands
 
@@ -108,6 +109,8 @@ python -m app.initial_data                                  # migrations + first
 alembic upgrade head / alembic check                        # migrations only / drift check
 uvicorn app.main:app --reload --port 8000
 celery -A app.worker.celery_app worker -Q celery,rubric --pool=solo --loglevel=info   # --pool=solo on macOS only
+python -m app.admin.reparse_specs [--org-id ID] [--dry-run]                    # re-parse AI specs from an older parser prompt
+python -m app.admin.langfuse_retention --older-than-days N [--submission-id ID] [--dry-run]   # delete old Langfuse traces
 
 # Frontend
 cd frontend && npm install && npm run dev                   # http://localhost:3000
@@ -135,6 +138,7 @@ CELERY_BROKER_URL=redis://localhost:6379/0
 ANTHROPIC_API_KEY=... / OPENAI_API_KEY=... / OPENWEIGHT_API_KEY=...
 LLM__GRADER__PROVIDER / __MODEL / __BASE_URL / __EFFORT / __FALLBACKS=[...]   # per role; profiles in backend/.env.example
 LLM__ALLOW_EXTERNAL_FALLBACK=true    LLM__MAX_COST_USD_PER_SUBMISSION=10
+LLM__ALLOW_UNPRICED_MODELS=false     # the router refuses an API model with no price unless true
 UPLOAD_DIR=./data/uploads            MAX_UPLOAD_SIZE_MB=50 (per file)
 GOTENBERG_URL=http://localhost:3002  # office documents; INGEST_DPI=200, INGEST_MAX_LONG_EDGE=2576, MAX_*_PER_* caps
 FIRST_SUPERUSER_EMAIL / FIRST_SUPERUSER_PASSWORD
@@ -151,16 +155,19 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | GET | /orgs/ | own orgs (superuser: all), each with the user's `role` there |
 | POST | /orgs/ | superuser (creator becomes owner) |
 | GET, DELETE | /orgs/{id} | member / owner |
+| GET | /orgs/{id}/students/{membership_id}/export | owner+admin — everything recorded about one student's grading (runs, call metadata, versions, events) |
 | GET, POST | /batches/?org_id= , /batches/ | staff / owner+admin |
 | DELETE | /batches/{id} | owner+admin |
 | POST | /batches/{id}/enroll, /batches/{id}/upload-students | staff |
 | GET | /batches/{id}/students | staff |
 | GET, POST | /exams/?org_id=&batch_id= , /exams/ | member / staff |
-| GET, PATCH, DELETE | /exams/{id} | member / staff / owner+admin |
+| GET | /exams/summary?org_id= | staff — every exam's answer sheets counted by status |
+| GET, PATCH, DELETE | /exams/{id} | member (students: no rubric fields) / staff / owner+admin |
 | POST | /exams/{id}/questions | staff — full-list sync: send `id` for existing questions; missing ones are soft-deleted; changed questions get their rubric re-parsed |
 | POST | /exams/{id}/questions/upload | staff — Excel import, all-or-nothing |
 | GET | /exams/{id}/rubric-status | staff — rubric state of every question (Q1..Qn) |
 | POST, GET | /exams/{id}/documents | staff — upload exam documents with `role` (question_paper, rubric, question_paper_and_rubric, blank_copy) / list them |
+| DELETE | /exams/{id}/documents/{document_id} | staff — soft-delete a document no confirmed draft uses (409 otherwise) |
 | POST, GET | /exams/{id}/drafts | staff — extract a draft from chosen documents (background, 202) / list versions |
 | GET, PUT | /exams/{id}/drafts/{draft_id} | staff — read (content + issues) / save the teacher's corrections as a new version |
 | POST | /exams/{id}/drafts/{draft_id}/confirm | staff — create/update the exam's questions (409 with blocking issues) |
@@ -171,8 +178,8 @@ BACKEND_CORS_ORIGINS=http://localhost:3000   # comma-separated or JSON list
 | GET | /exams/{id}/review-queue | staff — answers to review: escalated first, then lowest evaluator agreement (`escalated_only`) |
 | POST | /exams/{id}/publish | staff — publish the approved submissions |
 | GET | /submissions/mine | a student's own published results (+ how many aren't published yet) |
-| GET | /submissions/{id} | staff: full; students: own and published only, scores and feedback |
-| GET | /submissions/{id}/review | staff — pages, and per question spec, transcript, current grade with evaluator rounds, earlier versions |
+| GET | /submissions/{id} | staff: full (with `failure_code`); students: own and published only, scores, per-criterion marks and feedback |
+| GET | /submissions/{id}/review | staff — pages, and per question spec, transcript, current grade with evaluator rounds, earlier versions, `rubric_outdated` |
 | GET | /submissions/{id}/pages/{n}/image | staff; the student whose sheet it is, once published — page image |
 | GET | /submissions/{id}/timeline | staff — runs, model calls, versions, actions; `bodies=true` raw model I/O for owner/admin |
 | POST | /submissions/{id}/answers/{qid}/override | staff — set every criterion's score; `expected_grade_id`, mandatory `reason` (409 stale, 422 failed checks) |

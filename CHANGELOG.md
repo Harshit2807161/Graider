@@ -10,15 +10,29 @@ Notable changes to Gr8r, newest first.
 
 #### Added
 - **Class pages:** each class has a detail page with its roster and the exams linked to it, and overview rows link to it.
-- **Re-parse old rubric specs:** an admin command re-parses AI-made rubric specs that an older parser prompt produced; teachers' own specs are left alone.
+- **Overview summary:** `GET /exams/summary?org_id=` counts every exam's answer sheets by status in one query (staff); the overview takes its numbers from it instead of loading each exam's sheets.
+- **Delete exam documents:** `DELETE /exams/{id}/documents/{document_id}` soft-deletes a document no confirmed draft uses (409 otherwise).
+- **Per-student audit export:** `GET /orgs/{org_id}/students/{membership_id}/export` (owner/admin) returns everything recorded about one student's grading: submissions, runs, model-call metadata (no bodies), transcription and grade versions, answers and grade events.
+- **Failure codes:** a failed submission stores why (`failure_code`: `pages_unreadable`, `budget_exhausted`, `no_questions`, `model_unavailable`, `internal_error`) next to `current_step`, with a migration; the review screen explains failures from the code instead of the error text.
+- **"Graded with an older rubric":** review detail and queue mark grades whose rubric spec is no longer the question's current one (`rubric_outdated`).
+- **Page inventory check:** the page reader also lists the questions answered and drawings on each page; answers on a page whose transcript doesn't cover that list keep the proposed score but escalate (`page_inventory_mismatch`).
+- **Internal choices:** a draft question with an internal "OR" ("(a) … OR (b) …", या, अथवा) gets an `internal_choice` warning with a suggested split into two questions in a choice group. The draft editor that applies it doesn't exist yet.
+- **Students see per-criterion marks** on a published result (criterion, score, maximum), without evidence, justifications or evaluator rounds.
+- **Printable result:** a Print button on the student's result page, with a print layout (marks, feedback, each answer-sheet page on its own page).
+- **Side-by-side transcript correction:** correcting a transcript opens next to the page images the answer was read from.
+- **Re-parse old rubric specs:** `python -m app.admin.reparse_specs [--org-id] [--dry-run]` re-parses AI-made rubric specs that an older parser prompt produced; teachers' own specs are left alone.
+- **Langfuse retention:** `python -m app.admin.langfuse_retention --older-than-days N [--submission-id] [--dry-run]` deletes old traces, or one submission's; scheduling it is left to the deployment.
 - **Bilingual question papers:** questions that appear twice (Hindi and English on alternating pages) are folded into one, keeping the Latin-script text.
-- **Same-model warning:** a grading run logs a warning when the grader and evaluator share a primary model, since the evaluator is then not independent.
+- **Same-model warning:** a grading run logs a warning when the grader and evaluator share a primary model, since the evaluator is then not independent (emitted from the worker's `run_router` too).
+- **Unpriced API models are refused:** the router won't start with an Anthropic or OpenAI model that has no price, since its spend would escape the USD cap, unless `LLM__ALLOW_UNPRICED_MODELS=true`. Self-hosted models are exempt.
 
 #### Changed
-- **The page reader sees each question properly:** its label, printed label, choice group and own text, instead of the first 200 characters, so parts sharing a passage no longer look alike (branch `swarm/reader-question-context`, not yet merged).
-- **Students no longer see rubric text:** `GET /exams/{id}` hides rubric criteria and rubric status from students (branch `swarm/rubric-hidden-from-students`, not yet merged).
+- **The page reader sees each question properly:** its label, printed label, choice group and own text, instead of the first 200 characters, so parts sharing a passage no longer look alike. Two new rules: a page starting with a bare sub-part continues the previous question, and printed page numbers are not question numbers. Prompt version `grading-v2.2` (with the struck-words and page-inventory rules).
+- **Answers whose rubric expects a drawing escalate** (`drawing_expected`) with the proposed score kept, since a drawing leaves nothing in the transcript to grade.
+- **Students no longer see rubric text:** `GET /exams/{id}` hides rubric criteria, specs and rubric status from students.
 - **Office conversion is more forgiving:** a Gotenberg 503 or timeout is retried once, and LibreOffice gets longer to start.
 - **The call budget grows with the page count:** each page adds its reading calls to the run budget (now pinned by a test).
+- **Shared animations:** spin, pulse, shimmer, fade and reveal keyframes live once in `globals.css` and modules use them through `--gr-*` custom properties.
 
 #### Fixed
 - **The evidence check discarded correct grades.** Quotes are now matched line by line, after dropping control characters and added quote marks; when a quote still fails, the proposed score is kept and the answer escalates.
@@ -27,12 +41,7 @@ Notable changes to Gr8r, newest first.
 - **A marking scheme read as questions lost its rubric.** Rubric pages that list their entries as questions are used, and an empty rubric document gets a warning.
 - **A draft stayed pending forever** on an unexpected extraction error; it is now marked failed.
 - **Tests read `backend/.env`.** The test session ignores the env file and `LLM__*` variables.
-
-#### In progress (work-in-progress commits; see `docs/swarm/`)
-- Failure codes stored on failed submissions, next to `current_step`.
-- "Graded with an older rubric" flag in the review detail and queue.
-- Per-student export of runs, calls and decisions (`GET /orgs/{org_id}/students/{membership_id}/export`, branch `swarm/audit-export`).
-- Offering the split of an internal choice in the draft editor (branch `swarm/choice-split-editor`).
+- **Integration:** `GET /exams/{id}` was registered on the summary handler after a merge, so staff lost `questions`; and two migrations shared a parent, leaving two Alembic heads. Both fixed; a test keeps the history to one head.
 
 ### Website and first pitch campaign (branch `pitch/website-and-campaign`)
 
