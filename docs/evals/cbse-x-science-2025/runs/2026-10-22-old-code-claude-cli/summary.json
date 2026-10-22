@@ -1,0 +1,30 @@
+{
+ "status": "NEEDS_REVIEW",
+ "total_score": 66.0,
+ "max_score": 80.0,
+ "parts": {
+  "graded": 35,
+  "not_attempted": 9,
+  "escalated": 7
+ },
+ "escalations": {
+  "multiple_attempts": 4,
+  "check_failed": 3
+ },
+ "rubrics_not_ready": [
+  "35(b)"
+ ],
+ "grading_run": {
+  "llm_calls": 131,
+  "cost_usd": 2.856578,
+  "started_at": "2026-10-22T17:49:32.975149Z",
+  "finished_at": "2026-10-22T17:53:48.156702Z"
+ },
+ "calls": {
+  "evaluate (claude-opus-5-5)": 42,
+  "grade (claude-sonnet-5-5)": 42,
+  "grade_fix (claude-sonnet-5-5)": 13,
+  "revise (claude-sonnet-5-5)": 3,
+  "transcribe_page (claude-opus-5-5)": 31
+ }
+}
