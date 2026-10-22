@@ -136,7 +136,7 @@ class _Grading:
     def _accept(self, out: dict) -> None:
         self.criteria, self.feedback = out["criteria"], out["feedback"]
         if out["flags"]:
-            self.outcome.flags = list(out["flags"])
+            self.outcome.flags += [f for f in out["flags"] if f not in self.outcome.flags]
             raise _Escalate(EscalationReason.grader_flag(out["flags"][0]), keep_score=False)
 
     async def evaluate(self, round_no: int) -> dict:
@@ -195,6 +195,8 @@ async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSett
     outcome = QuestionOutcome(q.question_id, q.label, AnswerStatus.GRADED, q.max_score)
     if q.answer is None or not q.answer.text:
         return outcome.escalate(EscalationReason.NO_ANSWER_FOUND, keep_score=False)
+    # The reader's flags (crossed-out work, page inventory mismatch) stay on the grade whatever happens next
+    outcome.flags = list(q.answer.flags)
     if q.spec is None:
         return outcome.escalate(EscalationReason.RUBRIC_INVALID, keep_score=False)
 
@@ -229,7 +231,6 @@ async def grade_question(q: QuestionInput, run_id: UUID, exam: Optional[ExamSett
         return outcome.escalate(EscalationReason.ALL_MODELS_FAILED, keep_score=False)
 
     outcome.criteria, outcome.feedback, outcome.score = grading.criteria, grading.feedback, total(grading.criteria)
-    outcome.flags = list(q.answer.flags)
     if q.answer.starts > 1:
         return outcome.escalate(EscalationReason.MULTIPLE_ATTEMPTS)
     if rubric_expects_drawing(q.spec):

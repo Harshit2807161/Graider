@@ -194,6 +194,7 @@ export const ESCALATION_TEXT: Record<string, string> = {
     all_models_failed: "The AI couldn't grade it",
     spot_check: "Random spot check",
     drawing_expected: "The rubric expects a drawing",
+    page_inventory_mismatch: "Some work on the page wasn't transcribed",
     "grader_flag:illegible": "Grader: illegible",
     "grader_flag:off_topic": "Grader: off topic",
     "grader_flag:answers_another_question": "Grader: answers another question",

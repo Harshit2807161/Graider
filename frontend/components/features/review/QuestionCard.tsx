@@ -22,6 +22,7 @@ const HINTS: Record<string, string> = {
     all_models_failed: "The AI couldn't grade this answer. Set the scores yourself.",
     evaluator_disagreement: "The examiners still disagree after revising. Their positions are below.",
     drawing_expected: "The AI can't see drawings yet. Check the diagram on the page, then accept or change the score.",
+    page_inventory_mismatch: "The reader saw work on the page that isn't in the transcript. Compare the page with the transcript, correct it if needed, then accept or change the score.",
     spot_check: "A random check of a confident grade: accept it or change it.",
 };
 
