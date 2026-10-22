@@ -5,6 +5,7 @@
 - OpenAI and self-hosted open-weight (vLLM/SGLang, OpenAI-compatible) → `ChatOpenAI`
   with strict `json_schema` (server-side guided decoding for open-weight)
 - targets without schema support → prompt-only "degraded" path, validated afterwards
+- `claude_cli` → a `claude -p` subprocess (`claude_cli.py`), for evals on a Claude subscription
 
 Chat-model clients are created per run (`LangChainInvoker` instance), because Celery runs
 each task in a fresh event loop and async HTTP clients can't be reused across loops.
@@ -20,6 +21,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, ConfigDict
 
 from app.core.config import settings as app_settings
+from app.llm import claude_cli
 from app.llm.schema import extract_json_object
 from app.llm.types import (
     ImagePart,
@@ -183,6 +185,37 @@ def _request_id(message: AIMessage) -> Optional[str]:
     return None
 
 
+async def _invoke_claude_cli(req: InvokeRequest) -> InvokeResponse:
+    target = req.target
+    result, latency_ms = await claude_cli.run_claude_cli(
+        target.model, req.system, req.parts, req.json_schema, target.effort, target.timeout_s
+    )
+    parsed = result.get("structured_output")
+    stop, provider_stop = claude_cli.stop_reason(result)
+    return InvokeResponse(
+        text=_without_nul(result.get("result")),
+        parsed=_without_nul(parsed) if isinstance(parsed, dict) else None,
+        parse_error=None if isinstance(parsed, dict) else "the CLI returned no structured output",
+        stop_reason=stop,
+        provider_stop_reason=provider_stop,
+        model_answered=next(iter(result.get("modelUsage") or {}), target.model),
+        response_id=result.get("uuid"),
+        request_id=result.get("session_id"),
+        usage=claude_cli.usage(result),
+        raw=_without_nul(_jsonable({k: v for k, v in result.items() if k != "structured_output"})),
+        request={
+            "provider": target.provider.value,
+            "model": target.model,
+            "params": {"effort": target.effort, "timeout_s": target.timeout_s},
+            "system": req.system,
+            "messages": [{"role": "user", "content": _redacted_parts(req.parts)}],
+            "structured_output": "json_schema",
+            "output_schema": req.json_schema,
+        },
+        latency_ms=latency_ms,
+    )
+
+
 # ===== invoker =====
 
 class LangChainInvoker:
@@ -238,6 +271,8 @@ class LangChainInvoker:
 
     async def invoke(self, req: InvokeRequest) -> InvokeResponse:
         target = req.target
+        if target.provider == Provider.CLAUDE_CLI:
+            return await _invoke_claude_cli(req)
         model = self._chat_model(target, req.max_tokens, req.trace_name)
         degraded = not target.supports_json_schema
 

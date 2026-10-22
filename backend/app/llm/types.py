@@ -28,12 +28,15 @@ class Provider(str, Enum):
     # Self-hosted open-weight models behind an OpenAI-compatible server (vLLM, SGLang;
     # Ollama for local development only)
     OPENWEIGHT = "openweight"
+    # Claude through the signed-in Claude Code CLI (`claude -p`), for evals on a subscription
+    CLAUDE_CLI = "claude_cli"
 
 
 DEFAULT_API_KEY_ENV = {
     Provider.ANTHROPIC: "ANTHROPIC_API_KEY",
     Provider.OPENAI: "OPENAI_API_KEY",
     Provider.OPENWEIGHT: "OPENWEIGHT_API_KEY",
+    Provider.CLAUDE_CLI: "ANTHROPIC_API_KEY",  # not used: the CLI's own sign-in is
 }
 
 
