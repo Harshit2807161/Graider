@@ -1,0 +1,30 @@
+{
+ "status": "NEEDS_REVIEW",
+ "total_score": 74.0,
+ "max_score": 80.0,
+ "parts": {
+  "graded": 35,
+  "not_attempted": 8,
+  "escalated": 8
+ },
+ "escalations": {
+  "multiple_attempts": 7,
+  "grader_flag:answers_another_question": 1
+ },
+ "rubrics_not_ready": [
+  "35(b)"
+ ],
+ "grading_run": {
+  "llm_calls": 126,
+  "cost_usd": 0.8589419999999998,
+  "started_at": "2026-10-22T18:05:43.041221Z",
+  "finished_at": "2026-10-22T18:09:03.708686Z"
+ },
+ "calls": {
+  "evaluate (claude-sonnet-5-5)": 43,
+  "grade (claude-sonnet-5-5)": 43,
+  "grade_fix (claude-sonnet-5-5)": 8,
+  "revise (claude-sonnet-5-5)": 1,
+  "transcribe_page (claude-sonnet-5-5)": 31
+ }
+}
