@@ -71,6 +71,11 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     settings = get_settings()
     settings.ensure_directories()
+    if not settings.anthropic_api_key:
+        logger.warning(
+            "anthropic_api_key_missing",
+            message="ANTHROPIC_API_KEY is not set. Copy backend/.env.example to backend/.env and add your key.",
+        )
     logger.info("gr8r_startup", message="Gr8r backend starting up", log_file=str(log_file_path))
     print(f"\n📋 Logs are being saved to: {log_file_path}\n")
     yield

@@ -6,12 +6,16 @@ from typing import Optional
 
 from pydantic_settings import BaseSettings
 
+# backend/, so backend/.env loads no matter which directory the app starts from.
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # API Keys
-    anthropic_api_key: str = "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"
+    # Read from ANTHROPIC_API_KEY (environment or backend/.env); never hard-code it.
+    anthropic_api_key: str = ""
 
     # Claude Models
     claude_orchestrator_model: str = "claude-sonnet-4-20250514"
@@ -37,7 +41,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     class Config:
-        env_file = ".env"
+        env_file = (".env", str(BACKEND_DIR / ".env"))
         env_file_encoding = "utf-8"
         extra = "ignore"
 
